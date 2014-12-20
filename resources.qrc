@@ -1,0 +1,13 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>bitmaps/open_context.png</file>
+    <file>bitmaps/open_folder.png</file>
+    <file>bitmaps/open_tag.png</file>
+    <file>bitmaps/filledbox.png</file>
+    <file>bitmaps/star.png</file>
+    <file>bitmaps/delete.png</file>
+    <file>bitmaps/priority.png</file>
+</qresource>
+</RCC>
+
+
