@@ -1,6 +1,6 @@
 
 #@+leo-ver=5-thin
-#@+node:slzatz.20141214092447.42: * @file C:/Users/szatz/python3/lmdb_aws.py
+#@+node:slzatz.20141220151846.43: * @file C:/Users/szatz/mylistman_p3/lmdb_aws.py
 #@@first
 #@@language python
 #@@tabwidth -4

@@ -1,6 +1,6 @@
 
 #@+leo-ver=5-thin
-#@+node:slzatz.20120406192313.1743: * @file synchronize2.py
+#@+node:slzatz.20141220151846.44: * @file C:/Users/szatz/mylistman_p3/synchronize2_aws.py
 #@@first
 #@@nowrap
 #@@tabwidth -4

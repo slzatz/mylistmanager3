@@ -1,6 +1,6 @@
 #
 #@+leo-ver=5-thin
-#@+node:slzatz.20141214092447.41: * @file C:/Users/szatz/python3/listmanager_aws.py
+#@+node:slzatz.20141220151846.41: * @file C:/Users/szatz/mylistman_p3/listmanager_aws.py
 #@@first
 #@@nowrap
 #@@tabwidth -4
@@ -2142,7 +2142,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 for c,col in enumerate(col_order[1:],start=1):
                     item = qtablewidgetitem(*display[col](task))
                     item.setFont(font[task.priority])
-                    item.setTextColor(color)
+                    item.setForeground(color)
                     table.setItem(n, c, item)
 
 

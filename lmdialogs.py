@@ -1,6 +1,6 @@
 
 #@+leo-ver=5-thin
-#@+node:slzatz.20141214092447.43: * @file C:/Users/szatz/python3/lmdialogs.py
+#@+node:slzatz.20141220151846.42: * @file C:/Users/szatz/mylistman_p3/lmdialogs.py
 #@@first
 #@@nowrap
 #@@tabwidth -4

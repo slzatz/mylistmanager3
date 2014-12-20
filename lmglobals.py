@@ -1,6 +1,6 @@
 
 #@+leo-ver=5-thin
-#@+node:slzatz.20141214092447.44: * @file C:/Users/szatz/python3/lmglobals.py
+#@+node:slzatz.20141220151846.46: * @file C:/Users/szatz/mylistman_p3/lmglobals.py
 #@@first
 #@@nowrap
 #@@tabwidth -4
