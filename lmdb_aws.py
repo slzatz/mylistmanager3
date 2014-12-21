@@ -23,7 +23,8 @@ import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
 import lmglobals as g
-from aws_credentials import rds_uri
+#from aws_credentials import rds_uri
+#sqlite_uri = 'sqlite:///' + g.LOCAL_DB_FILE
 
 #@+node:slzatz.20120322182513.1694: ** __all__
 __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc']
@@ -241,8 +242,9 @@ mapper(Sync, sync_table)
 mapper(Temp_tid, temp_tid_table)
 
 #mapper(Reminder, reminder_table) 
-
-engine = create_engine(rds_uri, echo=False)
+print("g.DB_URI=",g.DB_URI)
+engine = create_engine(g.DB_URI, echo=False)
+#engine = create_engine(rds_uri, echo=False)
 metadata.bind = engine
 metadata.create_all(engine)
 

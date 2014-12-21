@@ -60,13 +60,16 @@ from functools import partial
 
 import markdown2 as markdown
 
+import lmglobals as g #moved from below on 12-21-2014
+
 # all the db stuff and sqlalchemy
+g.DB_URI = g.rds_uri #g.sqlite_uri 
 from lmdb_aws import *
     
 #note synchronize2 is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
 
-import lmglobals as g
+#import lmglobals as g
 
 from whoosh.index import create_in
 from whoosh.fields import *
@@ -82,8 +85,16 @@ parser = argparse.ArgumentParser(description='Command line options mainly for de
 parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
+parser.add_argument('-s', '--sqlite', action='store_true', help="Use local sqlite database")
 
 args = parser.parse_args()
+
+if args.sqlite:
+    g.DB_URI = g.sqlite_uri
+else:
+    g.DB_URI = g.rds_uri #g.sqlite_uri 
+
+from lmdb_aws import *
 
 #@+node:slzatz.20100314151332.2943: ** constants
 VERSION = '0.8'
@@ -100,22 +111,15 @@ update_row = g.update_row
 #@+node:slzatz.20100314151332.2944: ** SQLAlchemy initialization
 # Not 100% sure this needs to be done in global land
 
-#DB_EXISTS = os.path.exists(g.DB_FILE)
-DB_EXISTS = True ################################################################################11292014#####################
+DB_EXISTS = True ###########  this should go into a command line argument about the db existing (the default) #####################################################################11292014#####################
 
-#if not DB_EXISTS:
-#    db_directory = os.path.split(g.DB_FILE)[0]
-#
-#    try:
-#        os.makedirs(db_directory)
-#    except OSError:
-#        sys.exit("Could not create directory for the listmanager database")
-#
-#engine = create_engine('sqlite:///' + g.DB_FILE, echo=False) # creates db file if it doesn't exist
-#metadata.bind = engine #not sure you need to bind metadata to an engine if you're not going to create/drop tables; may need this if session not bound to an engine
-#metadata.create_all(engine) #won't recreate if database already exists
+if not DB_EXISTS and args.sqlite:
+    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
 
-print("In SQLA initiatiations")
+    try:
+        os.makedirs(db_directory)
+    except OSError:
+        sys.exit("Could not create directory for sqlite database")
 
 #@+node:slzatz.20100314151332.2948: ** class ListManager
 class ListManager(PyQt5.QtWidgets.QMainWindow):

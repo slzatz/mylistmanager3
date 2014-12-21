@@ -13,17 +13,20 @@ import configparser as configparser
 
 import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets
+from aws_credentials import rds_uri
 
 #@+node:slzatz.20120318160356.1673: ** constants
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 CONFIG_FILE = os.path.join(cwd,'mylistmanager.ini')
-#DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
+LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
+sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
+DB_URI = None #####################right now need to change this manually in listmanager  
 IMAGES_DIR = os.path.join(cwd,'bitmaps')
 PLUGIN_DIR = os.path.join(cwd,'plugins')
 USER_ICONS = 'folder_icons'
 CORE_ICONS = ''
 LOG_FILE = os.path.join(cwd,'logfile.txt')
-XAPIAN_DIR = os.path.join(cwd,'xapian')
+#XAPIAN_DIR = os.path.join(cwd,'xapian')
 del cwd
 
 xapianenabled = False
