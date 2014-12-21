@@ -242,7 +242,7 @@ mapper(Temp_tid, temp_tid_table)
 
 #mapper(Reminder, reminder_table) 
 
-engine = create_engine(rds_uri, echo=True)
+engine = create_engine(rds_uri, echo=False)
 metadata.bind = engine
 metadata.create_all(engine)
 

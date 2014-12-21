@@ -62,16 +62,18 @@ import markdown2 as markdown
 
 # all the db stuff and sqlalchemy
 from lmdb_aws import *
-
-try:
-    import xapian
-except ImportError:
-    xapian = None
     
 #note synchronize2 is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
 
 import lmglobals as g
+
+from whoosh.index import create_in
+from whoosh.fields import *
+import whoosh.index as index
+#from whoosh.qparser import QueryParser
+#from whoosh.qparser import MultifieldParser
+from whoosh.query import Or, Prefix
 
 #@+node:slzatz.20120708193100.1701: ** argparse
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
@@ -84,10 +86,6 @@ parser.add_argument('-i', '--ini', action='store_false', help="Don't load the ta
 args = parser.parse_args()
 
 #@+node:slzatz.20100314151332.2943: ** constants
-g.xapianenabled = bool(xapian) and os.path.isdir(g.XAPIAN_DIR)
-
-print("g.xapianenabled={}".format(g.xapianenabled)) #print_ not defined
-
 VERSION = '0.8'
 
 TODAY = datetime.date.today()
@@ -95,8 +93,9 @@ TODAY = datetime.date.today()
 #decorators
 check_modified = g.check_modified
 check_task_selected = g.check_task_selected
-update_xapiandb = g.update_xapiandb
+update_whooshdb = g.update_whooshdb
 update_row = g.update_row
+
 
 #@+node:slzatz.20100314151332.2944: ** SQLAlchemy initialization
 # Not 100% sure this needs to be done in global land
@@ -227,30 +226,13 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
-        #@+node:slzatz.20120225143539.1647: *4* xapian initialization
-        if g.xapianenabled:
+        #@+node:slzatz.20141220191554.2: *4* whoosh initialization
+        if True:
 
-            self.xapian_database = xapian.WritableDatabase(g.XAPIAN_DIR, xapian.DB_OPEN)
-            indexer = xapian.TermGenerator()
-            stemmer = xapian.Stem("english")
-            indexer.set_stemmer(stemmer)
-            
-            qp = xapian.QueryParser()
-            qp.set_stemmer(stemmer)
-            qp.set_database(self.xapian_database)
-            qp.set_stemming_strategy(xapian.QueryParser.STEM_SOME) #STEM_NONE possible but STEM_SOME takes advatnage of stemming of index
-            qp.set_default_op(xapian.Query.OP_AND) ## 2/20/2012 assumed different words are anded
-            
-            self.xapian_enquire = xapian.Enquire(self.xapian_database)
-            
-            self.xapian_stemmer = stemmer
-            self.xapian_indexer = indexer
-            self.xapian_qp = qp
-            
-            self.query_parse_flag = xapian.QueryParser.FLAG_PARTIAL # default search when set to PARTIAL it's incremental search
-            
-        else:
-            self.xapian_database = None
+            self.ix = index.open_dir("indexdir")
+            #self.parser = QueryParser("note", ix.schema)
+            #self.parser = MultifieldParser(["title", "note"], schema=ix.schema)
+            self.searcher = self.ix.searcher()
         #@+node:slzatz.20120403143426.1732: *4* various controls
         #@+node:slzatz.20120403143426.1727: *5* logger
         self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
@@ -536,7 +518,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         a_synchronize = action("&Synchronize (json)", self.synchronize, 'Alt+S', icon='arrow_ns')
         a_showsync_log = action("Show Synchronize Log", self.showsync_log)
-        a_create_xapiandb = action("&Create Xapain DB", self.create_xapiandb)
         a_showdeleted = action("Show Deleted", self.showdeleted)
         a_removedeletedtasks = action("Remove Deleted Tasks ...", self.removedeletedtasks)
         a_print_note_to_log = action("Print Note to Log", self.print_note_to_log)
@@ -544,20 +525,21 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         a_on_simple_html2log = action("Print simple html to log", self.on_simple_html2log)
         a_ontaskinfo = action("Show Task Info", partial(self.ontaskinfo, retrieve_server=True))
         a_deletecontexts = action("Delete Context(s)...", partial(self.deletecontexts, type_='context'))
-        a_updatexapianentry = action("Update Xapian Entry (standard)", self.updatexapianentry) 
+        a_updatewhooshentry = action("Update Whoosh Entry (standard)", self.updatewhooshentry) 
         a_updatexapianentry2 = action("Update Xapian Entry (manual factor)", self.updatexapianentry2) 
         a_get_tabinfo = action("Show Tab Info", self.get_tabinfo)
-        a_xapiantaskinfo = action("Xapian Task Info", self.xapiantaskinfo)
+        a_whooshtaskinfo = action("Xapian Task Info", self.whooshtaskinfo)
         a_removedeadkeywords = action("Remove Unused Keywords ...", self.removedeadkeywords)
         a_renew_alarms = action("Renew Expired Alarms", self.renew_alarms)
         a_startdate = action("Set Startdate", partial(self.setdate, which='startdate'), icon='office-calendar')
         a_resetinterp = action("Reset Console", self.resetinterp)
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
+        a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb)
 
-        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_create_xapiandb, a_updatexapianentry,
-                                         a_updatexapianentry2, a_xapiantaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
+        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
+                                         a_updatexapianentry2, a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeletedtasks, a_removedeadkeywords, 
-                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs))
+                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb))
                                          
         a_create_image_string = action("Create image string", self.create_image_string)
 
@@ -681,7 +663,8 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         self.search = lineEdit
 
-        if g.xapianenabled:
+        #if g.xapianenabled:
+        if False:
             #FLAG_PARTIAL is the startup default but it could be set in ini file so will leave the if/else
             if self.query_parse_flag == xapian.QueryParser.FLAG_PARTIAL:
                 self.search.textEdited.connect(self.do_search)
@@ -690,6 +673,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         else:
             lineEdit.setDisabled(True)
             
+        lineEdit.setDisabled(False)
+        self.query_parse_flag = 10   
+        self.search.textEdited.connect(self.do_search)
         #@+node:slzatz.20120228184102.1660: *4* Tab Manager Context Menu
         # needs to be here because the actions need to have been defined (in Menus section)
         self.tab_manager.setContextMenuPolicy(Qt.ActionsContextMenu)
@@ -1414,7 +1400,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
     #@+node:slzatz.20100314151332.2981: *4* updatefolder
     @update_row
-    @update_xapiandb
+    @update_whooshdb
     @check_task_selected
     def updatefolder(self, title=None):
 
@@ -1451,7 +1437,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
     #@+node:slzatz.20100314151332.2983: *4* updatecontext
     @update_row
-    @update_xapiandb
+    @update_whooshdb
     @check_task_selected
     def updatecontext(self, title=None):
         '''
@@ -1535,7 +1521,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
     #@+node:slzatz.20120304081931.1665: *4* updatetag
     @update_row
-    @update_xapiandb
+    @update_whooshdb
     @check_task_selected
     def updatetag(self, tag):
         '''tag is a list''' 
@@ -1653,7 +1639,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
     #@+node:slzatz.20100314151332.2991: *4* save_title
     @update_row
-    @update_xapiandb
+    @update_whooshdb
     def save_title(self, editor=None):  #editor=None was added on April 22, 2012 but surprising it worked without it.
         '''
         ... QtCore.SIGNAL("commitData(QWidget*)"), self.save_title) --> widget is the editor
@@ -2069,7 +2055,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
     #@+node:slzatz.20100314151332.3003: *4* savenote
     @update_row
-    @update_xapiandb
+    @update_whooshdb
     @check_task_selected
     def savenote(self):
 
@@ -2782,62 +2768,41 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
 
         
-    #@+node:slzatz.20100314151332.3042: *4* create_xapiandb
-    def create_xapiandb(self):
-
-        if not xapian:
-            print_("Xapian is not present")
-            return
-
-        if self.xapian_database:
-            self.xapian_database.close()
-            
-        # Create a new database or overwrite if one exists
-        self.xapian_database = xapian.WritableDatabase(g.XAPIAN_DIR, xapian.DB_CREATE_OR_OVERWRITE) #DB_CREATE_OR_OPEN)
-        
-        indexer = xapian.TermGenerator()
-        stemmer = xapian.Stem("english")
-        indexer.set_stemmer(stemmer)
-        
-        qp = xapian.QueryParser()
-        qp.set_stemmer(stemmer)
-        qp.set_database(self.xapian_database)
-        qp.set_stemming_strategy(xapian.QueryParser.STEM_SOME) #you want STEM_SOME v. NONE or ALL
-        
-        self.xapian_enquire = xapian.Enquire(self.xapian_database)
+    #@+node:slzatz.20141220151846.47: *4* create_whooshdb
+    def create_whooshdb(self):
 
         tasks = session.query(Task)
         r = tasks.count()
         self.pb.setRange(0, r)
         self.pb.setValue(0)
         self.pb.show()
+        #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=STORED) #schema = Schema(title=TEXT(field_boost=2.0, unique=True), body=TEXT) 
         
-        for n,task in enumerate(tasks):
-            
-            doc = xapian.Document()
-            indexer.set_document(doc)
-            
-            indexer.index_text(' '.join(task.tag.split(',') if task.tag else ''), 3) # 3 = word doc freq inc to boost tags
-            indexer.index_text(task.title)
-            indexer.index_text(task.note if task.note else '')
-                   
-            # Add the document to the database and first add the task.id to retrieve it
-            # doc.add_value(SQLITE_ID, str(task.id))
-            # database.add_document(doc)
-            
-            # instead by using replace_document you can explicility pass the docid = task.id
-            # that can be used when you need to map search result sets to task.ids
-            self.xapian_database.replace_document(task.id, doc)
-            
-            self.pb.setValue(n)
+        #If unique=True, the value of this field may be used to replace documents with the same value when the user calls document_update() on an IndexWriter. 
+        #whoosh.fields.ID Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=ID(unique=True, stored=True)) 
+        #position=NUMERIC(int, 64, signed=False))
+        #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=ID(unique=True, stored=True)) 
+        schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) 
+        
+        if not os.path.exists("indexdir"):
+            os.mkdir("indexdir")
+        
+        # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
+        ix = create_in("indexdir", schema)
+        writer = ix.writer()
 
-        self.xapian_indexer = indexer
-        self.xapian_qp = qp
-        self.xapian_stemmer = stemmer
+        for n,task in enumerate(tasks):
+
+            writer.add_document(title=task.title,
+                                           tag = task.tag, 
+                                           note = task.note, 
+                                           task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
+                                           
+            self.pb.setValue(n)
+             
+        writer.commit()
         
-        self.xapian_database.commit() ## 4/30/2012
-        
-        print_("Xapian database indexing complete")
+        print_("Whoosh database indexing complete")
         
         self.pb.hide()
 
@@ -2926,11 +2891,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
             session.commit()
             
-    #@+node:slzatz.20120429061932.1610: *4* xapiantaskinfo
+    #@+node:slzatz.20120429061932.1610: *4* whooshtaskinfo
     @check_task_selected
-    def xapiantaskinfo(self):
+    def whooshtaskinfo(self, check=False):
         
-        text, ok = QtGui.QInputDialog.getText(self,"xapian","Enter search terms", QtGui.QLineEdit.Normal)
+        text, ok = PyQt5.QtWidgets.QInputDialog.getText(self,"xapian","Enter search terms", PyQt5.QtWidgets.QLineEdit.Normal)
         
         if ok and text:
             print_(text)
@@ -3144,7 +3109,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.m_savedtabsmenu.clear()
         QtGui.QMessageBox.information(self,  'Information', "Saved tabs were cleared")
         
-    #@+node:slzatz.20100314151332.3053: *3* Search (using Xapian)
+    #@+node:slzatz.20100314151332.3053: *3* Search (using Whoosh)
     #@+node:slzatz.20100314151332.3055: *4* searchcontext (all contexts or specific contexts)
     def searchcontext(self, search=None):
 
@@ -3189,6 +3154,8 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
     #@+node:slzatz.20100314151332.3056: *4* do_search
     def do_search(self, text=None):
+        
+        print("do search")
 
         query_string = self.search.text()
 
@@ -3198,6 +3165,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         # You can backspace to no characters on incremental or return with no characters in standard
         if not query_string:
             self.table.clearContents() 
+            return
+        
+        if len(query_string) < 3:
             return
         
         if self.active_search:
@@ -3229,7 +3199,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
     #@+node:slzatz.20100314151332.3058: *4* get_query_ids
-    def get_query_ids(self, query_string):
+    def get_query_ids_(self, query_string):
         '''
     Flags for the xapian parse query method
     The default flags are FLAG_PHRASE|FLAG_BOOLEAN|FLAG_LOVEHATE.
@@ -3245,6 +3215,25 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         matches = self.xapian_enquire.get_mset(0, 100) 
         return [int(m.docid) for m in matches]
+
+    #@+node:slzatz.20141220190334.40: *4* get_query_ids (whoosh)
+    def get_query_ids(self, query_string):
+        '''
+    Flags for the xapian parse query method
+    The default flags are FLAG_PHRASE|FLAG_BOOLEAN|FLAG_LOVEHATE.
+    FLAG_PHRASE = support quoted phrases
+    FLAG_BOOLEAN = AND, OR
+    FLAG_LOVEHATE = allow use of +, -
+    The above three are the default (FLAG_DEFAULT)
+    for not incremental/partial searches now using FLAG_BOOLEAN_ANY_CASE|FLAG_PHRASE
+    '''
+        #query = self.parser.parse(query_string+'*')
+        #print(repr(query))
+        query = Or([Prefix('title', query_string), Prefix('note', query_string)])
+        print(repr(query))
+        results = self.searcher.search(query, limit=50)
+        
+        return [r['task_id'] for r in results] #int if using ID but don't think so if NUMERIC
 
     #@+node:slzatz.20100314151332.3059: *3* Database-related methods
     #@+node:slzatz.20100314151332.3060: *4* get_current_tasks
@@ -3405,34 +3394,21 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         return keyword_names
 
-    #@+node:slzatz.20100314151332.3063: *4* updatexapianentry
-    def updatexapianentry(self, task=None):
+    #@+node:slzatz.20100314151332.3063: *4* updatwhooshentry
+    def updatewhooshentry(self, task=None):
         
         if task is None:
             task = self.task
         
-        doc = xapian.Document()
-        indexer = self.xapian_indexer
-        indexer.set_document(doc)
+        writer = self.ix.writer()
+        writer.update_document(task_id=str(task.id),
+                                            title=task.title,
+                                           tags=task.tags,
+                                           note = task.note)
+        writer.commit()
         
-        factor = 3 #wdf increment - totally arbitrary
-        
-        indexer.index_text(' '.join(task.tag.split(',') if task.tag else ''), factor) 
-        indexer.index_text(task.title)
-        indexer.index_text(task.note if task.note else '')
-        
-        # this adds wdf to the tags for both stemmed ("Z") and non-stemmed versions of words
-        # commented out because you  achieve the same result by using
-        # a factor in termgenerator().index_text(..., factor) as used above
-        # if task.tag:
-            # for t in task.tag.split(','):
-                # doc.add_term('Z'+self.xapian_stemmer(t).lower(), factor)
-                # doc.add_term(t.lower(), factor)
-                
-        # note that below the task.id (sqlite primary key auto-generated id) is used as the xapian document id
-        self.xapian_database.replace_document(task.id, doc)
-        
-        print_("Updated in Xapian DB: task id: {0}, {1} ...".format(task.id, task.title[:40]))
+     
+        print_("Updated in Whoosh DB: task id: {0}, {1} ...".format(task.id, task.title[:40]))
         
     #@+node:slzatz.20120220132011.1643: *4* updatexapianentry2 (allows arbitrary factor)
     def updatexapianentry2(self, task=None):

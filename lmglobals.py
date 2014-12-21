@@ -7,10 +7,6 @@
 #@@language python
 #@+others
 #@+node:slzatz.20120318160356.1672: ** imports
-
-
-
-
 import os
 import urllib.request, urllib.error, urllib.parse
 import configparser as configparser
@@ -123,14 +119,14 @@ def check_task_selected(f):
         else:
             return f(lm, *args, **kwargs)
     return fn
-#@+node:slzatz.20120623191748.1707: *3* update_xapiandb
-def update_xapiandb(f):
+#@+node:slzatz.20120623191748.1707: *3* update_whooshdb
+def update_whooshdb(f):
     ''' A decorator that updates the xapiandb because of a task change'''
     
     def fn(lm, *args, **kwargs):
         z = f(lm, *args, **kwargs)
-        if xapianenabled:
-            lm.updatexapianentry(lm.task)
+        #if xapianenabled:
+        lm.udatewhooshentry(lm.task)
         return z
     return fn
    
