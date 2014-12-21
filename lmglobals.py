@@ -126,7 +126,7 @@ def update_whooshdb(f):
     def fn(lm, *args, **kwargs):
         z = f(lm, *args, **kwargs)
         #if xapianenabled:
-        lm.udatewhooshentry(lm.task)
+        lm.updatewhooshentry(lm.task)
         return z
     return fn
    

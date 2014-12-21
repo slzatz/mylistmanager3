@@ -230,8 +230,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         if True:
 
             self.ix = index.open_dir("indexdir")
-            #self.parser = QueryParser("note", ix.schema)
-            #self.parser = MultifieldParser(["title", "note"], schema=ix.schema)
             self.searcher = self.ix.searcher()
         #@+node:slzatz.20120403143426.1732: *4* various controls
         #@+node:slzatz.20120403143426.1727: *5* logger
@@ -3227,8 +3225,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
     The above three are the default (FLAG_DEFAULT)
     for not incremental/partial searches now using FLAG_BOOLEAN_ANY_CASE|FLAG_PHRASE
     '''
-        #query = self.parser.parse(query_string+'*')
-        #print(repr(query))
+
         query = Or([Prefix('title', query_string), Prefix('note', query_string)])
         print(repr(query))
         results = self.searcher.search(query, limit=50)
@@ -3401,11 +3398,19 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             task = self.task
         
         writer = self.ix.writer()
-        writer.update_document(task_id=str(task.id),
-                                            title=task.title,
-                                           tags=task.tags,
-                                           note = task.note)
+        writer.update_document(task_id=task.id,
+                               title=task.title,
+                               tag=task.tag,
+                               note=task.note)
         writer.commit()
+        
+        #Note While the writer is open and during the commit, the index is still available for reading. 
+        #Existing readers are unaffected and new readers can open the current index normally. 
+        #Once the commit is finished, existing readers continue to see the previous version of the index 
+        #(that is, they do not automatically see the newly committed changes). New readers will see the updated index.
+        
+        self.ix = index.open_dir("indexdir")
+        self.searcher = self.ix.searcher()
         
      
         print_("Updated in Whoosh DB: task id: {0}, {1} ...".format(task.id, task.title[:40]))
