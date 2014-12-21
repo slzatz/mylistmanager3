@@ -48,10 +48,10 @@ class TaskInfo(QDialog):
 
         table.setItemDelegateForRow(labels.index('note'), NoteItemDelegate(self)) # Custom Delegate to control editor
 
-        layout = QtGui.QVBoxLayout()
+        layout = PyQt5.QtWidgets.QVBoxLayout()
         layout.addWidget(table)
 
-        buttonBox = QtGui.QDialogButtonBox(Ok)
+        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -79,7 +79,7 @@ class TaskInfoTable(PyQt5.QtWidgets.QTableWidget):
         self.verticalHeader().setVisible(True)
 
         self.horizontalHeader().setDefaultAlignment(Qt.AlignLeft) # set column header text alignment - doesn't affect cells
-        self.horizontalHeader().setMovable(False)
+        self.horizontalHeader().setSectionsMovable(False)
         self.setHorizontalHeaderLabels(['client', 'server']) # Horizontal... is the column headers
 
         self.setShowGrid(True)
@@ -111,7 +111,7 @@ class NoteItemDelegate(PyQt5.QtWidgets.QItemDelegate):
 
         text = index.model().data(index)
 
-        document = PyQt5.QtWidgets.QTextDocument()
+        document = QtGui.QTextDocument()
         document.setDefaultFont(option.font)
         
         simple_html = markdown.markdown(text)

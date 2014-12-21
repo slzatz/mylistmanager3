@@ -523,10 +523,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         a_on_simple_html2log = action("Print simple html to log", self.on_simple_html2log)
         a_ontaskinfo = action("Show Task Info", partial(self.ontaskinfo, retrieve_server=True))
         a_deletecontexts = action("Delete Context(s)...", partial(self.deletecontexts, type_='context'))
-        a_updatewhooshentry = action("Update Whoosh Entry (standard)", self.updatewhooshentry) 
-        a_updatexapianentry2 = action("Update Xapian Entry (manual factor)", self.updatexapianentry2) 
+        a_updatewhooshentry = action("Update Whoosh Entry Manually", self.updatewhooshentry) 
         a_get_tabinfo = action("Show Tab Info", self.get_tabinfo)
-        a_whooshtaskinfo = action("Xapian Task Info", self.whooshtaskinfo)
+        a_whooshtaskinfo = action("Check Whoosh Task Position", self.whooshtaskinfo)
         a_removedeadkeywords = action("Remove Unused Keywords ...", self.removedeadkeywords)
         a_renew_alarms = action("Renew Expired Alarms", self.renew_alarms)
         a_startdate = action("Set Startdate", partial(self.setdate, which='startdate'), icon='office-calendar')
@@ -535,7 +534,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb)
 
         add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
-                                         a_updatexapianentry2, a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
+                                         a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeletedtasks, a_removedeadkeywords, 
                                          a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb))
                                          
@@ -2809,7 +2808,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         print_(self.note.toHtml())
 
     #@+node:slzatz.20100314151332.3047: *4* get_tabinfo
-    def get_tabinfo(self):
+    def get_tabinfo(self): #check
+        
+        #print_("check={}".format(check))
         
         class_ = {'folder':Folder, 'context':Context, 'tag':Keyword}
 
@@ -2977,7 +2978,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
     #@+node:slzatz.20120419063206.1687: *4* ontaskinfo
     @check_task_selected
     @check_modified
-    def ontaskinfo(self, retrieve_server=False):
+    def ontaskinfo(self, check, retrieve_server=False): #appear to have to add check to all of them because triggered is returning check 12-21-2014
+
+        print_("check={}".format(check))
 
         task = self.task
 

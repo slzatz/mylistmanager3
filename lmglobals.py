@@ -114,7 +114,7 @@ def check_task_selected(f):
     
     def fn(lm, *args, **kwargs):
         if not lm.task or lm.index==-1:
-            QtGui.QMessageBox.information(lm,  'Note', "No row is selected")
+            PyQt5.QtWidgets.QMessageBox.information(lm,  'Note', "No row is selected")
             return
         else:
             return f(lm, *args, **kwargs)
