@@ -63,8 +63,8 @@ import markdown2 as markdown
 import lmglobals as g #moved from below on 12-21-2014
 
 # all the db stuff and sqlalchemy
-g.DB_URI = g.rds_uri #g.sqlite_uri 
-from lmdb_aws import *
+#g.DB_URI = g.rds_uri #g.sqlite_uri 
+#from lmdb_aws import *
     
 #note synchronize2 is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
@@ -85,7 +85,8 @@ parser = argparse.ArgumentParser(description='Command line options mainly for de
 parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
-parser.add_argument('-s', '--sqlite', action='store_true', help="Use local sqlite database")
+parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
+parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
 
 args = parser.parse_args()
 
@@ -94,8 +95,38 @@ if args.sqlite:
 else:
     g.DB_URI = g.rds_uri #g.sqlite_uri 
 
+#from lmdb_aws import *
+
+#@+node:slzatz.20100314151332.2944: ** SQLAlchemy initialization
+# Not 100% sure this needs to be done in global land
+
+if args.db_create:
+    print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
+    reply = input("Y/N:") 
+    if reply.lower() == 'y':
+        DB_EXISTS = False
+        print("DB_EXISTS=",DB_EXISTS," -- meaning we are about to create a new database")
+
+    else:
+        sys.exit()
+        
+else:
+    DB_EXISTS = True
+        
+#DB_EXISTS = not args.db_create #True ###########  this should go into a command line argument about the db existing (the default) #####################################################################11292014#####################
+
+if not DB_EXISTS and args.sqlite:
+    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
+
+    try:
+        os.makedirs(db_directory)
+    except OSError:
+        sys.exit("Could not create directory for sqlite database")
+
 from lmdb_aws import *
 
+if args.db_create:
+    engine.echo = True
 #@+node:slzatz.20100314151332.2943: ** constants
 VERSION = '0.8'
 
@@ -107,19 +138,6 @@ check_task_selected = g.check_task_selected
 update_whooshdb = g.update_whooshdb
 update_row = g.update_row
 
-
-#@+node:slzatz.20100314151332.2944: ** SQLAlchemy initialization
-# Not 100% sure this needs to be done in global land
-
-DB_EXISTS = True ###########  this should go into a command line argument about the db existing (the default) #####################################################################11292014#####################
-
-if not DB_EXISTS and args.sqlite:
-    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
-
-    try:
-        os.makedirs(db_directory)
-    except OSError:
-        sys.exit("Could not create directory for sqlite database")
 
 #@+node:slzatz.20100314151332.2948: ** class ListManager
 class ListManager(PyQt5.QtWidgets.QMainWindow):
@@ -864,10 +882,10 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         synchronize2_aws.downloadtasksfromserver()
         
-        if bool(xapian) and self.confirm("Would you like to enable full-text search (uses Xapian)?"):
-            self.create_xapiandb()
+        if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
+            self.create_whooshdb()
             
-        g.xapianenabled = True
+
 
     #@+node:slzatz.20100314151332.2960: *3* note_modified
     def note_modified(self):
@@ -3464,8 +3482,8 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
     #@+node:slzatz.20100321082634.2719: *3* Miscellaneous
     #@+node:slzatz.20100321082634.2720: *4* Confirmation Dialog
     def confirm(self, text):
-        reply = QtGui.QMessageBox.question(self, "Confirmation", text, QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
-        return reply==QtGui.QMessageBox.Yes
+        reply = PyQt5.QtWidgets.QMessageBox.question(self, "Confirmation", text, PyQt5.QtWidgets.QMessageBox.Yes|PyQt5.QtWidgets.QMessageBox.No)
+        return reply==PyQt5.QtWidgets.QMessageBox.Yes
 
 
     #@+node:slzatz.20100314151332.3064: *3* Help menu methods
