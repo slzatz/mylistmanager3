@@ -1,25 +1,13 @@
-#
-#@+leo-ver=5-thin
-#@+node:slzatz.20141220151846.41: * @file C:/Users/szatz/mylistman_p3/listmanager_aws.py
-#@@first
-#@@nowrap
-#@@tabwidth -4
-#@@language python
-#@+others
-#@+node:slzatz.20100314151332.2940: ** docstring
 '''
 A program to manage information
+python3-compatible version
 '''
-#@+node:slzatz.20100314151332.2942: ** imports
-# python3-compatible version
 
 import sip  
+from PyQt5 import QtCore, QtGui, QtWidgets
 
-import PyQt5.QtCore as QtCore
-import PyQt5.QtGui as QtGui
-import PyQt5.QtWidgets
 Qt = QtCore.Qt
-QAction = PyQt5.QtWidgets.QAction
+QAction = QtWidgets.QAction
 
 import notetextedit
 import lmdialogs
@@ -45,6 +33,7 @@ import resources
 try:
     from age_c import age
 except ImportError:
+    print("Unable to import age c funtion")
     def age(z):
         if z > 1:
             return "{} days".format(z)
@@ -79,7 +68,6 @@ import whoosh.index as index
 from whoosh.query import Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 
-#@+node:slzatz.20120708193100.1701: ** argparse
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
 # for all of the following: if the command line option is not present then the value is True and startup is normal
@@ -98,7 +86,6 @@ else:
 
 #from lmdb_aws import *
 
-#@+node:slzatz.20100314151332.2944: ** SQLAlchemy initialization
 # Not 100% sure this needs to be done in global land
 
 if args.db_create:
@@ -128,7 +115,6 @@ from lmdb_aws import *
 
 if args.db_create:
     engine.echo = True
-#@+node:slzatz.20100314151332.2943: ** constants
 VERSION = '0.8'
 
 TODAY = datetime.date.today()
@@ -140,27 +126,21 @@ update_whooshdb = g.update_whooshdb
 update_row = g.update_row
 
 
-#@+node:slzatz.20100314151332.2948: ** class ListManager
-class ListManager(PyQt5.QtWidgets.QMainWindow):
-    #@+others
-    #@+node:slzatz.20100314151332.2949: *3* __init__
+class ListManager(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(ListManager, self).__init__(parent)
-        #@+others
-        #@+node:slzatz.20120227183439.1646: *4* Window Title and status bar
         self.setWindowTitle("My Listmanager")
 
         status = self.statusBar()
         status.setSizeGripEnabled(False)
         status.showMessage("Ready", 5000)
 
-        g.pb = self.pb = PyQt5.QtWidgets.QProgressBar(status) # putting pb 'into' lmglobals
+        g.pb = self.pb = QtWidgets.QProgressBar(status) # putting pb 'into' lmglobals
         status.addPermanentWidget(self.pb)
         self.pb.hide()
 
         self.status = status
 
-        #@+node:slzatz.20120317042906.1670: *4* QSettings
         if args.qsettings:
             settings = QtCore.QSettings()
 
@@ -168,7 +148,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 self.restoreGeometry(settings.value('MainWindow/Geometry'))
                 self.restoreState(settings.value('MainWindow/State')) 
 
-        #@+node:slzatz.20100328134440.2735: *4* initialize SQLITE db
         if not DB_EXISTS:
         #if 0:
             # note that if the db doesn't exist we need to create a No Context entry and a No Folder entry
@@ -210,7 +189,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             sync.unix_timestamp = 1
             session.commit()
 
-        #@+node:slzatz.20100314151332.2952: *4* various instance attributes
         # self.PageProperties is the dictionary of dictionaries that carry the various properties for each notebook page
         # the key is the splitter for that page which is the widget managed by the tabmanager
         # self.PageProperties[splitter] = ...
@@ -228,11 +206,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.sync_log = ''
 
 
-        #@+node:slzatz.20120331211211.1722: *4* global to local for init
         action =partial(g.create_action, self)
         add_actions = g.add_actions
         IMAGES_DIR = g.IMAGES_DIR
-        #@+node:slzatz.20100314151332.2951: *4* image instance attributes
         im_file = partial(os.path.join, IMAGES_DIR)
 
         self.arrows = ('bitmaps/down_arrow.png','bitmaps/up_arrow.png')
@@ -249,13 +225,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
-        #@+node:slzatz.20141220191554.2: *4* whoosh initialization
         if True:
 
             self.ix = index.open_dir("indexdir")
             self.searcher = self.ix.searcher()
-        #@+node:slzatz.20120403143426.1732: *4* various controls
-        #@+node:slzatz.20120403143426.1727: *5* logger
+
         self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
 
         a_transfer = action("Transfer to Editor", self.logger.transfer)
@@ -268,15 +242,12 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-        #@+node:slzatz.20120403143426.1728: *5* db_note
-        self.db_note = PyQt5.QtWidgets.QTextEdit()
+        self.db_note = QtWidgets.QTextEdit()
         self.db_note.setAcceptRichText(False)
         self.db_note.setObjectName('plain_note')
         self.db_note.setEnabled(False)
-        #self.connect(self.db_note, QtCore.SIGNAL("textChanged()"), self.note_modified)
         self.db_note.textChanged.connect(self.note_modified)
 
-        #@+node:slzatz.20120403143426.1729: *5* note
         self.note_manager = NoteManager(main_window=self)
         self.note_manager.menuBar().setVisible(False)
         self.note_manager.format_toolbar.setEnabled(False)
@@ -284,11 +255,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.highlighter = self.note.highlighter
         self.highlighter.setDocument(None) #the default state is that there is no document highlighting
         self.note.setEnabled(False)
-        #self.connect(self.note, QtCore.SIGNAL("textChanged()"), self.note_modified)
         self.note.textChanged.connect(self.note_modified)
 
-        #@+node:slzatz.20120403143426.1730: *5* tab_manager
-        self.tab_manager = PyQt5.QtWidgets.QTabWidget()
+        self.tab_manager = QtWidgets.QTabWidget()
         self.tab_manager.setMovable(True)
         self.tab_manager.setTabsClosable (True)
         self.tab_manager.setObjectName("Main Tab")
@@ -297,17 +266,15 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         # tab manager context menu set later when action have been created
 
-        #self.connect(self.tab_manager, QtCore.SIGNAL("tabCloseRequested(int)"), self.closetab)
         self.tab_manager.tabCloseRequested.connect(self.closetab) #SIGNAL("tabCloseRequested(int)")
-
         self.tab_manager.currentChanged.connect(self.onpagechange) # new style signal/slot
-        #@+node:slzatz.20100314151332.2953: *5* some menus
+
         # the menus created below will become contextmenu menus for each table widget that is created
         # they are also used as the menus in the toolbar
 
         #createprioritymenu()
-        self.p_menu = PyQt5.QtWidgets.QMenu(self)
-        priorityGroup = PyQt5.QtWidgets.QActionGroup(self)
+        self.p_menu = QtWidgets.QMenu(self)
+        priorityGroup = QtWidgets.QActionGroup(self)
         for p in reversed(self.priorities):
             a = action(str(p), partial(self.setpriority, priority=p), checkable=True)
             priorityGroup.addAction(a)
@@ -319,7 +286,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         #self.f_menu
         self.createfoldermenu()
 
-        #@+node:slzatz.20120403143426.1731: *5* console
         loc_dict = {}
         loc_dict = dict(globals())
         loc_dict['self'] = locals()['self']
@@ -327,34 +293,33 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         if args.console:
             self.console = lminterpreter.MyConsole(self, loc_dict)
         else:
-            self.console = PyQt5.QtWidgets.QWidget()
+            self.console = QtWidgets.QWidget()
 
-        #@+node:slzatz.20100314151332.2954: *4* dock widgets
         self.setCorner(Qt.BottomRightCorner, Qt.RightDockWidgetArea)
 
-        DockWidget = PyQt5.QtWidgets.QDockWidget("Log", self)
+        DockWidget = QtWidgets.QDockWidget("Log", self)
         DockWidget.setObjectName("log")
         DockWidget.setAllowedAreas(Qt.BottomDockWidgetArea|Qt.RightDockWidgetArea)
         DockWidget.setWidget(self.logger)
         #self.addDockWidget(QtCore.Qt.RightDockWidgetArea, DockWidget) #QtCore.Qt.BottomDockWidgetArea
 
-        DockWidget2 = PyQt5.QtWidgets.QDockWidget("Note", self)
+        DockWidget2 = QtWidgets.QDockWidget("Note", self)
         DockWidget2.setObjectName("note")
         DockWidget2.setAllowedAreas(Qt.RightDockWidgetArea)
-        DockWidget2.setFeatures (PyQt5.QtWidgets.QDockWidget.DockWidgetMovable|PyQt5.QtWidgets.QDockWidget.DockWidgetFloatable) ##### but not closable
+        DockWidget2.setFeatures (QtWidgets.QDockWidget.DockWidgetMovable|QtWidgets.QDockWidget.DockWidgetFloatable) ##### but not closable
         DockWidget2.setWidget(self.note_manager)
         self.addDockWidget(Qt.RightDockWidgetArea, DockWidget2)
 
         #self.connect(DockWidget2, QtCore.SIGNAL("topLevelChanged(bool)"), self.shownotemenus)
         DockWidget2.topLevelChanged.connect(self.shownotemenus)
 
-        DockWidget3 = PyQt5.QtWidgets.QDockWidget("DB Note", self)
+        DockWidget3 = QtWidgets.QDockWidget("DB Note", self)
         DockWidget3.setObjectName("db_note")
         DockWidget3.setAllowedAreas(Qt.RightDockWidgetArea)
         DockWidget3.setWidget(self.db_note)
         self.addDockWidget(Qt.RightDockWidgetArea, DockWidget3)
 
-        DockWidget4 = PyQt5.QtWidgets.QDockWidget("Console", self)
+        DockWidget4 = QtWidgets.QDockWidget("Console", self)
         DockWidget4.setObjectName("console")
         DockWidget4.setAllowedAreas(Qt.RightDockWidgetArea)
         DockWidget4.setWidget(self.console) #to get all the locals going to set in __main__
@@ -398,10 +363,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.note.setEnabled(False)
         self.db_note.setEnabled(False)
 
-
-
-        #@+node:slzatz.20120228184102.1649: *4* main menus
-        #@+node:slzatz.20120228184102.1650: *5* File
         filemenu = self.menuBar().addMenu("&File")
 
         a_opencontext = action("&Context(s)...", partial(self.opentabs2, type_='context'), icon_res=':/bitmaps/open_context') # doesn't need png
@@ -489,7 +450,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         filemenu.addAction(a_quit)
 
 
-        #@+node:slzatz.20120228184102.1651: *5* Task
         taskmenu = self.menuBar().addMenu("&Task")
 
         a_newtask = action("&New Task", self.newtask, 'Alt+I', icon='list_add')
@@ -498,7 +458,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         #self.a_togglestar = a_togglestar
 
          
-        p_action = PyQt5.QtWidgets.QAction(QtGui.QIcon(':/bitmaps/priority'), 'Set Priority', self)
+        p_action = QtWidgets.QAction(QtGui.QIcon(':/bitmaps/priority'), 'Set Priority', self)
 
         self.a_select_tags = action("Select &Tag", self.select_tags, 'Ctrl+T', icon='tag-new')
         a_selectfolder = action("Select Folder", self.selectcontextfolder, 'Ctrl+F', icon='folder_new')
@@ -508,7 +468,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         add_actions(taskmenu, (a_newtask, None, a_togglecompleted, a_togglestar, p_action, a_selectcontext, a_selectfolder, self.a_select_tags, 
                                               a_duedate, None, a_deletetask)) 
-        #@+node:slzatz.20120228184102.1652: *5* Display
         displaymenu = self.menuBar().addMenu("&Display")
 
         a_refresh = action("&Refresh Display", self.refresh, 'Ctrl+R', icon='view-refresh')
@@ -534,7 +493,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         a_context_icon_color = action("Context", partial(self.iconcolordialog, type_='context'))
         m_icon_color = displaymenu.addMenu("Chose Icon/Text Color")
         add_actions(m_icon_color, (a_folder_icon_color, a_context_icon_color))
-        #@+node:slzatz.20120228184102.1653: *5* Tool
         toolmenu = self.menuBar().addMenu("&Tools")
 
         a_synchronize = action("&Synchronize (json)", self.synchronize, 'Alt+S', icon='arrow_ns')
@@ -565,7 +523,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         toolmenu.addAction(a_create_image_string)
 
-        #@+node:slzatz.20120623191748.1708: *5* Plugin
         # plugins need to define a function that takes ListManager() => self as an argument - essentially makes it a method
         # They need to include title, icon, function
 
@@ -583,12 +540,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                     a_plugin = action(module.title, partial(module.function, self), image=module.image)
                     pluginmenu.addAction(a_plugin)
                 
-        #@+node:slzatz.20120228184102.1654: *5* Help
         helpmenu = self.menuBar().addMenu("&Help")
         a_showversions = action("Versions", self.showversions)
         add_actions(helpmenu, (a_showversions,))
-        #@+node:slzatz.20120228184102.1655: *4* toolbars
-        #@+node:slzatz.20120228184102.1656: *5* File
         #Toolbar
         fileToolbar = self.addToolBar("File")
         fileToolbar.setObjectName("FileToolBar")
@@ -597,7 +551,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         #for a in self.savedtabsactions:
             #fileToolbar.addAction(a)
             
-        #@+node:slzatz.20120623191748.1709: *5* Plugin
         if g.plugins_enabled:
 
             plugin_actions = pluginmenu.actions()
@@ -609,7 +562,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             for a_plugin in plugin_actions:
                 pluginToolbar.addAction(a_plugin)
             
-        #@+node:slzatz.20120228184102.1657: *5* Task
         p_action.setMenu(self.p_menu)
         self.p_action = p_action
 
@@ -629,20 +581,17 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         add_actions(tasktb, (a_newtask, None, a_togglecompleted, a_togglestar, a_deletetask, a_incrementpriority, a_selectcontext, a_selectfolder, self.a_select_tags, a_duedate))
 
-        #@+node:slzatz.20120228184102.1658: *5* Display
         displayToolbar = self.addToolBar("Display")
         displayToolbar.setObjectName("DisplayToolBar")
         add_actions(displayToolbar, (a_refresh, None, a_showcompleted, a_toggle_collapsible, a_removesort, None, a_modifycolumns))
-        #@+node:slzatz.20120228184102.1659: *5* Tools
         toolsToolbar = self.addToolBar("Tools")
         toolsToolbar.setObjectName("Tools ToolBar")
         toolsToolbar.addAction(a_synchronize)
-        #@+node:slzatz.20100314151332.2955: *5* Search
-        search_tb = PyQt5.QtWidgets.QToolButton()
+        search_tb = QtWidgets.QToolButton()
         search_tb.setIcon(QtGui.QIcon('bitmaps/magnifier-left.png'))
-        search_tb.setPopupMode(PyQt5.QtWidgets.QToolButton.InstantPopup)
+        search_tb.setPopupMode(QtWidgets.QToolButton.InstantPopup)
 
-        search_menu = PyQt5.QtWidgets.QMenu(search_tb)
+        search_menu = QtWidgets.QMenu(search_tb)
 
         search_incremental = action("Incremental Search", partial(self.searchtype, search_type='incremental'), checkable=True)
         search_incremental.setChecked(True)
@@ -650,7 +599,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         search_standard = action("Standard Search", partial(self.searchtype, search_type='standard'), checkable=True)
         self.search_standard = search_standard # need this for current tab search since only want to do it when doing standard search
 
-        search_type = PyQt5.QtWidgets.QActionGroup(self)
+        search_type = QtWidgets.QActionGroup(self)
         search_type.addAction(search_incremental)
         search_type.addAction(search_standard)
 
@@ -664,7 +613,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         search_context = action("Search Context...", partial(self.searchcontext, search='context'), checkable=True)
 
-        search_what = PyQt5.QtWidgets.QActionGroup(self)
+        search_what = QtWidgets.QActionGroup(self)
         search_what.addAction(a_search_all)
         search_what.addAction(search_context)
 
@@ -673,7 +622,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         search_tb.setMenu(search_menu)
 
-        lineEdit = PyQt5.QtWidgets.QLineEdit()
+        lineEdit = QtWidgets.QLineEdit()
         lineEdit.setWindowIcon(QtGui.QIcon("bitmaps/refresh.png"))    
         lineEdit.setFixedSize(140,25)
         searchToolbar=self.addToolBar("Search")
@@ -696,11 +645,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         lineEdit.setDisabled(False)
         self.query_parse_flag = 10   
         self.search.textEdited.connect(self.do_search)
-        #@+node:slzatz.20120228184102.1660: *4* Tab Manager Context Menu
         # needs to be here because the actions need to have been defined (in Menus section)
         self.tab_manager.setContextMenuPolicy(Qt.ActionsContextMenu)
         add_actions(self.tab_manager, (a_change_tab_name, a_showcompleted, a_showhidefilterby, a_toggle_collapsible, a_savetab))#####
-        #@+node:slzatz.20100314151332.2950: *4* column information
         format1 = '%m/%d/%y'
         format2 = '%m/%d/%y %H:%M:%S'
         format3 =  '%H:%M'
@@ -741,7 +688,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         #self.display['icon'] = lambda x: self.folder_icons[x.folder.title]
 
             
-        #@+node:slzatz.20120527203527.1695: *4* initial tab properties
         # the initial set of properties for each page
         #tab['type']  are strings like 'context', 'folder', 'active_search', 'saved_search','all', 'recent' and 
         #tab['value'] are strings like 'work', 'todo' and for searches the query terms and 
@@ -760,7 +706,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                                 'collapsible':True
                                 }     
                                 
-        #@+node:slzatz.20120527203527.1696: *4* font stuff
         normal = QtGui.QFont()
         bold = QtGui.QFont()
         bold.setBold(True)
@@ -774,7 +719,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-        #@+node:slzatz.20120614180024.1702: *4* icons
         self.folder_icons = {}
 
         for f in session.query(Folder):
@@ -811,7 +755,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         #user_icon = partial(os.path.join,'bitmaps','user')
         #user_icon(f.icon)
-        #@+node:slzatz.20120708055344.1699: *4* myevent
         self.myevent = MyEvent()
 
         try:
@@ -826,7 +769,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-        #@+node:slzatz.20120228100242.1647: *4* load tabs or perform initial synch with toodledo
         if DB_EXISTS:
             if args.ini:
                 QtCore.QTimer.singleShot(0, self.loadtabs)
@@ -835,14 +777,12 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 QtCore.QTimer.singleShot(0, self.downloadtasksfromserver)
                 print("hello")
 
-        #@-others
 
 
 
 
 
 
-    #@+node:slzatz.20120710192502.1705: *3* loadtabs
     def loadtabs(self):
         # open the tabs that were last open when the application was closed
         
@@ -871,7 +811,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                         self.onpagechange(current) 
         
             self.setUpdatesEnabled(True)
-    #@+node:slzatz.20100314151332.3032: *3* downloadtasksfromserver
     def downloadtasksfromserver(self):
         '''
         sends all tasks on server down to client
@@ -888,22 +827,20 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
 
 
-    #@+node:slzatz.20100314151332.2960: *3* note_modified
     def note_modified(self):
         which = self.sender().objectName()
         self.modified[which] = True
 
 
-    #@+node:slzatz.20120403143426.1725: *3* createfoldermenu
     def createfoldermenu(self):
-        self.f_menu = PyQt5.QtWidgets.QMenu(self)
+        self.f_menu = QtWidgets.QMenu(self)
         
         folders = session.query(Folder).filter(Folder.tid!=0).all()
         folders.sort(key=lambda f:str.lower(f.title))
         no_folder = session.query(Folder).filter_by(tid=0).one()
         folders = [no_folder] + folders
         
-        iconGroup = PyQt5.QtWidgets.QActionGroup(self)
+        iconGroup = QtWidgets.QActionGroup(self)
         
         for f in folders:
             #icon = 'folder_icons/'+f.icon if f.icon else ''
@@ -912,23 +849,21 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             iconGroup.addAction(a)
             self.f_menu.addAction(a)
 
-    #@+node:slzatz.20120403143426.1724: *3* createcontextmenu
     def createcontextmenu(self):
-        self.c_menu = PyQt5.QtWidgets.QMenu(self)
+        self.c_menu = QtWidgets.QMenu(self)
         
         contexts = session.query(Context).filter(Context.tid!=0).all()
         contexts.sort(key=lambda c:str.lower(c.title))
         no_context = session.query(Context).filter_by(tid=0).one()
         contexts = [no_context] + contexts
         
-        self.contextGroup = PyQt5.QtWidgets.QActionGroup(self)
+        self.contextGroup = QtWidgets.QActionGroup(self)
         
         for c in contexts:
             a = g.create_action(self, c.title, partial(self.updatecontext, title=c.title), image=c.image, checkable=True)
             self.contextGroup.addAction(a)
             self.c_menu.addAction(a)
             
-    #@+node:slzatz.20120624105323.1707: *3* createimagewithoverlay
     def createimagewithoverlay(self, base_image='bitmaps/unordered-list-tag.png', overlay_image=None):
 
         base_image=QtGui.QImage(base_image)
@@ -947,7 +882,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         painter.end()
 
         return imagewithoverlay
-    #@+node:slzatz.20120624205538.1708: *3* createsavedtab
     def createsavedtab(self, properties, n): 
 
     #for i, properties in enumerate(self.savedtabs): # probably wouldn't need self
@@ -977,11 +911,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         #self.m_savedtabsmenu.addAction(aa) # would need self
         #self.savedtabsactions.append(aa) # probably wouldn't need self
-    #@+node:slzatz.20100314151332.2961: *3* shownotemenus
     def shownotemenus(self, floating):
         self.note_manager.menuBar().setVisible(floating)
 
-    #@+node:slzatz.20120708055344.1700: *3* respond_to_events
     def respond_to_events(self, msg, id_, priority): #self.myevent.signal.emit("Hello from increment priority", self.task.id, priority)
     #def respond_to_events(self, source, d):
         print_("source={}".format(msg))
@@ -994,8 +926,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
             session.commit()
 
-    #@+node:slzatz.20100314151332.2962: *3* Page methods
-    #@+node:slzatz.20120711183324.1703: *4* createnewtab
     def createnewtab(self, **kw):
 
         '''
@@ -1020,9 +950,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.Properties = Properties
         self.col_order = Properties['col_order'] #not sure if I should just use Properties['col_order']
 
-        self.LBox = LBox = PyQt5.QtWidgets.QListWidget()
+        self.LBox = LBox = QtWidgets.QListWidget()
 
-        splitter = PyQt5.QtWidgets.QSplitter(Qt.Horizontal)
+        splitter = QtWidgets.QSplitter(Qt.Horizontal)
         splitter.addWidget(LBox)
 
         self.table = table = self.createtable() 
@@ -1067,7 +997,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         LBox.currentItemChanged.connect(self.filterlist) #12-19-2014
 
 
-    #@+node:slzatz.20100314151332.2965: *4* createtable
     def createtable(self):
 
         Properties = self.Properties
@@ -1088,7 +1017,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         # this is the signal sent by the table when a cell editor is closed - other choice is to send it "manually" and not do this
         table.itemDelegateForColumn(col_order.index('title')).commitData.connect(self.save_title) # SIGNAL("commitData(QWidget*)")
-        table.return_sc = PyQt5.QtWidgets.QShortcut(QtGui.QKeySequence("Return"), table, self.edittableitem) #for some reason context=QtCore.Qt.WidgetShortcut doesn't work but set below
+        table.return_sc = QtWidgets.QShortcut(QtGui.QKeySequence("Return"), table, self.edittableitem) #for some reason context=QtCore.Qt.WidgetShortcut doesn't work but set below
         table.return_sc.setContext(Qt.WidgetShortcut)
 
         if Properties['col_widths'] is None: 
@@ -1099,7 +1028,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         return table
 
-    #@+node:slzatz.20100314151332.2964: *4* replacetable
     def replacetable(self, context_title=None):
         '''Called by modifycolumns and updatecolumnorder'''
 
@@ -1113,7 +1041,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         splitter.setSizes([sizes[0], 0, sizes[1]]) 
         self.displayitems()
 
-    #@+node:slzatz.20100314151332.2967: *4* onpagechange
     @check_modified
     def onpagechange(self, page_index):
         '''This is the slot for self.tab_manager - SIGNAL("currentChanged(int)") - returns the index'''
@@ -1148,8 +1075,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         print_("onpagechange -- page_index {0}".format(page_index))
 
-    #@+node:slzatz.20100314151332.2968: *3* Table slots
-    #@+node:slzatz.20100314151332.2969: *4* cellclick
     def cellclick(self, r, c):
 
         '''
@@ -1178,7 +1103,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         else:
             self.new_row = False
             
-    #@+node:slzatz.20100314151332.2970: *4* edittableitem
     def edittableitem(self): # Native table text editor
         '''uses delegate'''
 
@@ -1195,7 +1119,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             self.table.return_sc.setEnabled(False) 
 
 
-    #@+node:slzatz.20100314151332.2971: *4* updatecolumnwidths
     def updatecolumnwidths(self, col, old, new):  
         '''slot for sectionResized(int,int,int)'''
         print_("in updatecolumnwidths")
@@ -1207,7 +1130,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.2972: *4* updatecolumnorder
     def updatecolumnorder(self, logical, old, new):
         '''slot for sectionMoved(int,int,int)'''
         
@@ -1222,7 +1144,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         self.replacetable()
 
-    #@+node:slzatz.20120210170933.1644: *4* removecolumn
     def removecolumn(self, c):
 
         del self.col_order[c]
@@ -1230,8 +1151,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         self.replacetable()
         
-    #@+node:slzatz.20100314151332.2973: *3* Change/update items methods
-    #@+node:slzatz.20100314151332.2974: *4* togglecompleted
     @update_row
     @check_task_selected
     @check_modified
@@ -1248,7 +1167,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         session.commit()
         
-    #@+node:slzatz.20100314151332.2975: *4* togglestar
     @update_row
     @check_task_selected
     @check_modified
@@ -1259,11 +1177,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         #self.a_togglestar.setChecked(self.task.star) # decided cute but unnecessary
 
-    #@+node:slzatz.20100314151332.2976: *4* on_pmenu
     def on_pmenu(self):
         self.p_menu.exec_(QtGui.QCursor.pos())
 
-    #@+node:slzatz.20100314151332.2977: *4* incrementpriority
     # order is bottom to top
     @update_row
     @check_task_selected
@@ -1287,7 +1203,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.myevent.signal.emit('incrementpriority', {'task':task, 'priority':priority})
 
 
-    #@+node:slzatz.20100314151332.2978: *4* setpriority
     # order is bottom to top
     @update_row
     @check_task_selected
@@ -1296,7 +1211,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.task.priority = priority
         session.commit()
         
-    #@+node:slzatz.20100314151332.2979: *4* setduedate
     @update_row
     @check_modified
     @check_task_selected
@@ -1342,7 +1256,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
             session.commit()
 
-    #@+node:slzatz.20120730182635.1704: *4* setduedate2 (not in use right now but might be in future)
     @update_row
     @check_modified
     @check_task_selected
@@ -1354,7 +1267,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         session.commit()
 
-    #@+node:slzatz.20120503063310.1682: *4* setdate
     @update_row
     @check_modified
     @check_task_selected
@@ -1386,7 +1298,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             setattr(task, which, dt.date())
             session.commit()
 
-    #@+node:slzatz.20100314151332.2982: *4* selectcontextfolder
     @check_task_selected
     @check_modified
     def selectcontextfolder(self, type_='context'): 
@@ -1418,7 +1329,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             else:
                 self.updatefolder(title=title)
 
-    #@+node:slzatz.20100314151332.2981: *4* updatefolder
     @update_row
     @update_whooshdb
     @check_task_selected
@@ -1455,7 +1365,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
         session.commit()
 
-    #@+node:slzatz.20100314151332.2983: *4* updatecontext
     @update_row
     @update_whooshdb
     @check_task_selected
@@ -1494,7 +1403,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         session.commit()
 
-    #@+node:slzatz.20100314151332.3000: *4* select_tags
     @check_task_selected
     @check_modified
     def select_tags(self):
@@ -1539,7 +1447,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
             self.updatetag(tag)
 
-    #@+node:slzatz.20120304081931.1665: *4* updatetag
     @update_row
     @update_whooshdb
     @check_task_selected
@@ -1573,8 +1480,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         task.tag = ','.join(kwn.name for kwn in task.keywords)
         session.commit()
 
-    #@+node:slzatz.20100314151332.2988: *4* newtask
-    #@verbatim
     #@update_row #doesn't work for a new task but abbreviated version in body of method
     @check_modified
     def newtask(self, evt=None):
@@ -1617,7 +1522,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         table.insertRow(0)
 
-        item0 = PyQt5.QtWidgets.QTableWidgetItem(self.idx1,'')
+        item0 = QtWidgets.QTableWidgetItem(self.idx1,'')
         item0.setData(Qt.UserRole, int(task.id))
         table.setItem(0, 0, item0)            
 
@@ -1627,7 +1532,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         type_ = 'folder' if Properties['tab']['type'] == 'context' else 'context'
         color = QtGui.QColor(getattr(task, type_).textcolor)
         for c,col in enumerate(self.col_order[1:],start=1):
-            item = PyQt5.QtWidgets.QTableWidgetItem(*self.display[col](task))
+            item = QtWidgets.QTableWidgetItem(*self.display[col](task))
             item.setFont(self.itemfont[task.priority])
             item.setForeground(color)
             table.setItem(0, c, item)
@@ -1646,7 +1551,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.2989: *4* deletetask
     @update_row
     @check_modified
     @check_task_selected
@@ -1657,7 +1561,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
 
             
-    #@+node:slzatz.20100314151332.2991: *4* save_title
     @update_row
     @update_whooshdb
     def save_title(self, editor=None):  #editor=None was added on April 22, 2012 but surprising it worked without it.
@@ -1680,8 +1583,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         if not task.folder.tid:
             self.myevent.signal.emit('save_title', {'task':task, 'title':title, 'session':session})
             
-    #@+node:slzatz.20100314151332.2992: *3* File menu methods
-    #@+node:slzatz.20100314151332.2993: *4* newcontext -  ? some problems
     @check_modified
     def newcontext(self, evt=None):
         '''
@@ -1731,7 +1632,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.2994: *4* opentabs
     @check_modified
     def opentabs(self, check, type_=None):
 
@@ -1750,7 +1650,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 self.createnewtab(title=tab_title, tab={'type':type_, 'value':title}, filter_by=filter_by)
 
 
-    #@+node:slzatz.20120720064049.1703: *4* opentabs2
     @check_modified
     def opentabs2(self, check, type_='context'): # check is there because qaction.trigger.connect(method) returns false
 
@@ -1771,7 +1670,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 tab_icon = things[title]
                 
                 self.createnewtab(title=tab_title, tab={'type':type_, 'value':title}, tab_icon=tab_icon, filter_by=filter_by)
-    #@+node:slzatz.20100314151332.2995: *4* showrecentitems
     def showrecentitems(self, tab_value=None):
 
         show_completed = True if tab_value in ('ALL', 'Completed') else False
@@ -1783,7 +1681,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                             show_completed=show_completed)
 
 
-    #@+node:slzatz.20111231154914.1607: *4* create_multi_tab
     @check_modified
     def create_multi_tab(self, type_=None):
         
@@ -1815,11 +1712,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                                          show_completed=False)
                             
 
-    #@+node:slzatz.20100314151332.2996: *4* showallitems - not in use
     def showallitems(self):
         self.createnewtab('*ALL', tab_type='all', filter_by={'column':'context','value':'*ALL'})
 
-    #@+node:slzatz.20100314151332.2997: *4* deletecontexts (still needs work)
     def deletecontexts(self, type_=None):
         '''
         Note that you can delete contexts and folders on the server and
@@ -1866,7 +1761,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             session.commit()
         
 
-    #@+node:slzatz.20100314151332.2998: *4* close_all
     @check_modified
     def close_all(self):
 
@@ -1884,7 +1778,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.modified = {}
 
         self.tab_manager.blockSignals(False)
-    #@+node:slzatz.20100314151332.3001: *4* closeEvent - pyqt event handler don't rename
     @check_modified
     def closeEvent(self, event=None): #event is necessary
 
@@ -1929,7 +1822,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         if g.xapianenabled:
             self.xapian_database.close() ######## 04.29.2012 # this is essential to writing db updates to disk
 
-    #@+node:slzatz.20120307182413.1654: *4* saveconfiguration
     @check_modified
     def saveconfiguration(self):
         
@@ -1975,7 +1867,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         with open(file_, 'w') as configfile:
             cg.write(configfile)
 
-    #@+node:slzatz.20120309183830.1687: *4* loadconfiguration
     @check_modified
     def loadconfiguration(self):
         reply = QtGui.QMessageBox.warning(self,
@@ -1994,7 +1885,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
             QtCore.QTimer.singleShot(0, self.loadtabs)
         
-    #@+node:slzatz.20120622205521.1702: *4* savetab
     @check_modified
     def savetab(self):
         
@@ -2022,7 +1912,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
             
             
-    #@+node:slzatz.20120622205521.1700: *4* loadtab
     @check_modified
     def loadtab(self, n):
         
@@ -2032,7 +1921,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
 
         
-    #@+node:slzatz.20100314151332.3002: *4* closetab - should work but need to look at search stuff in method
     @check_modified
     def closetab(self, L=-1):
         
@@ -2073,7 +1961,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.3003: *4* savenote
     @update_row
     @update_whooshdb
     @check_task_selected
@@ -2103,13 +1990,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         print_("Note Saved")
 
-    #@+node:slzatz.20100314151332.3004: *3* Display methods
-    #@+node:slzatz.20100314151332.3005: *4* displayitems
     def displayitems(self):
 
-        #@+<<intro>>
-        #@+node:slzatz.20120527071855.1639: *5* <<intro>>
-        qtablewidgetitem = PyQt5.QtWidgets.QTableWidgetItem
+        qtablewidgetitem = QtWidgets.QTableWidgetItem
         qcolor = QtGui.QColor
         #qicon = QtGui.QIcon
 
@@ -2125,7 +2008,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         idx1 = self.idx1
         idx0 = self.idx0
-        #@-<<intro>>
         
         query = self.get_current_tasks()
         rows = query.count() ########
@@ -2143,8 +2025,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 color = qcolor(getattr(task, type_).textcolor) if not (task.deleted or task.completed) else qcolor('gray')
                 font = itemfont if not task.deleted else deleteditemfont
                 
-                #@+<<updaterow>>
-                #@+node:slzatz.20120704154915.1705: *5* <<updaterow>>
                 for c,col in enumerate(col_order[1:],start=1):
                     item = qtablewidgetitem(*display[col](task))
                     item.setFont(font[task.priority])
@@ -2158,7 +2038,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
                             
-                #@-<<updaterow>>
                 
         else:
             collapsed = QtGui.QIcon('bitmaps/collapsed.png')
@@ -2194,8 +2073,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                         color = qcolor(getattr(task, type_).textcolor) if not (task.deleted or task.completed) else qcolor('gray')
                         font = itemfont if not task.deleted else deleteditemfont
                         
-                        #@+<<updaterow>>
-                        #@+node:slzatz.20120704154915.1705: *5* <<updaterow>>
                         for c,col in enumerate(col_order[1:],start=1):
                             item = qtablewidgetitem(*display[col](task))
                             item.setFont(font[task.priority])
@@ -2209,14 +2086,12 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
                                     
-                        #@-<<updaterow>>
 
                         n+=1
             
             table.setRowCount(n) # correct the row count
             
         return rows            
-    #@+node:slzatz.20100314151332.3006: *4* itemselected
     @check_modified
     def itemselected(self):
 
@@ -2313,13 +2188,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(0, lambda: self.modified.clear())
 
 
-    #@+node:slzatz.20100314151332.3007: *4* showcompleted
     def showcompleted(self, evt=None):
 
         self.Properties['show_completed'] = not self.Properties['show_completed']
         self.refresh()
 
-    #@+node:slzatz.20120223182415.1645: *4* removesort
     def removesort(self):
         '''
         Once you sort a table, without this method there is no way to remove the sorting criteria - 
@@ -2336,9 +2209,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.Properties['sort'] = {'column':None,'direction':0}
         
         self.refresh()
-    #@+node:slzatz.20120225234943.1649: *4* ondockwindow
     @check_modified
-    #@verbatim
     #@check_task_selected
     def ondockwindow(self, dw=None, cur=True, check_task_selected=True): 
 
@@ -2362,7 +2233,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             cursor.movePosition(QtGui.QTextCursor.End)
             txt.setTextCursor(cursor)
 
-    #@+node:slzatz.20100314151332.3009: *4* refresh
     @check_modified
     def refresh(self, check=False): 
 
@@ -2434,7 +2304,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.3010: *4* refreshlistonly
     @check_modified
     def refreshlistonly(self): 
 
@@ -2457,7 +2326,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         self.tab_manager.setTabToolTip(self.tab_manager.currentIndex(), str(num_tasks)+" tasks")
 
-    #@+node:slzatz.20100314151332.3011: *4* filterlist
     @check_modified
     def filterlist(self, new_item, prev_item):
 
@@ -2469,7 +2337,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.3012: *4* columnclick (to sort columns)
     def columnclick(self, col):
         
         print("section clicked")
@@ -2502,7 +2369,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.3013: *4* changefilterbycolumn
     def changefilterbycolumn(self):
 
         filter_by = ['folder','context','priority','tag'] #modified
@@ -2529,12 +2395,10 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
             self.setWindowTitle("List Manager AWS - type: %s; value: %s filtered by: %s"%(Properties['tab']['type'], Properties['tab']['value'],Properties['filter_by']['column']))
 
-    #@+node:slzatz.20100314151332.3014: *4* toggle_collapsible
     def toggle_collapsible(self):
         self.Properties['collapsible'] = not self.Properties['collapsible']
         self.refreshlistonly()
 
-    #@+node:slzatz.20100314151332.3046: *4* modifycolumns
     def modifycolumns(self):
 
         full_list = list(self.col_info.keys())
@@ -2572,13 +2436,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
             self.replacetable()
 
-    #@+node:slzatz.20111214171910.1603: *4* display_danger_items
     def display_danger_items(self):
         self.display_danger_in_all_contexts = not self.display_danger_in_all_contexts
         self.display_danger_action.setChecked(self.display_danger_in_all_contexts)
         self.refreshlistonly()
         
-    #@+node:slzatz.20100314151332.3015: *4* showhidefilterby
     def showhidefilterby(self):
 
         splitter = self.tab_manager.currentWidget()
@@ -2593,7 +2455,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         splitter.setSizes(Properties['window_sizes'])
 
-    #@+node:slzatz.20111222151352.1603: *4* change_tab_name
     def change_tab_name(self):
         '''
         Saves tab name for regular tabs and saves searches so they will be reloaded
@@ -2623,7 +2484,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             self.search.clear()
             
         
-    #@+node:slzatz.20100314151332.3016: *4* ontouch
     @check_modified
     @check_task_selected
     def ontouch(self):
@@ -2633,7 +2493,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         self.refreshlistonly()
 
-    #@+node:slzatz.20120308181323.1654: *4* highlightsearchterms
     def highlightsearchterms(self):
         terms = self.Properties['query_string']
         self.highlighter.setDocument(self.note.document())
@@ -2641,7 +2500,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.highlighter.setkeywords(term_list)
         
 
-    #@+node:slzatz.20120613074345.1702: *4* iconcolordialog
     def iconcolordialog(self, type_): #'folder';'context'
         
         class_ = {'folder':Folder, 'context':Context}
@@ -2725,7 +2583,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                                 
             self.iconcolordialog(type_)
             
-    #@+node:slzatz.20120523220108.1691: *4* fullsize
     def fullsize(self, tablewidth):
 
         #splitter = self.tab_manager.currentWidget() # will be the new splitter on tab change
@@ -2747,12 +2604,10 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         #self.Properties['col_widths'][c] = w 
         
         
-    #@+node:slzatz.20100314151332.3041: *3* Tools Menu
-    #@+node:slzatz.20120202081015.1640: *4* synchronize
     def synchronize(self):
         
         if not g.internet_accessible():
-            PyQt5.QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
+            QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
             return
             
         if not toodledo2.keycheck():
@@ -2781,14 +2636,12 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 self.deletefromxapiandb(id_)
 
                 
-    #@+node:slzatz.20120107071121.1605: *4* showsync_log
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
         
 
         
-    #@+node:slzatz.20141220151846.47: *4* create_whooshdb
     def create_whooshdb(self):
 
         tasks = session.query(Task)
@@ -2826,11 +2679,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         self.pb.hide()
 
-    #@+node:slzatz.20100314151332.3045: *4* print_note_to_log
     def print_note_to_log(self):
         print_(self.note.toHtml())
 
-    #@+node:slzatz.20100314151332.3047: *4* get_tabinfo
     def get_tabinfo(self): #check
         
         #print_("check={}".format(check))
@@ -2880,7 +2731,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         dlg.exec_()
 
-    #@+node:slzatz.20120106155449.1604: *4* removedeletedtasks
     @check_modified
     def removedeletedtasks(self, ask_user=True):
         
@@ -2913,11 +2763,10 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
             session.commit()
             
-    #@+node:slzatz.20120429061932.1610: *4* whooshtaskinfo
     @check_task_selected
     def whooshtaskinfo(self, check=False):
         
-        text, ok = PyQt5.QtWidgets.QInputDialog.getText(self,"xapian","Enter search terms", PyQt5.QtWidgets.QLineEdit.Normal)
+        text, ok = QtWidgets.QInputDialog.getText(self,"xapian","Enter search terms", QtWidgets.QLineEdit.Normal)
         
         if ok and text:
             print_(text)
@@ -2931,7 +2780,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             else:
                 print_("position: {}".format(pos))
             
-    #@+node:slzatz.20100314151332.3048: *4* showdeleted
     def showdeleted(self):
 
             self.createnewtab(title='*Deleted*', tab={'type':'deleted_items', 'value':None}, filter_by={'column':'context','value':'*ALL'}, collapsible=False)
@@ -2940,7 +2788,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.3050: *4* recreatekeywordsfromtag
     def recreatekeywordsfromtag(self):
         '''May be possible to have unused keywords and unused taskkeywords (e.g., deleted task)
            and this wipes the slate clean and lets you recreate kewyord_table and taskkeyword_table'''
@@ -2979,7 +2826,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             
             pb.hide()
                 
-    #@+node:slzatz.20120305204600.1654: *4* removedeadkeywords
     def removedeadkeywords(self):
         '''May be possible to have unused keywords and unused taskkeywords (e.g., deleted task)
            and this wipes the slate clean and lets you recreate kewyord_table and taskkeyword_table'''
@@ -2998,7 +2844,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                     session.delete(kw)
             session.commit()
 
-    #@+node:slzatz.20120419063206.1687: *4* ontaskinfo
     @check_task_selected
     @check_modified
     def ontaskinfo(self, check, retrieve_server=False): #appear to have to add check to all of them because triggered is returning check 12-21-2014
@@ -3047,11 +2892,9 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         dlg.exec_()
 
-    #@+node:slzatz.20100314151332.3052: *4* on_simple_html2log
     def on_simple_html2log(self):
         print(markdown.markdown(self.task.note))
 
-    #@+node:slzatz.20120327063808.1715: *4* resetinterp
     def resetinterp(self):
         palette = QtGui.QPalette()
         palette.setColor(QtGui.QPalette.Base, Qt.black)
@@ -3059,7 +2902,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         self.console.setPalette(palette)
 
         
-    #@+node:slzatz.20120511070056.1686: *4* renew_alarms
     def renew_alarms(self):
         
         now = datetime.datetime.now()
@@ -3074,7 +2916,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         session.commit()
 
         
-    #@+node:slzatz.20120721124524.1703: *4* create_image_string
     def create_image_string(self):
         
         file_ = QtGui.QFileDialog().getOpenFileName(self, "Select PNG File", g.IMAGES_DIR, "PNG (*.png)")
@@ -3127,14 +2968,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
                 else:
                     print_("Could not save image to buffer")
                     
-    #@+node:slzatz.20121027213518.1644: *4* clearsavedtabs
     def clearsavedtabs(self):
         self.savedtabs = []
         self.m_savedtabsmenu.clear()
         QtGui.QMessageBox.information(self,  'Information', "Saved tabs were cleared")
         
-    #@+node:slzatz.20100314151332.3053: *3* Search (using Whoosh)
-    #@+node:slzatz.20100314151332.3055: *4* searchcontext (all contexts or specific contexts)
     def searchcontext(self, search=None):
 
         if search == 'context':
@@ -3162,7 +3000,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20111230110525.1605: *4* searchtype (incremental or standard)
     def searchtype(self, search_type=None):
         
         if search_type == 'incremental':
@@ -3176,7 +3013,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
         
-    #@+node:slzatz.20100314151332.3056: *4* do_search
     def do_search(self, text=None):
         
         print("do search")
@@ -3222,7 +3058,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
 
 
-    #@+node:slzatz.20100314151332.3058: *4* get_query_ids
     def get_query_ids_(self, query_string):
         '''
     Flags for the xapian parse query method
@@ -3240,7 +3075,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         matches = self.xapian_enquire.get_mset(0, 100) 
         return [int(m.docid) for m in matches]
 
-    #@+node:slzatz.20141220190334.40: *4* get_query_ids (whoosh)
     def get_query_ids(self, query_string):
         '''
     Flags for the xapian parse query method
@@ -3258,8 +3092,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         
         return [r['task_id'] for r in results] #int if using ID but don't think so if NUMERIC
 
-    #@+node:slzatz.20100314151332.3059: *3* Database-related methods
-    #@+node:slzatz.20100314151332.3060: *4* get_current_tasks
     def get_current_tasks(self, priority=None): 
         '''returns a query unless its a Find - need to think about that'''
 
@@ -3383,13 +3215,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         return tasks
 
-    #@+node:slzatz.20100314151332.3061: *4* get_display_age probably can go
     def get_display_age__(self, t):
         age = t.age
         s = ('%s day'%age.days + 's'*(age.days!=1)) if age.days else ('%s hour'%int((age.seconds/3600)) + 's'*int((age.seconds/3600!=1)))
         return (s + ' ago',)
 
-    #@+node:slzatz.20100314151332.3062: *4* get_keywords
     def get_keywords(self, tab_type, tab_value):
 
        # I believe the context and folder queries only pick up keywords where there is an associated task
@@ -3417,7 +3247,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         return keyword_names
 
-    #@+node:slzatz.20100314151332.3063: *4* updatwhooshentry
     def updatewhooshentry(self, task=None):
         
         if task is None:
@@ -3441,7 +3270,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
      
         print_("Updated in Whoosh DB: task id: {0}, {1} ...".format(task.id, task.title[:40]))
         
-    #@+node:slzatz.20120220132011.1643: *4* updatexapianentry2 (allows arbitrary factor)
     def updatexapianentry2(self, task=None):
         
         # not really needed; the experiment of using add_term did nothing
@@ -3469,7 +3297,6 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
 
         self.xapian_database.replace_document(task.id, doc)
         
-    #@+node:slzatz.20120204153724.1635: *4* deletefromxapiandb
     def deletefromxapiandb(self, id_):
 
         try:
@@ -3480,15 +3307,11 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
             #print(value) # some problem
             print("Task {0}:  -- was not in Xapian DB".format(id_))
 
-    #@+node:slzatz.20100321082634.2719: *3* Miscellaneous
-    #@+node:slzatz.20100321082634.2720: *4* Confirmation Dialog
     def confirm(self, text):
-        reply = PyQt5.QtWidgets.QMessageBox.question(self, "Confirmation", text, PyQt5.QtWidgets.QMessageBox.Yes|PyQt5.QtWidgets.QMessageBox.No)
-        return reply==PyQt5.QtWidgets.QMessageBox.Yes
+        reply = QtWidgets.QMessageBox.question(self, "Confirmation", text, QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+        return reply==QtWidgets.QMessageBox.Yes
 
 
-    #@+node:slzatz.20100314151332.3064: *3* Help menu methods
-    #@+node:slzatz.20100314151332.3065: *4* showversions
     def showversions(self):
 
         import sqlalchemy
@@ -3505,17 +3328,7 @@ class ListManager(PyQt5.QtWidgets.QMainWindow):
         dlg = lmdialogs.VersionsDlg('Versions', text, self)
         dlg.exec_()
 
-
-
-    #@+node:slzatz.20100314151332.3066: *4* showhelp - placeholder - not in use
-    def showhelp(self):
-        os.startfile('ListManager.chm')
-
-    #@-others
-#@+node:slzatz.20100314151332.3067: ** class Table
-class Table(PyQt5.QtWidgets.QTableWidget):
-    #@+others
-    #@+node:slzatz.20100314151332.3068: *3* __init__
+class Table(QtWidgets.QTableWidget):
     def __init__(self, parent, col_info=None, col_order=None, col_widths=None): #added parent
         #QTableWidget.__init__(self) 
         super(Table, self).__init__(parent)
@@ -3535,7 +3348,6 @@ class Table(PyQt5.QtWidgets.QTableWidget):
 
         self.setup()
 
-    #@+node:slzatz.20100314151332.3069: *3* setup
     def setup(self):
 
         col_order = self.column_order
@@ -3547,13 +3359,13 @@ class Table(PyQt5.QtWidgets.QTableWidget):
             for c,w in enumerate(self.column_widths):
                 self.setColumnWidth(c, w)
                 if col_info[col_order[c]]['fixed']:
-                    self.hheader.setSectionResizeMode(c, PyQt5.QtWidgets.QHeaderView.Fixed) # testing
+                    self.hheader.setSectionResizeMode(c, QtWidgets.QHeaderView.Fixed) # testing
 
         else:
             for c,c_name in enumerate(col_order):
                 self.setColumnWidth(c, col_info[c_name]['width'])
                 if col_info[c_name]['fixed']:
-                    self.hheader.setSectionResizeMode(c, PyQt5.QtWidgets.QHeaderView.Fixed) # testing
+                    self.hheader.setSectionResizeMode(c, QtWidgets.QHeaderView.Fixed) # testing
 
         self.setHorizontalHeaderLabels([col_info[c_name]['label'] for c_name in col_order])
 
@@ -3567,27 +3379,24 @@ class Table(PyQt5.QtWidgets.QTableWidget):
         self.setShowGrid(False)
 
         self.setAlternatingRowColors(True)
-        self.setEditTriggers(PyQt5.QtWidgets.QTableWidget.NoEditTriggers)
-        self.setSelectionBehavior(PyQt5.QtWidgets.QTableWidget.SelectRows)
-        self.setSelectionMode(PyQt5.QtWidgets.QTableWidget.SingleSelection)
+        self.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+        self.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
+        self.setSelectionMode(QtWidgets.QTableWidget.SingleSelection)
         
-        action = PyQt5.QtWidgets.QAction("Remove Column", self)
+        action = QtWidgets.QAction("Remove Column", self)
         action.triggered.connect(self.removecolumn)
         self.hheader.addAction(action)
         self.hheader.setContextMenuPolicy(Qt.ActionsContextMenu)
         
-    #@+node:slzatz.20100314151332.3070: *3* contextMenuEvent (not in use)
     def contextMenuEvent_(self, event):
         # this worked but there was a simpler way
         self.obj.tableContextMenuEvent(event)
-    #@+node:slzatz.20120102111134.1606: *3* mousePressEvent
     def mousePressEvent(self, e):
               
         self.leftpressed = e.button() == Qt.LeftButton
         
         super(Table, self).mousePressEvent(e)
 
-    #@+node:slzatz.20100314151332.3071: *3* edit (not in use)
     def edit__(self, index, trigger, event):
         '''this isn't doing anything but for testing'''
 
@@ -3600,13 +3409,11 @@ class Table(PyQt5.QtWidgets.QTableWidget):
             self.editor_open = False
             print("shortcut active")
             return False
-    #@+node:slzatz.20120208202540.1639: *3* removecolumn
     def removecolumn(self):
         print("Remove column")
         print("column={0}".format(self.hheader.selectedcolumn))
         self.parent.removecolumn(self.hheader.selectedcolumn)
 
-    #@+node:slzatz.20120524064710.1692: *3* resizeEvent
     def resizeEvent(self, event):
         w = event.size().width() # note this width takes into account presence or absence of scrollbar
         
@@ -3620,11 +3427,7 @@ class Table(PyQt5.QtWidgets.QTableWidget):
         
 
         
-    #@-others
-#@+node:slzatz.20120209142323.1641: ** class Header
-class Header(PyQt5.QtWidgets.QHeaderView):
-    #@+others
-    #@+node:slzatz.20120209142323.1642: *3* __init__
+class Header(QtWidgets.QHeaderView):
     def __init__(self, parent):    
         super(Header, self).__init__(Qt.Horizontal, parent)
         
@@ -3639,7 +3442,6 @@ class Header(PyQt5.QtWidgets.QHeaderView):
         
 
 
-    #@+node:slzatz.20120209142323.1644: *3* mousePressEvent
     def mousePressEvent(self, e):
         
         if e.button() == Qt.RightButton:
@@ -3651,10 +3453,8 @@ class Header(PyQt5.QtWidgets.QHeaderView):
         
 
 
-    #@-others
     
-#@+node:slzatz.20100314151332.3072: ** class TitleDelegate
-class TitleDelegate(PyQt5.QtWidgets.QItemDelegate):
+class TitleDelegate(QtWidgets.QItemDelegate):
     '''
     self.view.setItemDelegate(ViewDelegate(self))
     where self.view is the QTableView and self is the parent (a QMainWindow class).
@@ -3663,18 +3463,15 @@ class TitleDelegate(PyQt5.QtWidgets.QItemDelegate):
     close the editor.  As simple as that sounds, it seemed necessary to implement
     the delegate to do that.
     '''
-    #@+others
-    #@+node:slzatz.20100314151332.3073: *3* __init__
     def __init__(self, parent=None):
         super(TitleDelegate, self).__init__(parent)
         self.parent = parent
 
-    #@+node:slzatz.20100314151332.3074: *3* createEditor
     def createEditor(self, parent, option, index):
 
         print("in createEditor")
         
-        editor = PyQt5.QtWidgets.QLineEdit(parent)
+        editor = QtWidgets.QLineEdit(parent)
         #editor = QItemDelegate.createEditor(self, parent, option, index) # this creates the default editor for the cell and should work (untested)
         
         #somehow the editingFinished signal seems to trigger a bunch of things without explicitly connecting it to anything
@@ -3682,7 +3479,6 @@ class TitleDelegate(PyQt5.QtWidgets.QItemDelegate):
         
         return editor
 
-    #@+node:slzatz.20100314151332.3075: *3* commitAndCloseEditor
     def commitAndCloseEditor(self):
         '''not in use'''
         
@@ -3703,7 +3499,6 @@ class TitleDelegate(PyQt5.QtWidgets.QItemDelegate):
         self.emit(QtCore.SIGNAL("closeEditor(QWidget*)"), editor) 
 
 
-    #@+node:slzatz.20100314151332.3076: *3* setEditorData
     def setEditorData(self, editor, index):
         '''Note that also using this method to deselect the text in the title since I think that is what I prefer'''
 
@@ -3716,7 +3511,6 @@ class TitleDelegate(PyQt5.QtWidgets.QItemDelegate):
             # I don't want the text all selected (the default) because then it's easy to wipe it out
             QtCore.QTimer.singleShot(0, editor.deselect) # needed to delay this call and this works
 
-    #@+node:slzatz.20100314151332.3077: *3* setModelData
     def setModelData(self, editor, model, index):
 
         # note that setEditorData is called after this method - not sure why
@@ -3728,19 +3522,13 @@ class TitleDelegate(PyQt5.QtWidgets.QItemDelegate):
         model.setData(index, editor.text())
 
 
-    #@-others
-#@+node:slzatz.20100314151332.3078: ** class NoteManager
-class NoteManager(PyQt5.QtWidgets.QMainWindow):
+class NoteManager(QtWidgets.QMainWindow):
     '''
       Needs to be a QMainWindow so it can get a toolbar
       used in one of the dockwidgets
       '''
-    #@+others
-    #@+node:slzatz.20100314151332.3079: *3* __init__
     def __init__(self, main_window=None, parent=None):
         super(NoteManager, self).__init__(parent)
-        #@+others
-        #@+node:slzatz.20120331211211.1723: *4* instance attributes and other stuff
         self.main_window = main_window
         self.note = notetextedit.NoteTextEdit()
         self.note.setObjectName('note')
@@ -3751,7 +3539,6 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
 
         action = partial(g.create_action, self)
 
-        #@+node:slzatz.20120401173258.1718: *4* style sheet
         self.setStyleSheet("QTextEdit { background-color: #FFFFCC;}") # I think you can only set the background of a QAbstractScrollArea-derived object
 
         stylesheet = '''
@@ -3763,7 +3550,6 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
 
         self.note.document().setDefaultStyleSheet(stylesheet)
 
-        #@+node:slzatz.20120331211211.1724: *4* file menu
         fileMenu = self.menuBar().addMenu("&File")
         fileSaveNote = action("Save Note \tCtrl+S", self.savenote, icon='document-save') #, 'Ctrl+S') ####### 3/29/2012
         filePrintNote = action("Print Note", self.OnPrintNote, icon='document-print')
@@ -3771,7 +3557,6 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
 
         g.add_actions(fileMenu, (fileSaveNote, filePageSetup, filePrintNote))
 
-        #@+node:slzatz.20120331211211.1725: *4* edit menu
         editMenu = self.menuBar().addMenu("&Edit")
 
         editCopyAction = action("&Copy", self.note.copy, QtGui.QKeySequence.Copy, "copy",
@@ -3783,7 +3568,6 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
 
         g.add_actions(editMenu, (editCopyAction, editCutAction, editPasteAction))
 
-        #@+node:slzatz.20120331211211.1726: *4* format menu
         formatMenu = self.menuBar().addMenu("&Format")
         bold = action("&Bold", self.note.toggleBold, 'Ctrl+B', icon='format-text-bold')
         italic = action("&Italic", self.note.toggleItalic, 'Ctrl+I', icon='format-text-italic')
@@ -3795,7 +3579,7 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
         anchor = action("&Anchor", self.note.create_anchor, 'Ctrl+A', icon='internet-web-browser')
 
         ## header submenu ################################################
-        headerMenu = PyQt5.QtWidgets.QMenu(self)
+        headerMenu = QtWidgets.QMenu(self)
         headerMenuAction = action("&Header", self.note.increment_heading, 'Ctrl+H', icon='heading-tag')
         h1 = action("H&1", partial(self.note.make_heading,1))
         h2 = action("H&2", partial(self.note.make_heading,2))
@@ -3806,7 +3590,6 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
 
         g.add_actions(formatMenu, (bold, italic, mono, None, anchor, preformat, None, num_list, bullet_list, None, headerMenuAction, None, remove_formatting))
 
-        #@+node:slzatz.20120331211211.1727: *4* format toolbar
         formatToolbar = self.addToolBar("Format")
         formatToolbar.setObjectName("NoteToolBar")
         g.add_actions(formatToolbar, (filePrintNote, None, bold,italic, preformat, mono, None, preformat, anchor, None, headerMenuAction, num_list, bullet_list, remove_formatting))
@@ -3815,15 +3598,12 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
         #noteToolbar.setIconSize(QSize(24,16))
         #formatToolbar.setFixedHeight(24)
 
-        #@-others
-    #@+node:slzatz.20100314151332.3080: *3* OnPrintNote
     def OnPrintNote(self):
         printer = QtGui.QPrinter()
         printDialog = QtGui.QPrintDialog(printer, self)
         if printDialog.exec_()== QtGui.QDialog.Accepted:
             self.note.print_(printer)
 
-    #@+node:slzatz.20100314151332.3081: *3* OnPageSetup
     def OnPageSetup(self):
         printer = QtGui.QPrinter()
         z = QtGui.QPageSetupDialog(printer)
@@ -3831,23 +3611,16 @@ class NoteManager(PyQt5.QtWidgets.QMainWindow):
             print(printer.orientation())
 
 
-    #@+node:slzatz.20100314151332.3084: *3* savenote
     def savenote(self):
         self.main_window.savenote()
 
-    #@+node:slzatz.20120226073724.1649: *3* textCursor
     def textCursor(self):
         return self.note.textCursor()
         
-    #@+node:slzatz.20120226073724.1650: *3* setTextCursor
     def setTextCursor(self, cursor):
         self.note.setTextCursor(cursor)
         
-    #@-others
-#@+node:slzatz.20100314151332.3085: ** class Logger
-class Logger (PyQt5.QtWidgets.QPlainTextEdit):
-    #@+others
-    #@+node:slzatz.20120324175830.1707: *3* __init__
+class Logger (QtWidgets.QPlainTextEdit):
     def __init__(self, parent=None, logfile=None):
         #QtGui.QPlainTextEdit.__init__(self, parent)
         super(Logger, self).__init__(parent)
@@ -3860,14 +3633,12 @@ class Logger (PyQt5.QtWidgets.QPlainTextEdit):
 
         self.document().setDefaultFont(QtGui.QFont('Helvetica', 8))
         
-    #@+node:slzatz.20120324175830.1708: *3* write
     def write(self, msg):
         # for some reason each print seems to create two writes, one of which is just a line feed
         msg = textwrap.fill(msg.strip(), 175)
         if msg: 
             self.appendPlainText(msg)
             
-    #@+node:slzatz.20120324175830.1709: *3* transfer
     def transfer(self):    
         path = os.path.join(os.environ['TMP'],'logger.%s'%NOTE_EXT)
 
@@ -3877,7 +3648,6 @@ class Logger (PyQt5.QtWidgets.QPlainTextEdit):
 
         os.startfile(path)
         
-    #@+node:slzatz.20120324175830.1710: *3* save
     def save(self):
         f = file(self.path,'a')
         f.write(self.toPlainText())
@@ -3885,12 +3655,10 @@ class Logger (PyQt5.QtWidgets.QPlainTextEdit):
 
         QtGui.QMessageBox.information(self,  'Information', "Appended test to logfile.txt")
         
-    #@+node:slzatz.20120324175830.1711: *3* clear_text
     def clear_text(self):
         self.clear()
         self.appendPlainText("%s\n"%time.asctime()) 
 
-    #@+node:slzatz.20120324175830.1712: *3* save_and_clear
     def save_and_clear(self):
         f = file(self.path,'a')
         f.write(self.toPlainText())
@@ -3901,13 +3669,10 @@ class Logger (PyQt5.QtWidgets.QPlainTextEdit):
 
         QtGui.QMessageBox.information(self,  'Information', "Appended test to logfile.txt")
 
-    #@-others
-#@+node:slzatz.20120708055344.1698: ** class MyEvent
 class MyEvent(QtCore.QObject):
     #signal = QtCore.pyqtSignal(str, int, int)
     signal = QtCore.pyqtSignal(str, dict)
 
-#@+node:slzatz.20100314151332.3087: ** if __name__ == '__main__':
 if __name__ == '__main__':  
 
     # only needed if running two apps on some machine
@@ -3916,7 +3681,7 @@ if __name__ == '__main__':
     else:
         appname = 'mylistmanager'
 
-    app = PyQt5.QtWidgets.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     app.setOrganizationName("SLZ Inc.")
     app.setOrganizationDomain("kayakroll.blogspot.com")
     app.setApplicationName(appname)
@@ -3935,5 +3700,3 @@ if __name__ == '__main__':
     mainwin.show()
     app.exec_() 
 
-#@-others
-#@-leo

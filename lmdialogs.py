@@ -270,24 +270,24 @@ class ChoiceDlg(QDialog):
     def __init__(self, name, stringlist=None, multi=True, label_text=None, parent=None):
         super(ChoiceDlg, self).__init__(parent)
 
-        listWidget = QtGui.QListWidget()
-        listWidget.setSelectionMode(QtGui.QListWidget.MultiSelection if multi else QtGui.QListWidget.SingleSelection)
+        listWidget = PyQt5.QtWidgets.QListWidget()
+        listWidget.setSelectionMode(PyQt5.QtWidgets.QListWidget.MultiSelection if multi else PyQt5.QtWidgets.QListWidget.SingleSelection)
             
         if stringlist is not None:
             listWidget.addItems(stringlist)
 
-        layout = QtGui.QVBoxLayout()
+        layout = PyQt5.QtWidgets.QVBoxLayout()
         layout.addWidget(listWidget)
         
         if label_text:
             font = QtGui.QFont()
             font.setBold(True)
             font.setPointSize(10)
-            label = QtGui.QLabel(label_text)
+            label = PyQt5.QtWidgets.QLabel(label_text)
             label.setFont(font)
             layout.addWidget(label)
             
-        buttonBox = QtGui.QDialogButtonBox(Ok|Cancel)
+        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok|Cancel)
         layout.addWidget(buttonBox)
         self.setLayout(layout)
         self.setWindowTitle(name)
