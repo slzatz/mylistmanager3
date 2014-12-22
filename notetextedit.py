@@ -11,18 +11,16 @@
 
 import sys
 import webbrowser
+import html
 import markdown2 as markdown
 from functools import partial
 
-import PyQt5.QtCore as QtCore
-import PyQt5.QtGui as QtGui
-import PyQt5.QtWidgets
-
+from PyQt5 import QtCore, QtGui, QtWidgets
 Qt = QtCore.Qt
 
 
 #@+node:slzatz.20100314151332.3116: ** class NoteTextEdit
-class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
+class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
 
     #(Bold, Italic, H2, Pre, Num_List, Bullet_List, H1, Remove, Plain, Code, H3, Anchor) = list(range(12))
 
@@ -31,7 +29,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
     def __init__(self, parent=None):
         super(NoteTextEdit, self).__init__(parent)
 
-        self.setLineWrapMode(PyQt5.QtWidgets.QTextEdit.WidgetWidth)
+        self.setLineWrapMode(QtWidgets.QTextEdit.WidgetWidth)
         self.setTabChangesFocus(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -323,7 +321,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         pos = event.pos()
         anch = self.anchorAt(pos)
         self.viewport().setCursor(Qt.PointingHandCursor if anch else Qt.IBeamCursor)
-        PyQt5.QtWidgets.QTextEdit.mouseMoveEvent(self, event)
+        QtWidgets.QTextEdit.mouseMoveEvent(self, event)
 
     #@+node:slzatz.20100314151332.3135: *3* mouseReleaseEvent
     def mouseReleaseEvent(self, event):
@@ -336,7 +334,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
             #webbrowser.open(str(url), new=2, autoraise=True)
             webbrowser.open(url, new=2, autoraise=True) # 03/13/2010
         else:
-            QtGui.QTextEdit.mouseReleaseEvent(self, event)
+            QtWidgets.QTextEdit.mouseReleaseEvent(self, event)
 
     #@+node:slzatz.20100314151332.3136: *3* insertFromMimeData
     def insertFromMimeData(self, source):
@@ -351,7 +349,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
                 text = '<a href="http://{0}">{0}</a> '.format(text)
             self.insertHtml(text)
         else:   
-            QtGui.QTextEdit.insertFromMimeData(self, source)
+            QtWidgets.QTextEdit.insertFromMimeData(self, source)
 
     #@+node:slzatz.20100314151332.3137: *3* toSimpleHtml (not in use)
     def toSimpleHtml(self):
@@ -368,7 +366,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
                     format = fragment.charFormat()
                     family = format.fontFamily()
                     color = format.foreground().color()
-                    text = Qt.escape(fragment.text()) # turns things like < into entities &lt;
+                    text = html.escape(fragment.text()) # turns things like < into entities &lt;
 
                     # If it's an anchor, don't want to do any other formatting
                     if format.isAnchor():
@@ -439,7 +437,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
                     fragment = iterator.fragment()
                     if fragment.isValid():
                         char_format = fragment.charFormat()
-                        text = Qt.escape(fragment.text()) # turns chars like < into entities &lt;
+                        text = html.escape(fragment.text()) # turns chars like < into entities &lt;
                         text = text.replace('\u2028','  \n') # catches  u'\u2028 and replaces with markdown rep of <br /> may want to use QChar.LineSeparator
                         font_size = char_format.font().pointSize()
 
@@ -475,7 +473,7 @@ class NoteTextEdit(PyQt5.QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
                     was_pre_line = False  
 
                 doc += para+'\n\n' if not is_list_line else para+'\n'
-            block = next(block)
+            block = block.next()
         return doc+references
 
     #@-others

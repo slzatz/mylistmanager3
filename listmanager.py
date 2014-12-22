@@ -1964,7 +1964,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @update_whooshdb
     @check_task_selected
-    def savenote(self):
+    def savenote(self, check=False):
 
         if 'plain_note' in self.modified:  #self.modified.get('plain_note', False)
             text = self.db_note.toPlainText()
@@ -2211,10 +2211,10 @@ class ListManager(QtWidgets.QMainWindow):
         self.refresh()
     @check_modified
     #@check_task_selected
-    def ondockwindow(self, dw=None, cur=True, check_task_selected=True): 
+    def ondockwindow(self, check=False, dw=None, cur=True, check_task_selected=True): 
 
         if check_task_selected and (not self.task or self.index==-1):
-            QtGui.QMessageBox.information(self,  'Note', "There was no row selected.  Please select one.") 
+            QtWidgets.QMessageBox.information(self,  'Note', "There was no row selected.  Please select one.") 
             return
 
         if not dw.isVisible():
