@@ -13,10 +13,8 @@ import sys
 import platform
 import os
 
-import PyQt5.QtCore as QtCore
-import PyQt5.QtGui as QtGui
-import PyQt5.QtWidgets
-QDialog = PyQt5.QtWidgets.QDialog
+from PyQt5 import QtCore, QtGui, QtWidgets
+QDialog = QtWidgets.QDialog
 Qt = QtCore.Qt
 
 import datetime
@@ -28,11 +26,11 @@ import markdown2 as markdown
 import lmglobals as g #May 29, 2012
 #print_ = g.logger.write # this won't work here because g.logger has not been defined when listmanager.py imports lmdialogs.py
 
-Ok = PyQt5.QtWidgets.QDialogButtonBox.Ok
+Ok = QtWidgets.QDialogButtonBox.Ok
 
-Cancel = PyQt5.QtWidgets.QDialogButtonBox.Cancel
+Cancel = QtWidgets.QDialogButtonBox.Cancel
 
-Close = PyQt5.QtWidgets.QDialogButtonBox.Close
+Close = QtWidgets.QDialogButtonBox.Close
 
 
 
@@ -48,10 +46,10 @@ class TaskInfo(QDialog):
 
         table.setItemDelegateForRow(labels.index('note'), NoteItemDelegate(self)) # Custom Delegate to control editor
 
-        layout = PyQt5.QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(table)
 
-        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok)
+        buttonBox = QtWidgets.QDialogButtonBox(Ok)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -60,7 +58,7 @@ class TaskInfo(QDialog):
         buttonBox.accepted.connect(self.accept)
 
 #@+node:slzatz.20100314151332.2781: *3* TaskInfoTable
-class TaskInfoTable(PyQt5.QtWidgets.QTableWidget): 
+class TaskInfoTable(QtWidgets.QTableWidget): 
     def __init__(self, parent, data=None, labels=None):
         super(TaskInfoTable, self).__init__(parent)
 
@@ -85,10 +83,10 @@ class TaskInfoTable(PyQt5.QtWidgets.QTableWidget):
         self.setShowGrid(True)
 
         for n,lab in enumerate(labels):
-            item = PyQt5.QtWidgets.QTableWidgetItem(str(c_task.get(lab, '')))
+            item = QtWidgets.QTableWidgetItem(str(c_task.get(lab, '')))
             self.setItem(n, 0, item)
 
-            item = PyQt5.QtWidgets.QTableWidgetItem(str(s_task.get(lab, '')))
+            item = QtWidgets.QTableWidgetItem(str(s_task.get(lab, '')))
             self.setItem(n, 1, item)
 
         self.setRowHeight(labels.index('title'), 50)
@@ -101,7 +99,7 @@ class TaskInfoTable(PyQt5.QtWidgets.QTableWidget):
         #self.setSelectionMode(QTableWidget.SingleSelection)
 
 #@+node:slzatz.20100314151332.2782: *3* NoteItemDelegate
-class NoteItemDelegate(PyQt5.QtWidgets.QItemDelegate):
+class NoteItemDelegate(QtWidgets.QItemDelegate):
 
     def __init__(self, parent = None):
         super(NoteItemDelegate, self).__init__(parent)
@@ -128,7 +126,7 @@ class NoteItemDelegate(PyQt5.QtWidgets.QItemDelegate):
     def createEditor(self, parent, option, index):
 
         print("in createEditorNote")
-        editor = PyQt5.QtWidgets.QTextEdit(parent)
+        editor = QtWidgets.QTextEdit(parent)
 
         return editor
 
@@ -154,10 +152,10 @@ class TextColor(QDialog):
         table.cellClicked.connect(self.cellclick)   #SIGNAL("cellClicked(int,int)")
         table.itemSelectionChanged.connect(self.itemselected)    #SIGNAL("itemSelectionChanged()")
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(table)
 
-        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Close)
+        buttonBox = QtWidgets.QDialogButtonBox(Close)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -184,7 +182,7 @@ class TextColor(QDialog):
         self.print_("In itemselected; row = {}".format(row))
         
 #@+node:slzatz.20120527203527.1703: *3* TextColorTable
-class TextColorTable(PyQt5.QtWidgets.QTableWidget): 
+class TextColorTable(QtWidgets.QTableWidget): 
     def __init__(self, parent, things, type_):
         super(TextColorTable, self).__init__(parent)
 
@@ -210,7 +208,7 @@ class TextColorTable(PyQt5.QtWidgets.QTableWidget):
         bold.setBold(True)
 
         for n,thing in enumerate(things):
-            item = PyQt5.QtWidgets.QTableWidgetItem(thing.title)
+            item = QtWidgets.QTableWidgetItem(thing.title)
             self.setItem(n, 0, item)
             
             # note if thing.image == None then an 'empty' icon is created -- isNull() == True
@@ -219,15 +217,15 @@ class TextColorTable(PyQt5.QtWidgets.QTableWidget):
             icon = (QtGui.QIcon(pxmap), '')
             # note that icon = (QtGui.QIcon(thing.image), '') does not work even though essentially the same thing works for qresources
    
-            item = PyQt5.QtWidgets.QTableWidgetItem(*icon) # note works when thing.image == None
+            item = QtWidgets.QTableWidgetItem(*icon) # note works when thing.image == None
             #item = QtGui.QTableWidgetItem(QtGui.QIcon(os.path.join(g.IMAGES_DIR, 'folder_icons', '{}'.format(thing.icon))),'') #handles icon = None
             self.setItem(n, 1, item)
             
-            item = PyQt5.QtWidgets.QTableWidgetItem("The rain in spain")
+            item = QtWidgets.QTableWidgetItem("The rain in spain")
             item.setTextColor(QtGui.QColor(thing.textcolor))
             self.setItem(n, 2, item)
             
-            item = PyQt5.QtWidgets.QTableWidgetItem("The rain in spain")
+            item = QtWidgets.QTableWidgetItem("The rain in spain")
             item.setFont(bold)
             item.setTextColor(QtGui.QColor(thing.textcolor))
             self.setItem(n, 3, item)       
@@ -239,7 +237,7 @@ class SynchResults(QDialog):
     def __init__(self, title, text=None, parent=None, OkCancel=False):
         super(SynchResults, self).__init__(parent)
 
-        textBrowser = PyQt5.QtWidgets.QTextBrowser()
+        textBrowser = QtWidgets.QTextBrowser()
         textBrowser.setMinimumSize(800,550)
         textBrowser.setReadOnly(True)
         textBrowser.setFontPointSize(8.0)
@@ -247,13 +245,13 @@ class SynchResults(QDialog):
         if text:
             textBrowser.setPlainText(text)
 
-        layout = PyQt5.QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(textBrowser)
 
         if OkCancel:
-            buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok|Cancel)
+            buttonBox = QtWidgets.QDialogButtonBox(Ok|Cancel)
         else:
-            buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok)
+            buttonBox = QtWidgets.QDialogButtonBox(Ok)
             
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -270,24 +268,24 @@ class ChoiceDlg(QDialog):
     def __init__(self, name, stringlist=None, multi=True, label_text=None, parent=None):
         super(ChoiceDlg, self).__init__(parent)
 
-        listWidget = PyQt5.QtWidgets.QListWidget()
-        listWidget.setSelectionMode(PyQt5.QtWidgets.QListWidget.MultiSelection if multi else PyQt5.QtWidgets.QListWidget.SingleSelection)
+        listWidget = QtWidgets.QListWidget()
+        listWidget.setSelectionMode(QtWidgets.QListWidget.MultiSelection if multi else QtWidgets.QListWidget.SingleSelection)
             
         if stringlist is not None:
             listWidget.addItems(stringlist)
 
-        layout = PyQt5.QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(listWidget)
         
         if label_text:
             font = QtGui.QFont()
             font.setBold(True)
             font.setPointSize(10)
-            label = PyQt5.QtWidgets.QLabel(label_text)
+            label = QtWidgets.QLabel(label_text)
             label.setFont(font)
             layout.addWidget(label)
             
-        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok|Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(Ok|Cancel)
         layout.addWidget(buttonBox)
         self.setLayout(layout)
         self.setWindowTitle(name)
@@ -310,10 +308,10 @@ class VersionsDlg(QDialog):
     def __init__(self, title, text=None, parent=None):
         super(VersionsDlg, self).__init__(parent)
 
-        label = PyQt5.QtWidgets.QLabel(text)
-        layout = PyQt5.QtWidgets.QVBoxLayout()
+        label = QtWidgets.QLabel(text)
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(label)
-        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok)
+        buttonBox = QtWidgets.QDialogButtonBox(Ok)
         layout.addWidget(buttonBox)
         self.setLayout(layout)
         self.setWindowTitle(title)
@@ -327,29 +325,29 @@ class SelectContextFolder(QDialog):
     def __init__(self, name, d=None, parent=None, initial_selection=None, multi=False, new_entry=True):
         super(SelectContextFolder, self).__init__(parent)
 
-        self.listWidget = PyQt5.QtWidgets.QListWidget()
+        self.listWidget = QtWidgets.QListWidget()
         
         if multi:
-            self.listWidget.setSelectionMode(PyQt5.QtWidgets.QListWidget.MultiSelection)
+            self.listWidget.setSelectionMode(QtWidgets.QListWidget.MultiSelection)
         else:
-            self.listWidget.setSelectionMode(PyQt5.QtWidgets.QListWidget.SingleSelection)
+            self.listWidget.setSelectionMode(QtWidgets.QListWidget.SingleSelection)
         
         pxmap_no = QtGui.QPixmap(16,16)
         pxmap_no.fill() #default Qt.white
         no_icon = QtGui.QIcon(pxmap_no)
 
         for title,icon in list(d.items()):
-            PyQt5.QtWidgets.QListWidgetItem(icon[0] if icon[0] else no_icon, title, self.listWidget)
+            QtWidgets.QListWidgetItem(icon[0] if icon[0] else no_icon, title, self.listWidget)
 
-        layout = PyQt5.QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         
         if new_entry:
-            self.lineEdit = PyQt5.QtWidgets.QLineEdit()
+            self.lineEdit = QtWidgets.QLineEdit()
             layout.addWidget(self.lineEdit)
             
         layout.addWidget(self.listWidget)
 
-        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(PyQt5.QtWidgets.QDialogButtonBox.Ok|PyQt5.QtWidgets.QDialogButtonBox.Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok|QtWidgets.QDialogButtonBox.Cancel)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -388,19 +386,19 @@ class MultiChoiceOrNew(QDialog):
 
         self.name = name
 
-        self.listWidget = QtGui.QListWidget()
-        self.listWidget.setSelectionMode(QtGui.QListWidget.MultiSelection)
+        self.listWidget = QtWidgets.QListWidget()
+        self.listWidget.setSelectionMode(QtWidgets.QListWidget.MultiSelection)
 
         if stringlist is not None:
             self.listWidget.addItems(stringlist)
 
-        self.lineEdit = QtGui.QLineEdit()
+        self.lineEdit = QtWidgets.QLineEdit()
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.lineEdit)
         layout.addWidget(self.listWidget)
 
-        buttonBox = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok|QtGui.QDialogButtonBox.Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok|QtWidgets.QDialogButtonBox.Cancel)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -439,14 +437,14 @@ class SelectIcon(QDialog):
 
         self.name = name
 
-        self.listWidget1 = QtGui.QListWidget()
-        self.listWidget1.setSelectionMode(QtGui.QListWidget.SingleSelection)
-        self.listWidget1.setViewMode(QtGui.QListView.ListMode) #IconMode
+        self.listWidget1 = QtWidgets.QListWidget()
+        self.listWidget1.setSelectionMode(QtWidgets.QListWidget.SingleSelection)
+        self.listWidget1.setViewMode(QtWidgets.QListView.ListMode) #IconMode
         #self.listWidget1.setDisabled(True)
 
-        self.listWidget2 = QtGui.QListWidget()
-        self.listWidget2.setSelectionMode(QtGui.QListWidget.SingleSelection)
-        self.listWidget2.setViewMode(QtGui.QListView.ListMode) #IconMode
+        self.listWidget2 = QtWidgets.QListWidget()
+        self.listWidget2.setSelectionMode(QtWidgets.QListWidget.SingleSelection)
+        self.listWidget2.setViewMode(QtWidgets.QListView.ListMode) #IconMode
 
         things = things if things else []
         pngs = pngs if pngs else []
@@ -470,38 +468,38 @@ class SelectIcon(QDialog):
 
             #icon = QtGui.QIcon("bitmaps/{0}_icons/{1}".format(type_, t.icon) if t.icon else no_icon
             
-            QtGui.QListWidgetItem(icon, t.title, self.listWidget1)
+            QtWidgets.QListWidgetItem(icon, t.title, self.listWidget1)
 
-        QtGui.QListWidgetItem(no_icon, 'No Icon', self.listWidget2) 
+        QtWidgets.QListWidgetItem(no_icon, 'No Icon', self.listWidget2) 
         for s in pngs:
-            QtGui.QListWidgetItem(QtGui.QIcon("bitmaps/folder_icons/{}".format(s)), s, self.listWidget2) 
+            QtWidgets.QListWidgetItem(QtGui.QIcon("bitmaps/folder_icons/{}".format(s)), s, self.listWidget2) 
             #QtGui.QListWidgetItem(QtGui.QIcon(os.path.join(g.IMAGES_DIR, '{}_icons'.format(type_),'{}'.format(s), self.listWidget2)))
         
         font = QtGui.QFont()
         font.setBold(True)
         font.setPointSize(10)
-        label_L = QtGui.QLabel("Current folders")
+        label_L = QtWidgets.QLabel("Current folders")
         label_L.setFont(font)
-        label_R = QtGui.QLabel("Available icons")
+        label_R = QtWidgets.QLabel("Available icons")
         label_R.setFont(font)
         #layout.addWidget(label)
         
-        layout_L = QtGui.QVBoxLayout()
+        layout_L = QtWidgets.QVBoxLayout()
         layout_L.addWidget(label_L)
         layout_L.addWidget(self.listWidget1)
         
-        layout_R = QtGui.QVBoxLayout()
+        layout_R = QtWidgets.QVBoxLayout()
         layout_R.addWidget(label_R)
         layout_R.addWidget(self.listWidget2)
 
-        layout1 = QtGui.QHBoxLayout()
+        layout1 = QtWidgets.QHBoxLayout()
         layout1.addLayout(layout_L)
         layout1.addLayout(layout_R)
 
-        layout2 = QtGui.QVBoxLayout()
+        layout2 = QtWidgets.QVBoxLayout()
         layout2.addLayout(layout1)
 
-        buttonBox = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok|QtGui.QDialogButtonBox.Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok|QtWidgets.QDialogButtonBox.Cancel)
 
         layout2.addWidget(buttonBox)
         self.setLayout(layout2)
@@ -554,12 +552,12 @@ class TaskDueDate(QDialog):
     def __init__(self, title, date=None, parent=None):
         super(TaskDueDate, self).__init__(parent)
 
-        calendar = QtGui.QCalendarWidget()
+        calendar = QtWidgets.QCalendarWidget()
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(calendar)
 
-        buttonBox = QtGui.QDialogButtonBox(Ok|Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(Ok|Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         
@@ -589,22 +587,22 @@ class TaskDueDateTime(QDialog):
     def __init__(self, title, qdatetime=None, state=None, parent=None):
         super(TaskDueDateTime, self).__init__(parent)
         
-        dteditor = QtGui.QDateTimeEdit(qdatetime, parent) if qdatetime else QtGui.QDateTimeEdit(parent)
+        dteditor = QtWidgets.QDateTimeEdit(qdatetime, parent) if qdatetime else QtWidgets.QDateTimeEdit(parent)
         dteditor.setDisplayFormat("M'/'d'/'yy' 'hh:mm")
         dteditor.setCalendarPopup(True)
         
         spin = AlarmSpinBox(self)
         # 15 min, 30 min, one hour, 2 hours, 1 day, 1 week
         
-        alarm = QtGui.QCheckBox("Set Alarm")
+        alarm = QtWidgets.QCheckBox("Set Alarm")
         alarm.setChecked(state)
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(dteditor)  #layout.addWidget(calendar)
         layout.addWidget(spin)
         layout.addWidget(alarm)
 
-        buttonBox = QtGui.QDialogButtonBox(Ok|Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(Ok|Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         
@@ -667,7 +665,7 @@ class TaskDueDateTime(QDialog):
         super(TaskDueDateTime, self).accept()
 
 #@+node:slzatz.20120506103546.1683: ** AlarmSpinBox
-class AlarmSpinBox(PyQt5.QtWidgets.QSpinBox):
+class AlarmSpinBox(QtWidgets.QSpinBox):
     def __init__(self, parent=None):
         super(AlarmSpinBox, self).__init__(parent)
         
@@ -735,15 +733,15 @@ class ModifyColumns(QDialog):
         listWidget2.setWindowTitle("2")
 
 
-        splitter = QtGui.QSplitter(Qt.Horizontal)
+        splitter = QtWidgets.QSplitter(Qt.Horizontal)
         splitter.addWidget(listWidget)
         splitter.addWidget(listWidget2)
 
-        buttonBox = PyQt5.QtWidgets.QDialogButtonBox(Ok|Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(Ok|Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(splitter)
         layout.addWidget(buttonBox)
         self.setLayout(layout)
@@ -764,7 +762,7 @@ class ModifyColumns(QDialog):
 
         super(ModifyColumns, self).accept()
 #@+node:slzatz.20120324175830.1714: *3* LWidget
-class LWidget(PyQt5.QtWidgets.QListWidget):
+class LWidget(QtWidgets.QListWidget):
     def __init__(self, parent=None, lst=None):
         super(LWidget, self).__init__(parent) ###########
         self.setAcceptDrops(True)
@@ -787,7 +785,7 @@ class LWidget(PyQt5.QtWidgets.QListWidget):
     def dropEvent(self, event):
         if event.source()==self:
             #event.setDropAction(Qt.MoveAction) #doesn't seem to matter ######
-            QtGui.QListWidget.dropEvent(self, event)
+            QtWidgets.QListWidget.dropEvent(self, event)
             if platform.uname()[0]=='Linux':
                 items = self.selectedItems()
                 self.takeItem(self.row(items[0]))

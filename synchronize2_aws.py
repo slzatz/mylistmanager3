@@ -575,7 +575,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
             if 'errorCode' in s:
                 log+="Task tid: {0} title: {1} could not be updated on server; errorCode: {2} - errorDesc: {3}".format(c.tid, c.title, s.errorCode, s.get('errorDesc', ''))
             else:
-                s.title = s.title.encode('ascii', 'replace')[:30]
+                #s.title = s.title.encode('ascii', 'replace')[:30] #not sure that encoding the unicode into a byte string is necessary 12-22-2014
                 log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
             
             nnn+=1
@@ -612,7 +612,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
                 c.added = s.added #### April 24, 2012
                 session.commit()
                 
-                s.title = s.title.encode('ascii', 'replace')[:30]
+                #s.title = s.title.encode('ascii', 'replace')[:30] #not sure that encoding the unicode into a byte string is necessary 12-22-2014
                 log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
             
             nnn+=1

@@ -201,10 +201,8 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.active_search = None
         self.search_contexts = None # for when we're searching specific context(s)
-        #self.query_parse_flag = xapian.QueryParser.FLAG_PARTIAL # default search when set to PARTIAL it's incremental search
 
         self.sync_log = ''
-
 
         action =partial(g.create_action, self)
         add_actions = g.add_actions

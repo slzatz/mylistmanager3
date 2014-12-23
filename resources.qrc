@@ -7,6 +7,7 @@
     <file>bitmaps/star.png</file>
     <file>bitmaps/delete.png</file>
     <file>bitmaps/priority.png</file>
+    <file>bitmaps/box.png</file>
 </qresource>
 </RCC>
 
