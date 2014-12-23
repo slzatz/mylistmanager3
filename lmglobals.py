@@ -11,8 +11,7 @@ import os
 import urllib.request, urllib.error, urllib.parse
 import configparser as configparser
 
-import PyQt5.QtGui as QtGui
-import PyQt5.QtWidgets
+from PyQt5 import QtGui,QtWidgets
 from aws_credentials import rds_uri
 
 #@+node:slzatz.20120318160356.1673: ** constants
@@ -50,7 +49,7 @@ else:
 #@+node:slzatz.20120331211211.1719: ** create_action
 def create_action(parent, text, slot=None, shortcut=None, icon=None, icon_res=None, image=None, tip=None, checkable=False):
 
-    action = PyQt5.QtWidgets.QAction(parent)
+    action = QtWidgets.QAction(parent)
     action.setText(text)
     
     if icon:
@@ -117,7 +116,7 @@ def check_task_selected(f):
     
     def fn(lm, *args, **kwargs):
         if not lm.task or lm.index==-1:
-            PyQt5.QtWidgets.QMessageBox.information(lm,  'Note', "No row is selected")
+            QtWidgets.QMessageBox.information(lm,  'Note', "No row is selected")
             return
         else:
             return f(lm, *args, **kwargs)
@@ -166,27 +165,27 @@ def update_row(f):
         if task.completed:
             table.item(n,0).setIcon(lm.idx0)
             for c,col in enumerate(col_order[1:],start=1):
-                item = PyQt5.QtWidgets.QtGui.QTableWidgetItem(*display[col](task))
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
                 item.setForeground(qcolor('gray'))
                 item.setFont(lm.itemfont[task.priority])
                 table.setItem(n, c, item)
 
         elif task.deleted:
             for c,col in enumerate(col_order[1:],start=1):
-                item = PyQt5.QtWidgets.QTableWidgetItem(*display[col](task))
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
                 item.setForeground(qcolor('gray'))
                 item.setFont(lm.deleteditemfont[task.priority])
                 table.setItem(n, c, item)
                 
         elif getattr(task, type_).textcolor:
             for c,col in enumerate(col_order[1:],start=1):
-                item = PyQt5.QtWidgets.QtGui.QTableWidgetItem(*display[col](task))
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
                 item.setForeground(qcolor(getattr(task, type_).textcolor))
                 item.setFont(lm.itemfont[task.priority])
                 table.setItem(n, c, item)
         else:
             for c,col in enumerate(col_order[1:],start=1):
-                item = PyQt5.QtWidgets.QTableWidgetItem(*display[col](task))
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
                 item.setFont(lm.itemfont[task.priority])
                 table.setItem(n, c, item)
             
