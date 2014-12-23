@@ -223,8 +223,8 @@ class ListManager(QtWidgets.QMainWindow):
 
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
-        if True:
-
+        #if True:
+        if DB_EXISTS:
             self.ix = index.open_dir("indexdir")
             self.searcher = self.ix.searcher()
 
@@ -761,11 +761,6 @@ class ListManager(QtWidgets.QMainWindow):
             print(e)
         else:
             self.myevent.signal.connect(myevents_aws.responses) # since only one signal don't need ...signal[str, dict].connect....
-            
-
-
-
-
 
         if DB_EXISTS:
             if args.ini:
@@ -774,12 +769,6 @@ class ListManager(QtWidgets.QMainWindow):
             if self.confirm("Do you want to perform an initial synchonization with Toodledo?"):
                 QtCore.QTimer.singleShot(0, self.downloadtasksfromserver)
                 print("hello")
-
-
-
-
-
-
 
     def loadtabs(self):
         # open the tabs that were last open when the application was closed
@@ -809,6 +798,7 @@ class ListManager(QtWidgets.QMainWindow):
                         self.onpagechange(current) 
         
             self.setUpdatesEnabled(True)
+
     def downloadtasksfromserver(self):
         '''
         sends all tasks on server down to client
@@ -823,12 +813,12 @@ class ListManager(QtWidgets.QMainWindow):
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb()
             
-
+            self.ix = index.open_dir("indexdir")
+            self.searcher = self.ix.searcher()
 
     def note_modified(self):
         which = self.sender().objectName()
         self.modified[which] = True
-
 
     def createfoldermenu(self):
         self.f_menu = QtWidgets.QMenu(self)
