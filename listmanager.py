@@ -26,7 +26,8 @@ import base64
 import io
 import importlib #for plugins - I think new in 2.7
 import argparse
-
+import tempfile
+from subprocess import Popen
 import resources
 
 # age is cython-created function more to check cython out than that it was absolutely necessary
@@ -51,14 +52,8 @@ import markdown2 as markdown
 
 import lmglobals as g #moved from below on 12-21-2014
 
-# all the db stuff and sqlalchemy
-#g.DB_URI = g.rds_uri #g.sqlite_uri 
-#from lmdb_aws import *
-    
 #note synchronize2 is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
-
-#import lmglobals as g
 
 from whoosh.index import create_in
 from whoosh.fields import *
@@ -203,7 +198,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.search_contexts = None # for when we're searching specific context(s)
 
         self.sync_log = ''
-
+        self.vim_files = {} #dictionary to hold files being edited in VIM
         action =partial(g.create_action, self)
         add_actions = g.add_actions
         IMAGES_DIR = g.IMAGES_DIR
@@ -237,8 +232,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.logger.setContextMenuPolicy(Qt.ActionsContextMenu)
         add_actions(self.logger, (a_transfer, a_save, a_clear_text, a_save_and_clear))
-
-
 
         self.db_note = QtWidgets.QTextEdit()
         self.db_note.setAcceptRichText(False)
@@ -511,11 +504,12 @@ class ListManager(QtWidgets.QMainWindow):
         a_resetinterp = action("Reset Console", self.resetinterp)
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb)
+        a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim)
 
         add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeletedtasks, a_removedeadkeywords, 
-                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb))
+                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb, a_edit_note_in_vim))
                                          
         a_create_image_string = action("Create image string", self.create_image_string)
 
@@ -715,8 +709,6 @@ class ListManager(QtWidgets.QMainWindow):
         self.itemfont = {-1:normal, 0:normal, 1:normal, 2:normal, 3:bold}         
         self.deleteditemfont = {-1:strikeout, 0:strikeout, 1:strikeout, 2:strikeout, 3:boldstrikeout}
 
-
-
         self.folder_icons = {}
 
         for f in session.query(Folder):
@@ -762,6 +754,16 @@ class ListManager(QtWidgets.QMainWindow):
         else:
             self.myevent.signal.connect(myevents_aws.responses) # since only one signal don't need ...signal[str, dict].connect....
 
+        # code to watch files that vim is editing
+        self.fs_watcher = QtCore.QFileSystemWatcher()
+        #self.fs_watcher.addPath(p.path())
+        #self.fs_watcher.addPath("hello.txt")
+        #self.fs_watcher.addPath(os.path.abspath(temp.name))
+        #self.fs_watcher.directoryChanged.connect(self.directory_changed)
+        self.fs_watcher.fileChanged.connect(self.file_changed_in_vim)
+        #print(self.fs_watcher.directories())
+        #print(self.fs_watcher.files())
+        
         if DB_EXISTS:
             if args.ini:
                 QtCore.QTimer.singleShot(0, self.loadtabs)
@@ -2628,8 +2630,6 @@ class ListManager(QtWidgets.QMainWindow):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
         
-
-        
     def create_whooshdb(self):
 
         tasks = session.query(Task)
@@ -2637,13 +2637,10 @@ class ListManager(QtWidgets.QMainWindow):
         self.pb.setRange(0, r)
         self.pb.setValue(0)
         self.pb.show()
-        #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=STORED) #schema = Schema(title=TEXT(field_boost=2.0, unique=True), body=TEXT) 
         
-        #If unique=True, the value of this field may be used to replace documents with the same value when the user calls document_update() on an IndexWriter. 
-        #whoosh.fields.ID Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=ID(unique=True, stored=True)) 
-        #position=NUMERIC(int, 64, signed=False))
-        #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=ID(unique=True, stored=True)) 
-        schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) 
+        #note that you can boost the weighting of a field - Schema(title=TEXT(field_boost=2.0...
+        #If unique=True on a field then the value of this field may be used to replace documents with the same value when the user calls document_update() on an IndexWriter. 
+        schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) #probably better to do signed=False 
         
         if not os.path.exists("indexdir"):
             os.mkdir("indexdir")
@@ -2667,6 +2664,38 @@ class ListManager(QtWidgets.QMainWindow):
         
         self.pb.hide()
 
+    def file_changed_in_vim(self, path):
+        print('File Changed: %s' % path)
+        self.setWindowTitle(path)
+        task_id = self.vim_files[path]
+        f = open(path, mode='r')
+        text = f.read()
+        print(text)
+        self.task.note = text
+        session.commit()
+       # kluge to get rid of extra line after a pre block
+        simple_html = markdown.markdown(text)
+        simple_html = simple_html.replace('\n</code></pre>', '</code></pre>')
+
+        self.note.setHtml(simple_html)
+        self.db_note.setPlainText(text)
+
+        self.modified = {}
+
+        print_("Note Saved from Vim")
+
+    def edit_note_in_vim(self):
+        note = self.task.note if self.note else ''
+        temp = tempfile.NamedTemporaryFile(mode='w', prefix='lm', suffix='.tmp', delete=False)
+        temp.write(note)
+        temp.flush()
+        temp.close()
+        self.vim_files[temp.name] = self.task.id
+        print(repr(self.vim_files))
+        Popen([g.VIM, os.path.abspath(temp.name)])
+        self.fs_watcher.addPath(os.path.abspath(temp.name))
+        
+    
     def print_note_to_log(self):
         print_(self.note.toHtml())
 

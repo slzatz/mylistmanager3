@@ -25,6 +25,7 @@ PLUGIN_DIR = os.path.join(cwd,'plugins')
 USER_ICONS = 'folder_icons'
 CORE_ICONS = ''
 LOG_FILE = os.path.join(cwd,'logfile.txt')
+VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
 #XAPIAN_DIR = os.path.join(cwd,'xapian')
 del cwd
 
