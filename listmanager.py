@@ -43,7 +43,6 @@ except ImportError:
         else:
             return "today"
 
-#import urllib.request, urllib.parse, urllib.error will be needed for python 3.x
 import base64
 from optparse import OptionParser
 from functools import partial
@@ -56,10 +55,8 @@ import lmglobals as g #moved from below on 12-21-2014
 import lminterpreter
 
 from whoosh.index import create_in
-from whoosh.fields import *
+from whoosh.fields import TEXT, KEYWORD, NUMERIC
 import whoosh.index as index
-#from whoosh.qparser import QueryParser
-#from whoosh.qparser import MultifieldParser
 from whoosh.query import Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 
@@ -77,11 +74,7 @@ args = parser.parse_args()
 if args.sqlite:
     g.DB_URI = g.sqlite_uri
 else:
-    g.DB_URI = g.rds_uri #g.sqlite_uri 
-
-#from lmdb_aws import *
-
-# Not 100% sure this needs to be done in global land
+    g.DB_URI = g.rds_uri 
 
 if args.db_create:
     print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
@@ -96,8 +89,6 @@ if args.db_create:
 else:
     DB_EXISTS = True
         
-#DB_EXISTS = not args.db_create #True ###########  this should go into a command line argument about the db existing (the default) #####################################################################11292014#####################
-
 if not DB_EXISTS and args.sqlite:
     db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
 
@@ -110,6 +101,7 @@ from lmdb_aws import *
 
 if args.db_create:
     engine.echo = True
+
 VERSION = '0.8'
 
 TODAY = datetime.date.today()
@@ -143,8 +135,6 @@ class ListManager(QtWidgets.QMainWindow):
                 self.restoreState(settings.value('MainWindow/State')) 
 
         if not DB_EXISTS:
-        #if 0:
-            # note that if the db doesn't exist we need to create a No Context entry and a No Folder entry
             
             context = Context(tid=0, title='No Context')
             session.add(context)
@@ -217,7 +207,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
-        #if True:
         if DB_EXISTS:
             self.ix = index.open_dir("indexdir")
             self.searcher = self.ix.searcher()
@@ -300,7 +289,6 @@ class ListManager(QtWidgets.QMainWindow):
         DockWidget2.setWidget(self.note_manager)
         self.addDockWidget(Qt.RightDockWidgetArea, DockWidget2)
 
-        #self.connect(DockWidget2, QtCore.SIGNAL("topLevelChanged(bool)"), self.shownotemenus)
         DockWidget2.topLevelChanged.connect(self.shownotemenus)
 
         DockWidget3 = QtWidgets.QDockWidget("DB Note", self)
@@ -315,7 +303,7 @@ class ListManager(QtWidgets.QMainWindow):
         DockWidget4.setWidget(self.console) #to get all the locals going to set in __main__
         self.addDockWidget(Qt.RightDockWidgetArea, DockWidget4)
 
-        self.DockWidget4 =DockWidget4 #need to get at this DockWidget from __main__
+        self.DockWidget4 = DockWidget4 #need to get at this DockWidget from __main__
 
         self.addDockWidget(Qt.RightDockWidgetArea, DockWidget) #Qt.BottomDockWidgetArea
 
@@ -345,8 +333,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.tabifyDockWidget(DockWidget2, DockWidget4)
         DockWidget2.raise_()
 
-        log_dock_action = DockWidget.toggleViewAction() ####
-        note_db_dock_action = DockWidget3.toggleViewAction() #####
+        log_dock_action = DockWidget.toggleViewAction()
+        note_db_dock_action = DockWidget3.toggleViewAction() 
 
         self.note_manager.menuBar().setVisible(False)
         self.note_manager.format_toolbar.setEnabled(False)
@@ -422,23 +410,14 @@ class ListManager(QtWidgets.QMainWindow):
         else:
             self.savedtabs = []
             
-        #self.savedtabsactions = []
-
-        #print("self.savedtabs =",self.savedtabs)
-
-        #self.savedtabs = [] if self.savedtabs is None else self.savedtabs # shouldn't be necessary but seems to be 10.27.2012
-                
         self.m_savedtabsmenu = filemenu.addMenu("Saved Tabs")
 
-        #print("self.savedtabs =",self.savedtabs)
         for i, properties in enumerate(self.savedtabs):
             aa = self.createsavedtab(properties, i)
             self.m_savedtabsmenu.addAction(aa)
-            #self.savedtabsactions.append(aa)
 
         filemenu.addSeparator() 
         filemenu.addAction(a_quit)
-
 
         taskmenu = self.menuBar().addMenu("&Task")
 
@@ -537,9 +516,6 @@ class ListManager(QtWidgets.QMainWindow):
         fileToolbar.setObjectName("FileToolBar")
         add_actions(fileToolbar, (a_opencontext, a_openfolder, a_opentag, a_starstab, a_alarmtab, None))
 
-        #for a in self.savedtabsactions:
-            #fileToolbar.addAction(a)
-            
         if g.plugins_enabled:
 
             plugin_actions = pluginmenu.actions()
@@ -581,21 +557,6 @@ class ListManager(QtWidgets.QMainWindow):
         search_tb.setPopupMode(QtWidgets.QToolButton.InstantPopup)
 
         search_menu = QtWidgets.QMenu(search_tb)
-
-        search_incremental = action("Incremental Search", partial(self.searchtype, search_type='incremental'), checkable=True)
-        search_incremental.setChecked(True)
-
-        search_standard = action("Standard Search", partial(self.searchtype, search_type='standard'), checkable=True)
-        self.search_standard = search_standard # need this for current tab search since only want to do it when doing standard search
-
-        search_type = QtWidgets.QActionGroup(self)
-        search_type.addAction(search_incremental)
-        search_type.addAction(search_standard)
-
-        search_menu.addAction(search_incremental)
-        search_menu.addAction(search_standard)
-        search_menu.addSeparator()
-
         a_search_all = action("Search All Contexts", partial(self.searchcontext, search='all'), checkable=True)
         a_search_all.setChecked(True)
         self.a_search_all = a_search_all
@@ -621,19 +582,10 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.search = lineEdit
 
-        #if g.xapianenabled:
-        if False:
-            #FLAG_PARTIAL is the startup default but it could be set in ini file so will leave the if/else
-            if self.query_parse_flag == xapian.QueryParser.FLAG_PARTIAL:
-                self.search.textEdited.connect(self.do_search)
-            else:
-                self.search.returnPressed.connect(self.do_search)
-        else:
-            lineEdit.setDisabled(True)
-            
-        lineEdit.setDisabled(False)
-        self.query_parse_flag = 10   
+        #lineEdit.setDisabled(False)
+        #self.query_parse_flag = 10   
         self.search.textEdited.connect(self.do_search)
+
         # needs to be here because the actions need to have been defined (in Menus section)
         self.tab_manager.setContextMenuPolicy(Qt.ActionsContextMenu)
         add_actions(self.tab_manager, (a_change_tab_name, a_showcompleted, a_showhidefilterby, a_toggle_collapsible, a_savetab))#####
@@ -980,7 +932,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.status.showMessage("Successfully loaded %s"%Properties['title'])
 
-        #self.connect(LBox, QtCore.SIGNAL("currentItemChanged(QListWidgetItem*,QListWidgetItem*)"), self.filterlist)
         LBox.currentItemChanged.connect(self.filterlist) #12-19-2014
 
 
@@ -2761,11 +2712,10 @@ class ListManager(QtWidgets.QMainWindow):
     @check_task_selected
     def whooshtaskinfo(self, check=False):
         
-        text, ok = QtWidgets.QInputDialog.getText(self,"xapian","Enter search terms", QtWidgets.QLineEdit.Normal)
+        text, ok = QtWidgets.QInputDialog.getText(self,"Whoosh","Enter search terms", QtWidgets.QLineEdit.Normal)
         
         if ok and text:
             print_(text)
-            self.Properties['query_parse_flag'] = self.query_parse_flag
             results = self.get_query_ids(text)
             
             try:
@@ -2993,21 +2943,6 @@ class ListManager(QtWidgets.QMainWindow):
             self.search_contexts = None
             print('all')
 
-
-
-    def searchtype(self, search_type=None):
-        
-        if search_type == 'incremental':
-            self.query_parse_flag = xapian.QueryParser.FLAG_PARTIAL
-            self.disconnect(self.search, QtCore.SIGNAL("returnPressed()"), self.do_search) 
-            self.connect(self.search, QtCore.SIGNAL("textEdited(QString)"), self.do_search)
-        else:
-            self.query_parse_flag = xapian.QueryParser. FLAG_BOOLEAN|xapian.QueryParser.FLAG_BOOLEAN_ANY_CASE|xapian.QueryParser.FLAG_PHRASE  #xapian.QueryParser.FLAG_DEFAULT 
-            self.disconnect(self.search, QtCore.SIGNAL("textEdited(QString)"), self.do_search)
-            self.connect(self.search, QtCore.SIGNAL("returnPressed()"), self.do_search)
-
-
-        
     def do_search(self, text=None):
         
         print("do search")
@@ -3028,8 +2963,7 @@ class ListManager(QtWidgets.QMainWindow):
         if self.active_search:
             self.tab_manager.setCurrentWidget(self.active_search)
             self.Properties['query_string'] = query_string
-            self.Properties['search_contexts'] = self.search_contexts  #######################
-            self.Properties['query_parse_flag'] = self.query_parse_flag
+            self.Properties['search_contexts'] = self.search_contexts
             self.refreshlistonly()
         else:
             tab_title = '*SEARCH'
@@ -3044,48 +2978,20 @@ class ListManager(QtWidgets.QMainWindow):
                                        collapsible=False,
                                        col_order = ['box','startdate','star','title','context','tag'],
                                        search_contexts=self.search_contexts,
-                                       query_string=query_string,
-                                       query_parse_flag=self.query_parse_flag)
+                                       query_string=query_string)
 
             self.active_search = self.tab_manager.currentWidget()
 
-
-
-
-
-    def get_query_ids_(self, query_string):
-        '''
-    Flags for the xapian parse query method
-    The default flags are FLAG_PHRASE|FLAG_BOOLEAN|FLAG_LOVEHATE.
-    FLAG_PHRASE = support quoted phrases
-    FLAG_BOOLEAN = AND, OR
-    FLAG_LOVEHATE = allow use of +, -
-    The above three are the default (FLAG_DEFAULT)
-    for not incremental/partial searches now using FLAG_BOOLEAN_ANY_CASE|FLAG_PHRASE
-    '''
-
-        query = self.xapian_qp.parse_query(query_string, self.Properties['query_parse_flag']) ## enables it to work for saved searches
-        self.xapian_enquire.set_query(query)
-
-        matches = self.xapian_enquire.get_mset(0, 100) 
-        return [int(m.docid) for m in matches]
-
     def get_query_ids(self, query_string):
         '''
-    Flags for the xapian parse query method
-    The default flags are FLAG_PHRASE|FLAG_BOOLEAN|FLAG_LOVEHATE.
-    FLAG_PHRASE = support quoted phrases
-    FLAG_BOOLEAN = AND, OR
-    FLAG_LOVEHATE = allow use of +, -
-    The above three are the default (FLAG_DEFAULT)
-    for not incremental/partial searches now using FLAG_BOOLEAN_ANY_CASE|FLAG_PHRASE
-    '''
+        Now based on Whoosh 
+        '''
 
-        query = Or([Prefix('title', query_string), Prefix('note', query_string)])
+        query = Or([Prefix('title', query_string), Prefix('note', query_string)]) #needs tags
         print(repr(query))
         results = self.searcher.search(query, limit=50)
         
-        return [r['task_id'] for r in results] #int if using ID but don't think so if NUMERIC
+        return [r['task_id'] for r in results] 
 
     def get_current_tasks(self, priority=None): 
         '''returns a query unless its a Find - need to think about that'''
