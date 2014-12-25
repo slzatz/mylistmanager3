@@ -120,7 +120,6 @@ check_task_selected = g.check_task_selected
 update_whooshdb = g.update_whooshdb
 update_row = g.update_row
 
-
 class ListManager(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(ListManager, self).__init__(parent)
@@ -446,8 +445,6 @@ class ListManager(QtWidgets.QMainWindow):
         a_newtask = action("&New Task", self.newtask, 'Alt+I', icon='list_add')
         a_togglecompleted = action("Toggle Completed", self.togglecompleted, icon_res=':/bitmaps/filledbox.png') 
         a_togglestar = action("Toggle Star", self.togglestar, icon_res=':/bitmaps/star.png', checkable=True)
-        #self.a_togglestar = a_togglestar
-
          
         p_action = QtWidgets.QAction(QtGui.QIcon(':/bitmaps/priority'), 'Set Priority', self)
 
@@ -504,7 +501,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_resetinterp = action("Reset Console", self.resetinterp)
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb)
-        a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim)
+        a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+N')
 
         add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
@@ -1538,9 +1535,6 @@ class ListManager(QtWidgets.QMainWindow):
         #self.myevent.signal.emit("new_item", task.id, 1)
         self.myevent.signal.emit('newtask', {'task':task, 'task_id':task.id, 'session':session, 'tab_type':tab_type, 'tab_value':tab_value})
 
-
-
-
     @update_row
     @check_modified
     @check_task_selected
@@ -1548,8 +1542,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.task.deleted = not self.task.deleted
         session.commit()
-        
-
             
     @update_row
     @update_whooshdb
@@ -1660,6 +1652,7 @@ class ListManager(QtWidgets.QMainWindow):
                 tab_icon = things[title]
                 
                 self.createnewtab(title=tab_title, tab={'type':type_, 'value':title}, tab_icon=tab_icon, filter_by=filter_by)
+
     def showrecentitems(self, tab_value=None):
 
         show_completed = True if tab_value in ('ALL', 'Completed') else False
@@ -2021,14 +2014,6 @@ class ListManager(QtWidgets.QMainWindow):
                     item.setForeground(color)
                     table.setItem(n, c, item)
 
-
-
-                    
-
-
-
-                            
-                
         else:
             collapsed = QtGui.QIcon('bitmaps/collapsed.png')
             expanded = QtGui.QIcon('bitmaps/expanded.png')
@@ -2069,19 +2054,12 @@ class ListManager(QtWidgets.QMainWindow):
                             item.setForeground(color)
                             table.setItem(n, c, item)
 
-
-
-                            
-
-
-
-                                    
-
                         n+=1
             
             table.setRowCount(n) # correct the row count
             
         return rows            
+
     @check_modified
     def itemselected(self):
 
@@ -2666,11 +2644,10 @@ class ListManager(QtWidgets.QMainWindow):
 
     def file_changed_in_vim(self, path):
         print('File Changed: %s' % path)
-        self.setWindowTitle(path)
         task_id = self.vim_files[path]
         f = open(path, mode='r')
         text = f.read()
-        print(text)
+        #print(text)
         self.task.note = text
         session.commit()
        # kluge to get rid of extra line after a pre block
@@ -2680,12 +2657,13 @@ class ListManager(QtWidgets.QMainWindow):
         self.note.setHtml(simple_html)
         self.db_note.setPlainText(text)
 
-        self.modified = {}
-
-        print_("Note Saved from Vim")
+        #self.modified = {}
+        task = session.query(Task).get(task_id)
+        
+        print_("Note Saved from Vim was note id: {} title: {}".format(task_id,task.title))
 
     def edit_note_in_vim(self):
-        note = self.task.note if self.note else ''
+        note = self.task.note if self.task.note else ''
         temp = tempfile.NamedTemporaryFile(mode='w', prefix='lm', suffix='.tmp', delete=False)
         temp.write(note)
         temp.flush()
@@ -3426,6 +3404,7 @@ class Table(QtWidgets.QTableWidget):
             self.editor_open = False
             print("shortcut active")
             return False
+            
     def removecolumn(self):
         print("Remove column")
         print("column={0}".format(self.hheader.selectedcolumn))
@@ -3442,8 +3421,6 @@ class Table(QtWidgets.QTableWidget):
         
         QtCore.QTimer.singleShot(0, lambda: self.parent.fullsize(w))
         
-
-        
 class Header(QtWidgets.QHeaderView):
     def __init__(self, parent):    
         super(Header, self).__init__(Qt.Horizontal, parent)
@@ -3455,10 +3432,6 @@ class Header(QtWidgets.QHeaderView):
         #self.leftpressed = False # not sure this is necessary but might as well define it
         #self.rightpressed = False # not sure this is necessary but might as well define it
         
-
-        
-
-
     def mousePressEvent(self, e):
         
         if e.button() == Qt.RightButton:
@@ -3627,7 +3600,6 @@ class NoteManager(QtWidgets.QMainWindow):
         if z.exec_() == QtGui.QDialog.Accepted:
             print(printer.orientation())
 
-
     def savenote(self):
         self.main_window.savenote()
 
@@ -3705,7 +3677,8 @@ if __name__ == '__main__':
     app.setWindowIcon(QtGui.QIcon('bitmaps/mlm.png')) 
     mainwin = ListManager()
     
-    print = print_ = mainwin.logger.write # or print or print_ = g.logger.write (eventually leave print alone)
+    #print = print_ = mainwin.logger.write # or print or print_ = g.logger.write (eventually leave print alone)
+    print_ = mainwin.logger.write #made this change on 12-24-2014 - assume now print actually prints to the console but we'll see 
     
     # import is here so synchronize and toodledo are imported after ListManager instance is created since synchronize accesses pb and logger
     #and toodledo2 prints to logger
