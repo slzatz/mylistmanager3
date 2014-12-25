@@ -1343,7 +1343,7 @@ class ListManager(QtWidgets.QMainWindow):
 
     @check_task_selected
     @check_modified
-    def select_tags(self):
+    def select_tags(self, check=False):
         
         context = self.task.context.title
         titles = sorted(self.get_keywords('context', context), key=str.lower)

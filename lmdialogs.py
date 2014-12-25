@@ -260,8 +260,6 @@ class SynchResults(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-
-
 #@+node:slzatz.20100314151332.2784: ** ChoiceDlg
 class ChoiceDlg(QDialog):
 
@@ -316,7 +314,6 @@ class VersionsDlg(QDialog):
         self.setLayout(layout)
         self.setWindowTitle(title)
         
-        #self.connect(buttonBox, QtCore.SIGNAL("accepted()"),self, QtCore.SLOT("accept()"))
         buttonBox.accepted.connect(self.accept)
 
 #@+node:slzatz.20120620063905.1702: ** SelectContextFolder
@@ -404,8 +401,8 @@ class MultiChoiceOrNew(QDialog):
         self.setLayout(layout)
         self.setWindowTitle(name)
 
-        self.connect(buttonBox, QtCore.SIGNAL("accepted()"),self, QtCore.SLOT("accept()"))
-        self.connect(buttonBox, QtCore.SIGNAL("rejected()"),self, QtCore.SLOT("reject()"))
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
 
         if initial_selection:
             self.setinitialselections(initial_selection)
@@ -505,18 +502,11 @@ class SelectIcon(QDialog):
         self.setLayout(layout2)
         self.setWindowTitle(name)
 
-        # A QDialog has the slots (methods) accept and reject
-        # Note that you can override those slots and still use
-        # the SLOT construction
-        self.connect(buttonBox, QtCore.SIGNAL("accepted()"),self, QtCore.SLOT("accept()"))
-        self.connect(buttonBox, QtCore.SIGNAL("rejected()"),self, QtCore.SLOT("reject()"))
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
 
-        self.connect(self.listWidget1, QtCore.SIGNAL("itemClicked(QListWidgetItem*)"), self.itwasclicked1)
-        self.connect(self.listWidget2, QtCore.SIGNAL("itemClicked(QListWidgetItem*)"), self.itwasclicked2)
-
-        # this actually works -- not sure why you'd use it but it shows how
-        # you include a C++ signature (if that's the right term)
-        #self.connect(buttonBox, SIGNAL("clicked(QAbstractButton*)"),self.itwasclicked)
+        self.listWidget1.itemClicked.connect(self.itwasclicked1)
+        self.listWidget2.itemClicked.connect(self.itwasclicked2)
 
         if initial_selection:
             self.set_initial_selection(initial_selection)
@@ -536,16 +526,11 @@ class SelectIcon(QDialog):
         print("it was clicked 2")
         self.listWidget1.clearSelection()
 
-    #def reject(self): #03/13/2010
-    #    print("cancel")
-    #    QDialog.reject(self) # can't do self.reject() since we've overwritten that method
-
     def accept(self):
-        #choice = self.listWidget1.selectedItems() if self.listWidget1.selectedItems() else self.listWidget2.selectedItems()
         choice = self.listWidget2.selectedItems()
         self.icon_choice = choice[0].text() if choice else None 
 
-        QDialog.accept(self) # can't do self.accept() since we've overwritten that method
+        QDialog.accept(self)
 
 #@+node:slzatz.20100314151332.2787: ** TaskDueDate
 class TaskDueDate(QDialog):
@@ -607,9 +592,9 @@ class TaskDueDateTime(QDialog):
         buttonBox.rejected.connect(self.reject)
         
         # the following was used for testing
-        self.connect(dteditor, QtCore.SIGNAL("dateTimeChanged(QDateTime)"), self.selection_changed)
-        self.connect(spin, QtCore.SIGNAL("valueChanged(int)"), self.do_something)
-        self.connect(spin, QtCore.SIGNAL("valueChanged(QString)"), self.do_something2)
+        dteditor.dateTimeChanged.connect(self.selection_changed)
+        spin.value.valueChanged[int].connect(self.do_something)
+        spin.value.valueChanged[str].connect(self.do_something2)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)
