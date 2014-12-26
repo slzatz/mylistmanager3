@@ -26,15 +26,12 @@ USER_ICONS = 'folder_icons'
 CORE_ICONS = ''
 LOG_FILE = os.path.join(cwd,'logfile.txt')
 VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
-#XAPIAN_DIR = os.path.join(cwd,'xapian')
 del cwd
 
 xapianenabled = False
 
 key = None
 timestamp = None
-
-
 
 #@+node:slzatz.20120318160356.1674: ** configparser
 config = configparser.RawConfigParser()
@@ -45,7 +42,6 @@ if config.has_option('Application', 'plugins'):
     plugins_enabled = config.getboolean('Application', 'plugins')
 else:
     plugins_enabled = False
-
 
 #@+node:slzatz.20120331211211.1719: ** create_action
 def create_action(parent, text, slot=None, shortcut=None, icon=None, icon_res=None, image=None, tip=None, checkable=False):
@@ -189,10 +185,6 @@ def update_row(f):
                 item = QtWidgets.QTableWidgetItem(*display[col](task))
                 item.setFont(lm.itemfont[task.priority])
                 table.setItem(n, c, item)
-            
-
-
-
                     
         #@-<<updaterow>>
                 

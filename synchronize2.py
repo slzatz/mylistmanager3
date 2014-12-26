@@ -1,12 +1,4 @@
 
-#@+leo-ver=5-thin
-#@+node:slzatz.20141220151846.44: * @file C:/Users/szatz/mylistman_p3/synchronize2_aws.py
-#@@first
-#@@nowrap
-#@@tabwidth -4
-#@@language python
-#@+others
-#@+node:slzatz.20120406192313.1744: ** imports
 
 import lmdialogs
 
@@ -34,7 +26,6 @@ from lmdb import *
 
 import lmglobals as g
 
-#@+node:slzatz.20120406192313.1745: ** global objects from config
 cg = g.config
 
 print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
@@ -45,10 +36,7 @@ print_("Hello from the synchronize2 module")
 
 pb = g.pb #this requires listmanager to be instantiatede
 
-#@+node:slzatz.20120409071537.1713: ** synchronize
 def synchronize(parent=None, showlogdialog=True, OkCancel=False):
-    #@+others
-    #@+node:slzatz.20120509083715.1683: *3* _typemap
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
     #...","remind":"0","star":"0","duedate":1336478400,"startdate":0,"added":1336132800,"duetime":1336456800}
@@ -78,10 +66,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
 
                         }
 
-    #parent=t.parent_tid, #? whether ignored in a non-pro acct
+    #not using concept of parent
 
-    #@+node:slzatz.20120409071537.1716: *3* get changes
-    #@+node:slzatz.20120409071537.1715: *4* timestamps etc
     nn = 0
 
     changes = [] #server changed context and folder
@@ -113,7 +99,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
     log+= "The last task edited on server was at {0} ---> {1}.\n".format(account_info.lastedit_task, datetime.datetime.fromtimestamp(account_info.lastedit_task).isoformat(' ')[:19])
     log+= "The last task deleted on server was at {0} ---> {1}.\n".format(account_info.lastdelete_task, datetime.datetime.fromtimestamp(account_info.lastdelete_task).isoformat(' ')[:19])
     log+="Note on May 13, 2012 the server clock seemed to be running about a minute slower than my computer clock\n\n"
-    #@+node:slzatz.20120409071537.1717: *4* server changes
     #contexts
     #http://api.toodledo.com/2/contexts/get.php?key=YourKey
     #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
@@ -165,7 +150,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         server_deleted_tasks = []
         log+="There were no Tasks that were deleted on the server since the last sync.\n\n"
 
-    #@+node:slzatz.20120409071537.1718: *4* client changes
     #contexts
     client_new_contexts = session.query(Context).filter(Context.created > last_client_sync).all()
     if client_new_contexts:
@@ -228,7 +212,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
     else:
         log+="There were no client Tasks deleted since the last sync.\n" 
 
-    #@+node:slzatz.20120409221559.1718: *4* sync or not
     log+="\nThe total number of changes is {0}.\n".format(nn)
      
     if showlogdialog and OkCancel:
@@ -243,7 +226,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
     pb.setValue(nnn)
     pb.show()
 
-    #@+node:slzatz.20120406192313.1747: *3* server_contexts -> client_contexts
     #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
 
     for sc in server_contexts:
@@ -275,7 +257,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         pb.setValue(nnn)
 
 
-    #@+node:slzatz.20120406192313.1748: *3* client_contexts -> server_contexts
     for c in client_new_contexts: # this is where we could check for simultaneous creation of folders by checking for title in server_folders
         temp_tid = c.tid
 
@@ -316,7 +297,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         log+="alternative method: new context: {0}".format(c.title)
         session.delete(c)
         session.commit()
-    #@+node:slzatz.20120406192313.1749: *3* server_deleted_contexts
     #server_contexts = client.getContexts()
     if server_contexts:
         server_context_tids = set([sc.id for sc in server_contexts])
@@ -349,10 +329,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
             
            
 
-    #@+node:slzatz.20120406192313.1750: *3* client_deleted_contexts
     #no code for client deleted contexts yet
 
-    #@+node:slzatz.20120406192313.1751: *3* server_folders -> client_folders
      #[{"id":"123","name":"Shopping","private":"0","archived":"0","ord":"1"},...]
     for sf in server_folders:
         try:
@@ -385,7 +363,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         nnn+=1
         pb.setValue(nnn)
 
-    #@+node:slzatz.20120406192313.1752: *3* client_folders -> server_folders
     for f in client_new_folders:
         temp_tid = f.tid
 
@@ -429,7 +406,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         session.delete(f)
         session.commit()
 
-    #@+node:slzatz.20120406192313.1753: *3* server_deleted_folders
     if server_folders:
         server_folder_tids = set([sf.id for sf in server_folders])
         client_folder_tids = set([cf.tid for cf in session.query(Folder).filter(Folder.tid!=0)])
@@ -457,10 +433,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
             nnn+=1
             pb.setValue(nnn)
             
-    #@+node:slzatz.20120406192313.1754: *3* client_deleted_folders
     #no code for client deleted folders yet
 
-    #@+node:slzatz.20120406192313.1755: *3* server_tasks -> client_tasks
     # Update client with server changes - both new and edited tasks
     # fields='folder,star,priority,duedate,context,tag,added,note' plus always returns id, title, modified, completed 
     # note that while modified is passed from the server we don't do anything with it since client and server modified are different
@@ -537,7 +511,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         nnn+=1
         pb.setValue(nnn)
 
-    #@+node:slzatz.20120406192313.1756: *3* client_edited_tasks -> server_tasks
     #Update tasks on server with client edited tasks
     #if client_edited_tasks:
     log+= "\nTasks edited on this client that were updated on the server:\n" if client_edited_tasks else ''
@@ -583,7 +556,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
             
         n+=50
             
-    #@+node:slzatz.20120411062000.1722: *3* client_new_tasks -> server_tasks
     log+="\nNew client tasks that were added to the server:\n" if client_new_tasks else ''
 
     n=0
@@ -620,7 +592,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
             
         n+=50
         
-    #@+node:slzatz.20120406192313.1757: *3* server_task_deletes -> client_task_deletes
     # Delete from client tasks deleted on server
     # uses deletelist
     for t in server_deleted_tasks:
@@ -645,7 +616,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         nnn+=1
         pb.setValue(nnn)
         
-    #@+node:slzatz.20120411062000.1720: *3* client_task_deletes -> server_task_deletes
     # uses deletelist
     tids_to_delete = []
     client_tasks = []
@@ -695,7 +665,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
                 
             
         
-    #@+node:slzatz.20120409071537.1714: *3* the end
     sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
 
     sync.unix_timestamp = int(time.time()+5) #time.time returns a float but we're constantly using int timestamps
@@ -716,9 +685,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
         dlg.exec_()
         
     return log,changes,tasklist,deletelist 
-    #@-others
     
-#@+node:slzatz.20120406192313.1758: ** downloadtasksfromserver
 def downloadtasksfromserver():
     '''
     sends all tasks on server down to client
@@ -883,5 +850,3 @@ def downloadtasksfromserver():
     
     pb.hide() 
 
-#@-others
-#@-leo

@@ -97,7 +97,7 @@ if not DB_EXISTS and args.sqlite:
     except OSError:
         sys.exit("Could not create directory for sqlite database")
 
-from lmdb_aws import *
+from lmdb import *
 
 if args.db_create:
     engine.echo = True
@@ -759,7 +759,7 @@ class ListManager(QtWidgets.QMainWindow):
             print_("Unable to get toodledo key")
             return
         
-        synchronize2_aws.downloadtasksfromserver()
+        synchronize2.downloadtasksfromserver()
         
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb()
@@ -2522,7 +2522,7 @@ class ListManager(QtWidgets.QMainWindow):
             return
         
         # note this is calling the json synchronize2!
-        self.sync_log, changes, tasklist, deletelist = synchronize2_aws.synchronize(parent=self, 
+        self.sync_log, changes, tasklist, deletelist = synchronize2.synchronize(parent=self, 
                                                                                                      showlogdialog=True, 
                                                                                                      OkCancel=True)
         print("changes={0}".format(changes))
@@ -3104,11 +3104,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         return tasks
 
-    def get_display_age__(self, t):
-        age = t.age
-        s = ('%s day'%age.days + 's'*(age.days!=1)) if age.days else ('%s hour'%int((age.seconds/3600)) + 's'*int((age.seconds/3600!=1)))
-        return (s + ' ago',)
-
     def get_keywords(self, tab_type, tab_value):
 
        # I believe the context and folder queries only pick up keywords where there is an associated task
@@ -3123,16 +3118,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         keywords.sort(key=lambda x:str.lower(x.name))
         keyword_names = [keyword.name for keyword in keywords]
-
-        #looks like trying to remove blank keywords but that just seems stupid - make sure we prevent them
-        # while 1:
-            # if keyword_names: # Added 4/1/2012
-                # if not keyword_names[0].strip():
-                    # del keyword_names[0]
-                # else:
-                    # break
-            # else:
-                # break
 
         return keyword_names
 
@@ -3576,7 +3561,7 @@ if __name__ == '__main__':
     # import is here so synchronize and toodledo are imported after ListManager instance is created since synchronize accesses pb and logger
     #and toodledo2 prints to logger
  
-    import synchronize2_aws
+    import synchronize2
     import toodledo2
     #import clean_email
     
