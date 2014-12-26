@@ -821,6 +821,7 @@ class ListManager(QtWidgets.QMainWindow):
         painter.end()
 
         return imagewithoverlay
+
     def createsavedtab(self, properties, n): 
 
     #for i, properties in enumerate(self.savedtabs): # probably wouldn't need self
@@ -850,23 +851,11 @@ class ListManager(QtWidgets.QMainWindow):
 
         #self.m_savedtabsmenu.addAction(aa) # would need self
         #self.savedtabsactions.append(aa) # probably wouldn't need self
+
     def shownotemenus(self, floating):
         self.note_manager.menuBar().setVisible(floating)
 
-    def respond_to_events(self, msg, id_, priority): #self.myevent.signal.emit("Hello from increment priority", self.task.id, priority)
-    #def respond_to_events(self, source, d):
-        print_("source={}".format(msg))
-        print_("task.id={}".format(id_))
-        print_("other={}".format(priority))
-        
-        if msg=='new_item':
-            task = session.query(Task).get(id_)
-            task.remind = 1
-            task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
-            session.commit()
-
     def createnewtab(self, **kw):
-
         '''
         must have title=xxxx and tab={'type':xxxx,'value':yyyy}
         self.InitialProperties = {
@@ -920,7 +909,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         sort = Properties['sort']
         if sort['column']:
-            #col = self.col_order.index(sort['column']) #Properties['col_order'], should get rid of self.col_order - bothers me
             col = Properties['col_order'].index(sort['column']) #prob in some places just do col_order Properties['col_order']
             img = QtGui.QIcon(self.arrows[sort['direction']])
             col_item = table.horizontalHeaderItem(col)
@@ -1152,7 +1140,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_modified
     @check_task_selected
-    def setduedate(self):
+    def setduedate(self, check=None):
 
         task = self.task
         idx = self.index
@@ -1176,7 +1164,7 @@ class ListManager(QtWidgets.QMainWindow):
         
         state = bool(task.remind)
 
-        dlg = lmdialogs.TaskDueDateTime(title="Select a date", qdatetime=qdt, state=state, parent=self) #####
+        dlg = lmdialogs.TaskDueDateTime(title="Select a date", qdatetime=qdt, state=state, parent=self)
 
         if dlg.exec_(): # if cancel - dlg.exec_ is False
             qdatetime = dlg.qdatetime # QDateTime
@@ -1197,7 +1185,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_modified
     @check_task_selected
-    def setduedate2(self, duedate, remind=None):
+    def setduedate2(self, check=None, duedate=None, remind=None):
 
         task = self.task
         task.duedate = task.duetime = duedate
@@ -1431,7 +1419,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         task = Task(priority=3, title='<New Item>')
         
-        ############################## this should be an option that all new items remind/alarm
+        ############################## this is now in a plugin event - should be an option that all new items remind/alarm
         #if 1:
         #    task.remind = 1
         #    task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
@@ -3565,7 +3553,6 @@ class Logger (QtWidgets.QPlainTextEdit):
         QtGui.QMessageBox.information(self,  'Information', "Appended test to logfile.txt")
 
 class MyEvent(QtCore.QObject):
-    #signal = QtCore.pyqtSignal(str, int, int)
     signal = QtCore.pyqtSignal(str, dict)
 
 if __name__ == '__main__':  

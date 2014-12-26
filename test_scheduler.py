@@ -8,6 +8,10 @@ sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitt
 from flask import Flask
 from twitter import *
 
+import lmglobals as g #moved from below on 12-21-2014
+g.DB_URI = g.sqlite_uri #lmdb needs this set before called
+from lmdb_aws import *
+
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # twitter
@@ -25,6 +29,14 @@ def alarm(msg):
 scheduler = BackgroundScheduler()
 url = 'sqlite:///scheduler_test.sqlite'
 scheduler.add_jobstore('sqlalchemy', url=url)
+
+#tasks = session.query(Task).filter(Task.remind == 1)
+#tasks.filter(and_(Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)), ~(Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())))
+tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
+print("tasks=",tasks)
+for t in tasks:
+    print(t.id)
+    j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:15], args=[t.title])
 
 scheduler.start()
 
@@ -47,7 +59,7 @@ def add(delay, msg):
 @app.route("/")
 def index():
     print(scheduler.get_jobs())
-    return '  ---'.join(x.name+' '+str(x.id)+'<br>' for x in scheduler.get_jobs())
+    return '<br><br>'.join(x.name+'<br>'+str(x.id)+'<br>'+x.trigger.run_date.isoformat() for x in scheduler.get_jobs())
 
 if __name__ == '__main__':
-    app.run(host=HOST, debug=DEBUG)
+    app.run(host=HOST, debug=DEBUG, use_reloader=False)

@@ -593,8 +593,8 @@ class TaskDueDateTime(QDialog):
         
         # the following was used for testing
         dteditor.dateTimeChanged.connect(self.selection_changed)
-        spin.value.valueChanged[int].connect(self.do_something)
-        spin.value.valueChanged[str].connect(self.do_something2)
+        spin.valueChanged[int].connect(self.do_something)
+        spin.valueChanged[str].connect(self.do_something2)
 
         layout.addWidget(buttonBox)
         self.setLayout(layout)

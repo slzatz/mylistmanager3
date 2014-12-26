@@ -242,9 +242,9 @@ mapper(Sync, sync_table)
 mapper(Temp_tid, temp_tid_table)
 
 #mapper(Reminder, reminder_table) 
+
 print("g.DB_URI=",g.DB_URI)
 engine = create_engine(g.DB_URI, echo=False)
-#engine = create_engine(rds_uri, echo=False)
 metadata.bind = engine
 metadata.create_all(engine)
 

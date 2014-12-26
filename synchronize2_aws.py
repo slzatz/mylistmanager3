@@ -807,6 +807,7 @@ def downloadtasksfromserver():
         task.tag = t.tag
         task.completed = t.completed    
         task.note = t.note
+        task.remind = t.remind
         
 #        try:
 #            task.parent_tid = t.parent #only in pro accounts
