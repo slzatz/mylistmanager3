@@ -1,12 +1,4 @@
 
-#@+leo-ver=5-thin
-#@+node:slzatz.20141220151846.42: * @file C:/Users/szatz/mylistman_p3/lmdialogs.py
-#@@first
-#@@nowrap
-#@@tabwidth -4
-#@@language python
-#@+others
-#@+node:slzatz.20100314151332.2778: ** imports
 
 
 import sys
@@ -34,8 +26,6 @@ Close = QtWidgets.QDialogButtonBox.Close
 
 
 
-#@+node:slzatz.20100314151332.2779: ** TaskInfo Dialog
-#@+node:slzatz.20100314151332.2780: *3* TaskInfo
 class TaskInfo(QDialog):
 
     def __init__(self, name, data=None, labels=None, parent=None):
@@ -57,7 +47,6 @@ class TaskInfo(QDialog):
 
         buttonBox.accepted.connect(self.accept)
 
-#@+node:slzatz.20100314151332.2781: *3* TaskInfoTable
 class TaskInfoTable(QtWidgets.QTableWidget): 
     def __init__(self, parent, data=None, labels=None):
         super(TaskInfoTable, self).__init__(parent)
@@ -98,7 +87,6 @@ class TaskInfoTable(QtWidgets.QTableWidget):
         #self.setSelectionBehavior(QTableWidget.SelectRows)
         #self.setSelectionMode(QTableWidget.SingleSelection)
 
-#@+node:slzatz.20100314151332.2782: *3* NoteItemDelegate
 class NoteItemDelegate(QtWidgets.QItemDelegate):
 
     def __init__(self, parent = None):
@@ -138,8 +126,6 @@ class NoteItemDelegate(QtWidgets.QItemDelegate):
         editor.setText(text)
 
 
-#@+node:slzatz.20120527203527.1701: ** TextColor Dialog
-#@+node:slzatz.20120527203527.1702: *3* TextColor
 class TextColor(QDialog):
 
     def __init__(self, name, things, parent=None, type_=None): #highlight
@@ -181,7 +167,6 @@ class TextColor(QDialog):
         row = ranges[0].topRow() if ranges else -1  
         self.print_("In itemselected; row = {}".format(row))
         
-#@+node:slzatz.20120527203527.1703: *3* TextColorTable
 class TextColorTable(QtWidgets.QTableWidget): 
     def __init__(self, parent, things, type_):
         super(TextColorTable, self).__init__(parent)
@@ -232,7 +217,6 @@ class TextColorTable(QtWidgets.QTableWidget):
 
         self.setAlternatingRowColors(True)
 
-#@+node:slzatz.20100314151332.2783: ** SynchResults
 class SynchResults(QDialog):
     def __init__(self, title, text=None, parent=None, OkCancel=False):
         super(SynchResults, self).__init__(parent)
@@ -260,7 +244,6 @@ class SynchResults(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-#@+node:slzatz.20100314151332.2784: ** ChoiceDlg
 class ChoiceDlg(QDialog):
 
     def __init__(self, name, stringlist=None, multi=True, label_text=None, parent=None):
@@ -300,7 +283,6 @@ class ChoiceDlg(QDialog):
             
         super(ChoiceDlg, self).accept()
 
-#@+node:slzatz.20100314151332.3086: ** VersionsDlg
 class VersionsDlg(QDialog):
 
     def __init__(self, title, text=None, parent=None):
@@ -316,7 +298,6 @@ class VersionsDlg(QDialog):
         
         buttonBox.accepted.connect(self.accept)
 
-#@+node:slzatz.20120620063905.1702: ** SelectContextFolder
 class SelectContextFolder(QDialog):
 
     def __init__(self, name, d=None, parent=None, initial_selection=None, multi=False, new_entry=True):
@@ -374,10 +355,7 @@ class SelectContextFolder(QDialog):
 
         super(SelectContextFolder, self).accept()
 
-#@+node:slzatz.20120304081931.1661: ** MultiChoiceOrNew
 class MultiChoiceOrNew(QDialog):
-    #@+others
-    #@+node:slzatz.20120304081931.1662: *3* __init__
     def __init__(self, name, stringlist=None, parent=None, initial_selection=None):
         super(MultiChoiceOrNew, self).__init__(parent)
 
@@ -409,7 +387,6 @@ class MultiChoiceOrNew(QDialog):
 
         self.listWidget.setFocus()
 
-    #@+node:slzatz.20120304081931.1663: *3* setinitialselections
     def setinitialselections(self, initial_selection):
         for text in initial_selection:
             result = self.listWidget.findItems (text, Qt.MatchFixedString) #MatchFixedString flag performs a case insensitive search
@@ -417,7 +394,6 @@ class MultiChoiceOrNew(QDialog):
                 item = result[0]
             self.listWidget.setItemSelected(item, True)
 
-    #@+node:slzatz.20120304081931.1664: *3* accept
     def accept(self):
         self.choices = [item.text() for item in self.listWidget.selectedItems()]
         self.newentry = self.lineEdit.text() # added self # 03/13/2010
@@ -425,8 +401,6 @@ class MultiChoiceOrNew(QDialog):
         #QDialog.accept(self) # can't do self.accept() since we've overwritten that method
         super(MultiChoiceOrNew, self).accept()
 
-    #@-others
-#@+node:slzatz.20120613065744.1701: ** SelectIcon
 class SelectIcon(QDialog):
 
     def __init__(self, name, things=None, pngs=None, parent=None, initial_selection=None, type_=None):
@@ -532,7 +506,6 @@ class SelectIcon(QDialog):
 
         QDialog.accept(self)
 
-#@+node:slzatz.20100314151332.2787: ** TaskDueDate
 class TaskDueDate(QDialog):
     def __init__(self, title, date=None, parent=None):
         super(TaskDueDate, self).__init__(parent)
@@ -567,7 +540,6 @@ class TaskDueDate(QDialog):
         self.date = self.calendar.selectedDate()
         super(TaskDueDate, self).accept()
 
-#@+node:slzatz.20120505112324.1683: ** TaskDueDateTime
 class TaskDueDateTime(QDialog):
     def __init__(self, title, qdatetime=None, state=None, parent=None):
         super(TaskDueDateTime, self).__init__(parent)
@@ -649,7 +621,6 @@ class TaskDueDateTime(QDialog):
         self.setalarm = self.alarm.isChecked()
         super(TaskDueDateTime, self).accept()
 
-#@+node:slzatz.20120506103546.1683: ** AlarmSpinBox
 class AlarmSpinBox(QtWidgets.QSpinBox):
     def __init__(self, parent=None):
         super(AlarmSpinBox, self).__init__(parent)
@@ -703,8 +674,6 @@ class AlarmSpinBox(QtWidgets.QSpinBox):
     
         
     
-#@+node:slzatz.20100314151332.2788: ** ModifyColumns Dialog
-#@+node:slzatz.20120324175830.1713: *3* Modify Columns
 class ModifyColumns(QDialog):
 
     def __init__(self, parent=None, lst=None, lst2=None):
@@ -746,7 +715,6 @@ class ModifyColumns(QDialog):
         self.lst = lst
 
         super(ModifyColumns, self).accept()
-#@+node:slzatz.20120324175830.1714: *3* LWidget
 class LWidget(QtWidgets.QListWidget):
     def __init__(self, parent=None, lst=None):
         super(LWidget, self).__init__(parent) ###########
@@ -794,5 +762,3 @@ class LWidget(QtWidgets.QListWidget):
         event.accept()
 
 
-#@-others
-#@-leo

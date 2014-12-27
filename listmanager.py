@@ -60,6 +60,8 @@ import whoosh.index as index
 from whoosh.query import Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 
+from lmdb import *
+
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
 # for all of the following: if the command line option is not present then the value is True and startup is normal
@@ -72,9 +74,13 @@ parser.add_argument('--db_create', action='store_true', help="Create new databas
 args = parser.parse_args()
 
 if args.sqlite:
-    g.DB_URI = g.sqlite_uri
+    #g.DB_URI = g.sqlite_uri
+    session = local_session
+    engine = local_engine
 else:
-    g.DB_URI = g.rds_uri 
+    #g.DB_URI = g.rds_uri 
+    session = remote_session
+    engine = remote_engine
 
 if args.db_create:
     print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
@@ -462,7 +468,8 @@ class ListManager(QtWidgets.QMainWindow):
         add_actions(m_icon_color, (a_folder_icon_color, a_context_icon_color))
         toolmenu = self.menuBar().addMenu("&Tools")
 
-        a_synchronize = action("&Synchronize (json)", self.synchronize, 'Alt+S', icon='arrow_ns')
+        a_synchronize_local = action("&Synchronize (local)", self.synchronize, 'Alt+S', icon='arrow_ns')
+        a_synchronize_remote = action("Synchronize (remote)", partial(self.synchronize, local=False))
         a_showsync_log = action("Show Synchronize Log", self.showsync_log)
         a_showdeleted = action("Show Deleted", self.showdeleted)
         a_removedeletedtasks = action("Remove Deleted Tasks ...", self.removedeletedtasks)
@@ -482,7 +489,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+N')
 
-        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
+        add_actions(toolmenu, (a_synchronize_local, a_synchronize_remote, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeletedtasks, a_removedeadkeywords, 
                                          a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb, a_edit_note_in_vim))
@@ -551,7 +558,7 @@ class ListManager(QtWidgets.QMainWindow):
         add_actions(displayToolbar, (a_refresh, None, a_showcompleted, a_toggle_collapsible, a_removesort, None, a_modifycolumns))
         toolsToolbar = self.addToolBar("Tools")
         toolsToolbar.setObjectName("Tools ToolBar")
-        toolsToolbar.addAction(a_synchronize)
+        toolsToolbar.addAction(a_synchronize_local)
         search_tb = QtWidgets.QToolButton()
         search_tb.setIcon(QtGui.QIcon('bitmaps/magnifier-left.png'))
         search_tb.setPopupMode(QtWidgets.QToolButton.InstantPopup)
@@ -697,11 +704,11 @@ class ListManager(QtWidgets.QMainWindow):
         self.myevent = MyEvent()
 
         try:
-            import myevents_aws
+            import myevents
         except ImportError as e:
             print(e)
         else:
-            self.myevent.signal.connect(myevents_aws.responses) # since only one signal don't need ...signal[str, dict].connect....
+            self.myevent.signal.connect(myevents.responses) # since only one signal don't need ...signal[str, dict].connect....
 
         # code to watch files that vim is editing
         self.fs_watcher = QtCore.QFileSystemWatcher()
@@ -1080,7 +1087,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_task_selected
     @check_modified
-    def togglecompleted(self):
+    def togglecompleted(self, checked):
 
         task = self.task 
 
@@ -1096,7 +1103,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_task_selected
     @check_modified
-    def togglestar(self):    
+    def togglestar(self, checked):    
 
         self.task.star = not self.task.star
         session.commit()
@@ -1110,8 +1117,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_task_selected
     @check_modified
-    def incrementpriority(self):
-
+    def incrementpriority(self, checked):
         task = self.task
         priority = task.priority
         priority += 1
@@ -1132,7 +1138,7 @@ class ListManager(QtWidgets.QMainWindow):
     # order is bottom to top
     @update_row
     @check_task_selected
-    def setpriority(self, priority=0):
+    def setpriority(self, checked, priority=0):
 
         self.task.priority = priority
         session.commit()
@@ -1140,7 +1146,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_modified
     @check_task_selected
-    def setduedate(self, check=None):
+    def setduedate(self, checked):
 
         task = self.task
         idx = self.index
@@ -1182,16 +1188,16 @@ class ListManager(QtWidgets.QMainWindow):
             
             session.commit()
 
-    @update_row
-    @check_modified
-    @check_task_selected
-    def setduedate2(self, check=None, duedate=None, remind=None):
+    #@update_row
+    #@check_modified
+    #@check_task_selected
+    #def setduedate2(self, check=None, duedate=None, remind=None):
 
-        task = self.task
-        task.duedate = task.duetime = duedate
-        task.remind = remind
-        
-        session.commit()
+    #    task = self.task
+    #    task.duedate = task.duetime = duedate
+    #    task.remind = remind
+    #    
+    #    session.commit()
 
     @update_row
     @check_modified
@@ -1267,12 +1273,12 @@ class ListManager(QtWidgets.QMainWindow):
         if folder:
             task.folder = folder
         else:
-            reply = QtGui.QMessageBox.question(self,
+            reply = QtWidgets.QMessageBox.question(self,
                                               "Confirmation",
                                               "Do you want to create a new folder?",
-                                              QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
+                                              QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
 
-            if reply == QtGui.QMessageBox.No:
+            if reply == QtWidgets.QMessageBox.No:
                 print("You said no to creating a new folder")
                 return
             
@@ -1331,7 +1337,7 @@ class ListManager(QtWidgets.QMainWindow):
 
     @check_task_selected
     @check_modified
-    def select_tags(self, check=False):
+    def select_tags(self, checked):
         
         context = self.task.context.title
         titles = sorted(self.get_keywords('context', context), key=str.lower)
@@ -1572,7 +1578,7 @@ class ListManager(QtWidgets.QMainWindow):
 
 
     @check_modified
-    def opentabs2(self, check, type_='context'): # check is there because qaction.trigger.connect(method) returns false
+    def opentabs2(self, checked, type_='context'): # check is there because qaction.trigger.connect(method) returns false
 
         '''
         Called by File OpenTabs
@@ -2118,7 +2124,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.refresh()
     @check_modified
     #@check_task_selected
-    def ondockwindow(self, check=False, dw=None, cur=True, check_task_selected=True): 
+    def ondockwindow(self, checked, dw=None, cur=True, check_task_selected=True): 
 
         if check_task_selected and (not self.task or self.index==-1):
             QtWidgets.QMessageBox.information(self,  'Note', "There was no row selected.  Please select one.") 
@@ -2511,8 +2517,18 @@ class ListManager(QtWidgets.QMainWindow):
         #self.Properties['col_widths'][c] = w 
         
         
-    def synchronize(self):
+    def synchronize(self, checked, local=True):
         
+        if not local:
+            reply = QtWidgets.QMessageBox.question(self,
+                                              "Confirmation",
+                                              "Are you sure you want to synchronize the remote db?",
+                                              QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+
+            if reply == QtWidgets.QMessageBox.No:
+                print("You said no to synching the remote db")
+                return
+
         if not g.internet_accessible():
             QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
             return
@@ -2523,24 +2539,25 @@ class ListManager(QtWidgets.QMainWindow):
         
         # note this is calling the json synchronize2!
         self.sync_log, changes, tasklist, deletelist = synchronize2.synchronize(parent=self, 
-                                                                                                     showlogdialog=True, 
-                                                                                                     OkCancel=True)
+                                                                                showlogdialog=True, 
+                                                                                OkCancel=True,
+                                                                                local=local)
         print("changes={0}".format(changes))
         print("tasklist={0}".format([t.title.encode('ascii', 'replace')[:30] for t in tasklist]))
         print("deletelist={0}".format(deletelist))
         
-        if 'contexts' in changes:
-            self.createcontextmenu()
-            
-        if 'folders' in changes:
-            self.createfoldermenu()
-            
-        if g.xapianenabled:
+        if local:
+            if 'contexts' in changes:
+                self.createcontextmenu()
+                
+            if 'folders' in changes:
+                self.createfoldermenu()
+                
             for task in tasklist:
-                self.updatexapianentry(task)
+                self.updatewhooshentry(task)
                 
             for id_ in deletelist:
-                self.deletefromxapiandb(id_)
+                self.deletefromwhooshdb(id_)
 
                 
     def showsync_log(self):
@@ -3144,47 +3161,17 @@ class ListManager(QtWidgets.QMainWindow):
      
         print_("Updated in Whoosh DB: task id: {0}, {1} ...".format(task.id, task.title[:40]))
         
-    def updatexapianentry2(self, task=None):
-        
-        # not really needed; the experiment of using add_term did nothing
-        
-        if task is None:
-            task = self.task
-        
-        result = QtGui.QInputDialog.getInteger(self,"Enter the Within Document Frequency value (integer)","wdf:")
-        
-        factor, b = result
-
-        if not b:
-            return
-
-        print("factor={0}".format(factor))
-        
-        doc = xapian.Document()
-                
-        indexer = self.xapian_indexer
-        indexer.set_document(doc)
-        
-        indexer.index_text(' '.join(task.tag.split(',') if task.tag else ''), factor)
-        indexer.index_text(task.title)
-        indexer.index_text(task.note if task.note else '')
-
-        self.xapian_database.replace_document(task.id, doc)
-        
-    def deletefromxapiandb(self, id_):
+    def deletefromwhooshdb(self, id_):
 
         try:
-            self.xapian_database.delete_document(id_)
-            
-        except xapian.DocNotFoundError as value:
-            
-            #print(value) # some problem
-            print("Task {0}:  -- was not in Xapian DB".format(id_))
+            self.ix.delete_by_term('task_id', id_) 
+            self.ix.commit()
+        except:
+            print("Task {0}:  -- was not in Whoosh DB".format(id_))
 
     def confirm(self, text):
         reply = QtWidgets.QMessageBox.question(self, "Confirmation", text, QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
         return reply==QtWidgets.QMessageBox.Yes
-
 
     def showversions(self):
 
@@ -3563,7 +3550,6 @@ if __name__ == '__main__':
  
     import synchronize2
     import toodledo2
-    #import clean_email
     
     mainwin.show()
     app.exec_() 

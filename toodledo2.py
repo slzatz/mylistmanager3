@@ -1,11 +1,6 @@
-#@+leo-ver=5-thin
-#@+node:slzatz.20141220151846.45: * @file C:/Users/szatz/mylistman_p3/toodledo2.py
-#@@nowrap
-#@@language python
-#@@tabwidth -4
-#@+others
-#@+node:slzatz.20120405095708.1779: ** imports
-#shamelessly stolen with a few mods from felix riedel's poodledo
+'''
+shamelessly stolen with a few mods from felix riedel's poodledo
+'''
 import os
 import sys
 import urllib.request, urllib.error, urllib.parse
@@ -30,23 +25,18 @@ print_ = g.logger.write
 
 print_("Hello from the toodledo2 module")
 
-
-
-#@+node:slzatz.20120412180128.1724: ** constants and global objects
 _SERVICE_URL = 'http://api.toodledo.com/2/'
 
 cg = g.config
 
 appid = 'mylistmanager2'
-#@+node:slzatz.20120405095708.1780: ** converters
-#@+node:slzatz.20120405095708.1783: *3* _date
+
 def _date(d):
     '''server sends an integer via JSON not a string and returns 0 for completed when task has not been completed'''
     
     z = datetime.date.fromtimestamp(d) if d else None    
     return z
 
-#@+node:slzatz.20120405095708.1784: *3* _datetime
 def _datetime(d):
     #note that duetime seems to come back as a string when it's zero which is why the "if int(d)
     try:
@@ -56,7 +46,6 @@ def _datetime(d):
         z = None
     return z
 
-#@+node:slzatz.20120512175333.1688: *3* _datetimetz
 def _datetimetz(d):
     #note that duetime comes back as a string when it's zero which is why the "if int(d)
     #utcfromtimestamp is essential
@@ -67,11 +56,9 @@ def _datetimetz(d):
         z = None
     return z
 
-#@+node:slzatz.20120405095708.1786: *3* _boolstr
 def _boolstr(s):
     return bool(int(s))
 
-#@+node:slzatz.20120412062855.1723: ** _typemap
 #folder:[{"id":"123","name":"Shopping","private":"0","archived":"0","ord":"1"}, ...]  
 #context: #[{"id":"123","name":"Work"}, ...]    
 # {"userid":"a1b2c3d4e5f6","alias":"John","pro":"0","dateformat":"0","timezone":"-6",
@@ -140,8 +127,6 @@ _typemap = {
 
           }
 
-
-#@+node:slzatz.20120406230150.1723: ** class DotDict
 class DotDict(dict):
     def __getattr__(self, attr):
         return self.get(attr, None)
@@ -149,7 +134,6 @@ class DotDict(dict):
     __setattr__= dict.__setitem__
     __delattr__= dict.__delitem__
     
-#@+node:slzatz.20120405095708.1789: ** class ToodledoError
 class ToodledoError(Exception):
     
     def __init__(self, errorcode=None, errordesc=None):
@@ -158,7 +142,6 @@ class ToodledoError(Exception):
 
     def __str__(self):
         return "{0} - {1}".format(self.errorcode, self.errordesc)
-#@+node:slzatz.20120418181155.1684: ** keycheck
 def keycheck():
     
     # we've synched at least once this session so g.key and g.timestamp were created
@@ -209,7 +192,6 @@ def keycheck():
             print_("**User abandoned providing email/pw so no key created**")
             return False
 
-#@+node:slzatz.20120418181155.1686: ** getnewkey
 def getnewkey():
     
     email = None
@@ -269,7 +251,6 @@ def getnewkey():
         
     return True
 
-#@+node:slzatz.20120418072219.1682: ** toodledo_call
 def toodledo_call(method, **kwargs):
     
     def convert(dic):
@@ -320,7 +301,6 @@ def toodledo_call(method, **kwargs):
         return response[0],  response[1:]
     else:
         return response
-#@+node:slzatz.20120418181155.1687: ** post
 def post(url, bdata):
     request = urllib.request.Request(url, bdata)
     stream = urllib.request.urlopen(request)
@@ -338,5 +318,3 @@ def post(url, bdata):
     else:
         return server_response
         
-#@-others
-#@-leo

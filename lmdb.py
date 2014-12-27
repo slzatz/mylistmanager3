@@ -16,7 +16,7 @@ import sqlalchemy.exc as sqla_exc
 
 import lmglobals as g
 
-__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc']
+__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'local_engine', 'remote_engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'local_session', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc']
 
 metadata = MetaData()
 
@@ -183,11 +183,15 @@ mapper(Sync, sync_table)
 mapper(Temp_tid, temp_tid_table)
 
 print("g.DB_URI=",g.DB_URI)
-engine = create_engine(g.DB_URI, echo=False)
-metadata.bind = engine
-metadata.create_all(engine)
+local_engine = create_engine(g.sqlite_uri, echo=False)
+#metadata.bind = engine # I think only really necessary if you're issuing a metadata.create_all(engine) command
+#metadata.create_all(engine) # only creates if tables not present but not
 
-Session = sessionmaker()
-Session.configure(bind=engine)
-session = Session()
+#Session = sessionmaker()
+#Session.configure(bind=engine)
+Local_Session = sessionmaker(bind=local_engine)
+local_session = Local_Session()
 
+remote_engine = create_engine(g.rds_uri, echo=False)
+Remote_Session = sessionmaker(bind=remote_engine)
+remote_session = Remote_Session()

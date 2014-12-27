@@ -1,4 +1,6 @@
-
+'''
+module to sync toodledo with a local/cloud database
+'''
 
 import lmdialogs
 
@@ -12,31 +14,24 @@ import configparser as configparser
 import json
 import urllib.request, urllib.parse, urllib.error
 import re
-
-#import urllib.request, urllib.parse, urllib.error will be needed for python 3.x
 import base64
-from optparse import OptionParser
 from functools import partial
-
-#import toodledo
 import toodledo2
-
-# all the db stuff and sqlalchemy
 from lmdb import *
-
 import lmglobals as g
 
-cg = g.config
+#cg = g.config
 
 print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
 
-print = print_
+#print = print_
 
 print_("Hello from the synchronize2 module")
 
-pb = g.pb #this requires listmanager to be instantiatede
+pb = g.pb #this requires listmanager to be instantiated
 
-def synchronize(parent=None, showlogdialog=True, OkCancel=False):
+def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
+
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
     #...","remind":"0","star":"0","duedate":1336478400,"startdate":0,"added":1336132800,"duetime":1336456800}
@@ -47,7 +42,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
     #previously _convert_ = lambda x: int(time.mktime(x.timetuple())) if x else 0, 
     #it's not the same and I think current _convert function is correct but not 100% sure
 
-        
     _typemap = {
                 
                     'id': str, 
@@ -74,6 +68,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
     tasklist= [] #server changed tasks
     deletelist = [] #server deleted tasks
 
+    session = local_session if local else remote_session
+    print(session.get_bind())
     toodledo_call = toodledo2.toodledo_call
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
@@ -82,10 +78,11 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
 
     sync = session.query(Sync).get('client') #switching server to timestamp
 
-    last_client_sync = sync.timestamp
-    last_server_sync = sync.unix_timestamp
+    last_client_sync = sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with toodledo
+    last_server_sync = sync.unix_timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues
 
-    log+= "JSON SYNC\n"
+    log+= "LISTMANAGER SYNCRONIZATION\n"
+    log+="Local\n" if local else "Remote\n"
     log+= "Local Time is {0}\n\n".format(datetime.datetime.now())
     delta = datetime.datetime.now() - last_client_sync
     log+= "The last time client & server were synced (based on client clock) was {0}, which was {1} days and {2} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
@@ -98,7 +95,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False):
 
     log+= "The last task edited on server was at {0} ---> {1}.\n".format(account_info.lastedit_task, datetime.datetime.fromtimestamp(account_info.lastedit_task).isoformat(' ')[:19])
     log+= "The last task deleted on server was at {0} ---> {1}.\n".format(account_info.lastdelete_task, datetime.datetime.fromtimestamp(account_info.lastdelete_task).isoformat(' ')[:19])
-    log+="Note on May 13, 2012 the server clock seemed to be running about a minute slower than my computer clock\n\n"
     #contexts
     #http://api.toodledo.com/2/contexts/get.php?key=YourKey
     #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
