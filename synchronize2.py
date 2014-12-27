@@ -544,7 +544,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             if 'errorCode' in s:
                 log+="Task tid: {0} title: {1} could not be updated on server; errorCode: {2} - errorDesc: {3}".format(c.tid, c.title, s.errorCode, s.get('errorDesc', ''))
             else:
-                #s.title = s.title.encode('ascii', 'replace')[:30] #not sure that encoding the unicode into a byte string is necessary 12-22-2014
                 log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
             
             nnn+=1
@@ -580,7 +579,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
                 c.added = s.added #### April 24, 2012
                 session.commit()
                 
-                #s.title = s.title.encode('ascii', 'replace')[:30] #not sure that encoding the unicode into a byte string is necessary 12-22-2014
                 log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
             
             nnn+=1
@@ -594,7 +592,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
         task = session.query(Task).filter_by(tid=t.id).first()
         if task:
                     
-            log+="Task deleted on Server deleted task on Client - id: {id_}; tid: {tid}; title: {title}\n".format(id_=task.id,tid=task.tid,title=task.title.encode('ascii', 'replace')[:30])
+            log+="Task deleted on Server deleted task on Client - id: {id_}; tid: {tid}; title: {title}\n".format(id_=task.id,tid=task.tid,title=task.title[:30])
             
             deletelist.append(task.id)
             
@@ -643,9 +641,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
         else:  
             for c,s in zip(client_tasks, server_tasks):
                 if 'errorCode' in s:
-                    log+="Task sqlite id: {0} title: {1} could not be deleted on server; errorCode: {2} - errorDesc: {3}".format(c.id, c.title.encode('ascii', 'replace')[:30], s.errorCode, s.get('errorDesc', ''))
+                    log+="Task sqlite id: {0} title: {1} could not be deleted on server; errorCode: {2} - errorDesc: {3}".format(c.id, c.title[:30], s.errorCode, s.get('errorDesc', ''))
                 else:
-                    log+= "Successfully deleted this task on server - tid: {tid} - {title}\n".format(tid=s.id, title=c.title.encode('ascii', 'replace')[:30])
+                    log+= "Successfully deleted this task on server - tid: {tid} - {title}\n".format(tid=s.id, title=c.title[:30])
             
                     deletelist.append(c.id) 
             

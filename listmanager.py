@@ -1032,7 +1032,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         # the first click into an unselected row should selelct the row but otherwise not do anything
         if not self.new_row: 
-            self.action[self.col_order[c]]()
+            self.action[self.col_order[c]](False) # to deal with qActions sending checked = False
         else:
             self.new_row = False
             
@@ -1188,21 +1188,10 @@ class ListManager(QtWidgets.QMainWindow):
             
             session.commit()
 
-    #@update_row
-    #@check_modified
-    #@check_task_selected
-    #def setduedate2(self, check=None, duedate=None, remind=None):
-
-    #    task = self.task
-    #    task.duedate = task.duetime = duedate
-    #    task.remind = remind
-    #    
-    #    session.commit()
-
     @update_row
     @check_modified
     @check_task_selected
-    def setdate(self, which):
+    def setdate(self, checked, which=None): #not a qAction method but need this because treating them the same
 
         task = self.task
         idx = self.index
@@ -1213,7 +1202,7 @@ class ListManager(QtWidgets.QMainWindow):
         taskdate = getattr(task, which)
         if taskdate:
             date = QtCore.QDate()
-            date.setYMD(taskdate.year, taskdate.month,taskdate.day)
+            date.setDate(taskdate.year, taskdate.month,taskdate.day)
         else:
             date = None
 
@@ -1414,7 +1403,7 @@ class ListManager(QtWidgets.QMainWindow):
 
     #@update_row #doesn't work for a new task but abbreviated version in body of method
     @check_modified
-    def newtask(self, evt=None):
+    def newtask(self, checked):
 
         table = self.table
         Properties = self.Properties
@@ -1483,7 +1472,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @check_modified
     @check_task_selected
-    def deletetask(self):
+    def deletetask(self, checked):
 
         self.task.deleted = not self.task.deleted
         session.commit()
@@ -2244,11 +2233,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.Properties['filter_by']['value'] = new_item.text()
         self.refreshlistonly()
-
-
-
-
-
 
     def columnclick(self, col):
         
