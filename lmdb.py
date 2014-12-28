@@ -182,13 +182,13 @@ mapper(Sync, sync_table)
 
 mapper(Temp_tid, temp_tid_table)
 
-print("g.DB_URI=",g.DB_URI)
-local_engine = create_engine(g.sqlite_uri, echo=False)
 #metadata.bind = engine # I think only really necessary if you're issuing a metadata.create_all(engine) command
 #metadata.create_all(engine) # only creates if tables not present but not
-
 #Session = sessionmaker()
 #Session.configure(bind=engine)
+
+# note that even if databases don't exist these won't fail
+local_engine = create_engine(g.sqlite_uri, echo=False)
 Local_Session = sessionmaker(bind=local_engine)
 local_session = Local_Session()
 
