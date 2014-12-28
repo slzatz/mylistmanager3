@@ -8,8 +8,6 @@ sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitt
 from flask import Flask
 from twitter import *
 import argparse
-import lmglobals as g #moved from below on 12-21-2014
-g.DB_URI = g.sqlite_uri #lmdb needs this set before called
 from lmdb import *
 
 from apscheduler.schedulers.background import BackgroundScheduler
