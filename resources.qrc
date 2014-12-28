@@ -8,6 +8,7 @@
     <file>bitmaps/delete.png</file>
     <file>bitmaps/priority.png</file>
     <file>bitmaps/box.png</file>
+    <file>bitmaps/note.png</file>
 </qresource>
 </RCC>
 

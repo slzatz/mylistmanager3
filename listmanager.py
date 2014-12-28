@@ -472,7 +472,6 @@ class ListManager(QtWidgets.QMainWindow):
         a_synchronize_remote = action("Synchronize (remote)", partial(self.synchronize, local=False))
         a_showsync_log = action("Show Synchronize Log", self.showsync_log)
         a_showdeleted = action("Show Deleted", self.showdeleted)
-        a_removedeletedtasks = action("Remove Deleted Tasks ...", self.removedeletedtasks)
         a_print_note_to_log = action("Print Note to Log", self.print_note_to_log)
         a_close_event = action("Write ini file", self.closeEvent)
         a_on_simple_html2log = action("Print simple html to log", self.on_simple_html2log)
@@ -614,13 +613,13 @@ class ListManager(QtWidgets.QMainWindow):
             'folder':     {'label':'folder',   'width':100,'align': center, 'sortable':True, 'fixed':False,'action':partial(self.selectcontextfolder, type_='folder'),   'display': lambda x:(x.folder.title if x.folder.tid else '',)},
             'f_icon':       {'label':'f-i',        'width':25, 'align': center, 'sortable':False,'fixed':True, 'action':partial(self.selectcontextfolder, type_='folder'),   'display': lambda x: self.folder_icons[x.folder.title]},
             'c_icon':       {'label':'c-i',        'width':25, 'align': center, 'sortable':False,'fixed':True, 'action':partial(self.selectcontextfolder, type_='context'),   'display': lambda x: self.context_icons[x.context.title]},
-            'title':      {'label':'title',    'width':550,'align': center, 'sortable':True, 'fixed':False,'action':lambda: None,     'display': lambda x:(x.title,)},
-            'tid':        {'label':'tid',      'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda: None,     'display': lambda x: (str(x.tid) if x.tid else '',)},
-            'folder_tid': {'label':'f_tid',    'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda: None,     'display': lambda x: (str(x.folder_tid) if x.folder_tid else '',)},
-            'modified':   {'label':'modified', 'width':85, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda: None,     'display': lambda x: (x.modified.strftime(format1) if x.added else '',)},
-            'completed':  {'label':'completed','width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda: None,     'display': lambda x: (x.completed.strftime(format1) if x.completed else '',)},
-            'added':      {'label':'added',    'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda: None,     'display': lambda x: (x.added.strftime(format1) if x.added else '',)},
-            'created':    {'label':'created',  'width':115, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda: None,     'display': lambda x: (x.created.strftime(format2) if x.created else '',)},
+            'title':      {'label':'title',    'width':550,'align': center, 'sortable':True, 'fixed':False,'action':lambda x: None,     'display': lambda x:(x.title,)},
+            'tid':        {'label':'tid',      'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (str(x.tid) if x.tid else '',)},
+            'folder_tid': {'label':'f_tid',    'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (str(x.folder_tid) if x.folder_tid else '',)},
+            'modified':   {'label':'modified', 'width':85, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.modified.strftime(format1) if x.added else '',)},
+            'completed':  {'label':'completed','width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.completed.strftime(format1) if x.completed else '',)},
+            'added':      {'label':'added',    'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.added.strftime(format1) if x.added else '',)},
+            'created':    {'label':'created',  'width':115, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.created.strftime(format2) if x.created else '',)},
             'duedate':    {'label':'duedate',     'width':66, 'align': center, 'sortable':True, 'fixed':True, 'action':self.setduedate,  'display': lambda x: (x.duedate.strftime(format1) if x.duedate else '',)},
             'duetime':    {'label':'duetime',     'width':55, 'align': center, 'sortable':True, 'fixed':True, 'action':self.setduedate,  'display': lambda x: (x.duetime.strftime(format3) if x.duetime else '',)},
             'startdate':    {'label':'date',     'width':75, 'align': center, 'sortable':True, 'fixed':False, 'action':partial(self.setdate, which='startdate'),  'display': lambda x: (age((TODAY - x.startdate).days) if x.startdate else '',)},
@@ -1032,7 +1031,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         # the first click into an unselected row should selelct the row but otherwise not do anything
         if not self.new_row: 
-            self.action[self.col_order[c]](False) # to deal with qActions sending checked = False
+            self.action[self.col_order[c]](False) # to deal with qActions sending checked = False; it's reason in column stuff it's now lambda x
         else:
             self.new_row = False
             
@@ -1221,7 +1220,7 @@ class ListManager(QtWidgets.QMainWindow):
 
     @check_task_selected
     @check_modified
-    def selectcontextfolder(self, type_='context'): 
+    def selectcontextfolder(self, checked, type_='context'): 
         '''
         Called by Select Context of Task Menu and toolbar context push button
         Displays a dialog with both existing contexts and place to type new context
@@ -1676,7 +1675,6 @@ class ListManager(QtWidgets.QMainWindow):
                     log+= "{title} now has 'No Context'\n".format(title=t.title)
         
             session.commit()
-        
 
     @check_modified
     def close_all(self):
@@ -1695,6 +1693,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.modified = {}
 
         self.tab_manager.blockSignals(False)
+
     @check_modified
     def closeEvent(self, event=None): #event is necessary
 
@@ -1733,11 +1732,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         with open(g.CONFIG_FILE, 'w') as configfile:
             cg.write(configfile)
-
-        #Note that commit() need not be called explicitly: it will be called automatically when the database is closed, 
-        #or when a sufficient number of modifications have been made.
-        if g.xapianenabled:
-            self.xapian_database.close() ######## 04.29.2012 # this is essential to writing db updates to disk
 
     @check_modified
     def saveconfiguration(self):
@@ -2099,6 +2093,7 @@ class ListManager(QtWidgets.QMainWindow):
         '''
         Once you sort a table, without this method there is no way to remove the sorting criteria - 
         this is particularly important in being able to sort and remove sort from xapian searches
+        ? if this still applies 12-28-2014
         '''
         sort_col = self.Properties['sort']['column']
         
@@ -2666,38 +2661,6 @@ class ListManager(QtWidgets.QMainWindow):
         
         dlg.exec_()
 
-    @check_modified
-    def removedeletedtasks(self, ask_user=True):
-        
-        if ask_user:
-            reply = QtGui.QMessageBox.question(self,
-                                        "Remove Deleted Tasks",
-                                        "Would you like to remove all deleted tasks (Note that this is normally done when synching)?",
-                                        QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
-        
-            if reply == QtGui.QMessageBox.No:
-                return
-        
-        deleted_tasks = session.query(Task).filter(Task.deleted==True)
-        for x in deleted_tasks:
-            print (x.id, x.tid, x.title)
-            
-            if g.xapianenabled:
-                try:
-                    self.xapian_database.delete_document(x.id)
-                except xapian.DocNotFoundError as value:
-                    print(value)
-                    print("Task {0}: {1} -- was not in Xapian DB".format(x.id, x.title))
-            
-            for tk in x.taskkeywords:
-                session.delete(tk)
-                
-            session.commit()
-            
-            session.delete(x)
-            
-            session.commit()
-            
     @check_task_selected
     def whooshtaskinfo(self, check=False):
         
@@ -2717,10 +2680,6 @@ class ListManager(QtWidgets.QMainWindow):
     def showdeleted(self):
 
             self.createnewtab(title='*Deleted*', tab={'type':'deleted_items', 'value':None}, filter_by={'column':'context','value':'*ALL'}, collapsible=False)
-
-
-
-
 
     def recreatekeywordsfromtag(self):
         '''May be possible to have unused keywords and unused taskkeywords (e.g., deleted task)

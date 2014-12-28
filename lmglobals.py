@@ -19,8 +19,6 @@ LOG_FILE = os.path.join(cwd,'logfile.txt')
 VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
 del cwd
 
-xapianenabled = False
-
 key = None
 timestamp = None
 
