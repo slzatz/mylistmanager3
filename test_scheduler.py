@@ -1,22 +1,22 @@
 from datetime import datetime, timedelta
 import sys
 import os
+import argparse
+import json
 from os.path import expanduser
 home = expanduser('~')
 import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
 from flask import Flask
 from twitter import *
-import argparse
 from lmdb import *
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
 parser = argparse.ArgumentParser(description='Command line options for determining which db.')
 
-# for all of the following: if the command line option is not present then the value is True and startup is normal
+# for all of the following: if the command line option is not present then the value is True
 parser.add_argument( '--aws', action='store_true', help="Use AWS version of database")
-
 args = parser.parse_args()
 
 session = remote_session if args.aws else local_session
@@ -49,7 +49,7 @@ app = Flask(__name__)
 
 # settings.py
 #HOST = '0.0.0.0'
-#DEBUG = False #true messes up apscheduler because of dups 
+#DEBUG = True #true messes up apscheduler because of dups 
 
 app.config.from_pyfile('flask_settings.py')
 HOST = app.config['HOST'] 
@@ -65,12 +65,18 @@ def add(delay, msg):
 def add_task(task_id, days, minutes, msg):
     alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
     j = scheduler.add_job(alarm, 'date', id=task_id, run_date=alarm_time, name=msg[:15], args=[msg])
-    return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.isoformat())
+    #return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.isoformat())
+    z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.isoformat()}
+    return json.dumps(z)
    
 @app.route("/")
 def index():
     print(scheduler.get_jobs())
-    return '<br><br>'.join(x.name+'<br>'+str(x.id)+'<br>'+x.trigger.run_date.isoformat() for x in scheduler.get_jobs())
+    # this should return json - scheduler.get_jobs() returns a list of job instances
+    # to turn this into json, would be [job1 dict, job2 dict, job3 dict]
+    z = list({'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.isoformat()} for j in scheduler.get_jobs())
+    return json.dumps(z)
+    #return '<br><br>'.join(x.name+'<br>'+str(x.id)+'<br>'+x.trigger.run_date.isoformat() for x in scheduler.get_jobs())
 
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)

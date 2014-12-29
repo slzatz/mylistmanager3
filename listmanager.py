@@ -490,7 +490,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         add_actions(toolmenu, (a_synchronize_local, a_synchronize_remote, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
-                                         a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeletedtasks, a_removedeadkeywords, 
+                                         a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
                                          a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb, a_edit_note_in_vim))
                                          
         a_create_image_string = action("Create image string", self.create_image_string)
