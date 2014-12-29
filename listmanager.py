@@ -29,6 +29,7 @@ import argparse
 import tempfile
 from subprocess import Popen
 import resources
+import requests
 
 # age is cython-created function more to check cython out than that it was absolutely necessary
 try:
@@ -690,7 +691,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.icons = {'context': self.context_icons, 'folder':self.folder_icons, 'app':{'star':(QtGui.QIcon(':/bitmaps/star.png'),''),'alarm':(QtGui.QIcon(':/bitmaps/alarm-clock.png'),'')}}
          
-         # the below work
+        # the below work
         #self.context_icons = {c.title:(QtGui.QIcon("bitmaps/context_icons/{}".format(c.icon)), '') if c.icon else ('',) for c in session.query(Context)}
         #self.folder_icons = {f.title:(QtGui.QIcon("bitmaps/folder_icons/{}".format(f.icon)), '') if f.icon else ('',) for f in session.query(Folder)}
 
@@ -700,24 +701,20 @@ class ListManager(QtWidgets.QMainWindow):
 
         #user_icon = partial(os.path.join,'bitmaps','user')
         #user_icon(f.icon)
+
         self.myevent = MyEvent()
 
         try:
             import myevents
         except ImportError as e:
             print(e)
+            self.myevent.signal.connect(lambda x,y:None)
         else:
             self.myevent.signal.connect(myevents.responses) # since only one signal don't need ...signal[str, dict].connect....
 
-        # code to watch files that vim is editing
+        # watch files that vim is editing
         self.fs_watcher = QtCore.QFileSystemWatcher()
-        #self.fs_watcher.addPath(p.path())
-        #self.fs_watcher.addPath("hello.txt")
-        #self.fs_watcher.addPath(os.path.abspath(temp.name))
-        #self.fs_watcher.directoryChanged.connect(self.directory_changed)
         self.fs_watcher.fileChanged.connect(self.file_changed_in_vim)
-        #print(self.fs_watcher.directories())
-        #print(self.fs_watcher.files())
         
         if DB_EXISTS:
             if args.ini:
@@ -1413,7 +1410,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         task = Task(priority=3, title='<New Item>')
         
-        ############################## this is now in a plugin event - should be an option that all new items remind/alarm
+        ############################## this is now in a plugin myevent - could be an option that all new items remind/alarm
         #if 1:
         #    task.remind = 1
         #    task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
@@ -1465,8 +1462,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.new_row = False 
         
-        #self.myevent.signal.emit("new_item", task.id, 1)
-        self.myevent.signal.emit('newtask', {'task':task, 'task_id':task.id, 'session':session, 'tab_type':tab_type, 'tab_value':tab_value})
+        self.myevent.signal.emit('set_reminder', {'task':task, 'session':session})
 
     @update_row
     @check_modified
@@ -1494,10 +1490,6 @@ class ListManager(QtWidgets.QMainWindow):
         # if this doesn't get enabled then won't be able to edit items
         self.table.return_sc.setEnabled(True) 
 
-        # try to assign a folder based on some keywords contained in the title
-        if not task.folder.tid:
-            self.myevent.signal.emit('save_title', {'task':task, 'title':title, 'session':session})
-            
     @check_modified
     def newcontext(self, evt=None):
         '''
@@ -1540,12 +1532,6 @@ class ListManager(QtWidgets.QMainWindow):
             self.c_menu.addAction(a)
 
             self.createnewtab(title=new_context_title, tab={'type':'context', 'value':new_context_title})
-
-
-
-
-
-
 
     @check_modified
     def opentabs(self, check, type_=None):
@@ -1819,9 +1805,6 @@ class ListManager(QtWidgets.QMainWindow):
          #seems like you would need the following if you were going to update the toolbar and probably don't need toolbar actions at all
          #for a in self.savedtabsactions:
              #fileToolbar.addAction(a)
-
-
-            
             
     @check_modified
     def loadtab(self, n):
@@ -1829,8 +1812,6 @@ class ListManager(QtWidgets.QMainWindow):
         properties = self.savedtabs[n]
         
         self.createnewtab(**properties)
-        
-
         
     @check_modified
     def closetab(self, L=-1):
@@ -1900,6 +1881,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.modified = {}
 
         print_("Note Saved")
+
+        self.myevent.signal.emit('set_reminder', {'task':self.task, 'session':session})
 
     def displayitems(self):
 
@@ -2106,6 +2089,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.Properties['sort'] = {'column':None,'direction':0}
         
         self.refresh()
+
     @check_modified
     #@check_task_selected
     def ondockwindow(self, checked, dw=None, cur=True, check_task_selected=True): 
@@ -2195,11 +2179,6 @@ class ListManager(QtWidgets.QMainWindow):
         LBox.blockSignals(False)
         
         self.tab_manager.setTabToolTip(self.tab_manager.currentIndex(), str(num_tasks)+" tasks")
-
-
-
-
-
 
     @check_modified
     def refreshlistonly(self): 
@@ -2496,6 +2475,7 @@ class ListManager(QtWidgets.QMainWindow):
         #self.Properties['col_widths'][c] = w 
         
         
+    @check_modified
     def synchronize(self, checked, local=True):
         
         if not local:
@@ -2522,7 +2502,7 @@ class ListManager(QtWidgets.QMainWindow):
                                                                                 OkCancel=True,
                                                                                 local=local)
         print("changes={0}".format(changes))
-        print("tasklist={0}".format([t.title.encode('ascii', 'replace')[:30] for t in tasklist]))
+        print("tasklist={0}".format([t.title for t in tasklist])) #this is a goofy print
         print("deletelist={0}".format(deletelist))
         
         if local:
@@ -2538,13 +2518,20 @@ class ListManager(QtWidgets.QMainWindow):
             for id_ in deletelist:
                 self.deletefromwhooshdb(id_)
 
-                
+        else:
+            for task in tasklist:
+                r = requests.get("http://54.173.234.69:5000/add_task/{id}/{days}/{minutes}/{message}".format(**{'id':task.id, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
+                print("The status code for the reminder request was:",r.status_code)
+                print_("The status code for the reminder request was: "+str(r.status_code))
+                res = r.json()
+                print("The response of the reminder request:",res)
+                print_("The response of the reminder request:"+repr(res))
+
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
         
     def create_whooshdb(self):
-
         tasks = session.query(Task)
         r = tasks.count()
         self.pb.setRange(0, r)
@@ -2592,7 +2579,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.note.setHtml(simple_html)
         self.db_note.setPlainText(text)
 
-        #self.modified = {}
+        print(self.modified) #the writes to self.note and self.db_note produce self.modified={'plain_note':True,'note':True}
+        self.modified = {}
         task = session.query(Task).get(task_id)
         
         print_("Note Saved from Vim was note id: {} title: {}".format(task_id,task.title))

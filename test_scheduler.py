@@ -59,14 +59,14 @@ DEBUG = app.config['DEBUG']
 def add(delay, msg):
     alarm_time = datetime.now() + timedelta(seconds=delay)
     j = scheduler.add_job(alarm, 'date', run_date=alarm_time, name=msg[:15], args=[msg])
-    return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.isoformat())
+    return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p'))
 
 @app.route('/add_task/<task_id>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
 def add_task(task_id, days, minutes, msg):
     alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
     j = scheduler.add_job(alarm, 'date', id=task_id, run_date=alarm_time, name=msg[:15], args=[msg])
     #return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.isoformat())
-    z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.isoformat()}
+    z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
     return json.dumps(z)
    
 @app.route("/")
@@ -74,7 +74,7 @@ def index():
     print(scheduler.get_jobs())
     # this should return json - scheduler.get_jobs() returns a list of job instances
     # to turn this into json, would be [job1 dict, job2 dict, job3 dict]
-    z = list({'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.isoformat()} for j in scheduler.get_jobs())
+    z = list({'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')} for j in scheduler.get_jobs())
     return json.dumps(z)
     #return '<br><br>'.join(x.name+'<br>'+str(x.id)+'<br>'+x.trigger.run_date.isoformat() for x in scheduler.get_jobs())
 

@@ -1,8 +1,8 @@
-
-#from lmdb import session
+'''
+Slots that can be used for custom/plugin-type actions
+'''
 import datetime
 from PyQt5 import QtWidgets
-#import lmglobals as g
 
 def responses(source, d):
 
@@ -13,11 +13,10 @@ def responses(source, d):
     task = d.get('task')
     session = d.get('session')
 
-    if source=='newtask':
-        if task.context.title!='test':
-            task.remind = 1
-            task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
-            session.commit()
+    if source=='set_reminder':
+        task.remind = 1
+        task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
+        session.commit()
 
     if source=='incrementpriority':
         priority = d.get('priority')

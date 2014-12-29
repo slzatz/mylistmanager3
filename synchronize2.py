@@ -2,8 +2,6 @@
 module to sync toodledo with a local/cloud database
 '''
 
-import lmdialogs
-
 import os
 import time
 import sys
@@ -19,12 +17,10 @@ from functools import partial
 import toodledo2
 from lmdb import *
 import lmglobals as g
+import lmdialogs
 
-#cg = g.config
 
 print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
-
-#print = print_
 
 print_("Hello from the synchronize2 module")
 
@@ -60,7 +56,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
 
                         }
 
-    #not using concept of parent
+    #not using parent
 
     nn = 0
 

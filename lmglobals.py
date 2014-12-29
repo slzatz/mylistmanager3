@@ -77,6 +77,7 @@ def internet_accessible():
         return True
     except urllib.error.URLError as err: pass
     return False
+
 def check_modified(f):
     ''' A decorator that checks if there have been any field changes'''
     
@@ -100,12 +101,12 @@ def check_task_selected(f):
         else:
             return f(lm, *args, **kwargs)
     return fn
+
 def update_whooshdb(f):
-    ''' A decorator that updates the xapiandb because of a task change'''
+    ''' A decorator that updates the whoosh db because of a task change'''
     
     def fn(lm, *args, **kwargs):
         z = f(lm, *args, **kwargs)
-        #if xapianenabled:
         lm.updatewhooshentry(lm.task)
         return z
     return fn
