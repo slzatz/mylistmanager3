@@ -194,7 +194,7 @@ mapper(Temp_tid, temp_tid_table)
 #Session.configure(bind=engine)
 
 # note that even if databases don't exist these won't fail
-local_engine = create_engine(sqlite_uri, echo=False)
+local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False}, echo=False)
 Local_Session = sessionmaker(bind=local_engine)
 local_session = Local_Session()
 
