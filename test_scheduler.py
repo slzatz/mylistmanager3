@@ -35,7 +35,7 @@ from twitter import *
 from lmdb import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import boto.sns
-import markdown2 as markdown
+#import markdown2 as markdown
 
 sns_conn = boto.sns.connect_to_region(
                                       "us-east-1",
@@ -62,7 +62,7 @@ def alarm(task_id):
     task = session.query(Task).get(task_id)
     subject = task.title
     body = task.note if task.note else ''
-    body = markdown.markdown(body)
+    #body = markdown.markdown(body)
     print('Alarm! id:{}; subject:{}'.format(task_id, subject))
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
