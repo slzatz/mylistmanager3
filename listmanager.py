@@ -2521,7 +2521,7 @@ class ListManager(QtWidgets.QMainWindow):
         else:
             for task in tasklist:
                 #this should use tid, not id - the id can and will be different between the databases but the tid should be the same
-                r = requests.get("http://54.173.234.69:5000/add_task/{id}/{days}/{minutes}/{message}".format(**{'id':task.id, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
+                r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
                 print("The status code for the reminder request was:",r.status_code)
                 print_("The status code for the reminder request was: "+str(r.status_code))
                 res = r.json()
