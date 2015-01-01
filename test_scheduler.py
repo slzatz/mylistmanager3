@@ -84,16 +84,17 @@ app.config.from_pyfile('flask_settings.py')
 HOST = app.config['HOST'] 
 DEBUG = app.config['DEBUG']
 
+############################# note - will need to create another task function to handle a simple reminder that was created outside of listmanager ###############
 @app.route('/add/<int:delay>/<msg>')
 def add(delay, msg):
     alarm_time = datetime.now() + timedelta(seconds=delay)
-    j = scheduler.add_job(alarm, 'date', run_date=alarm_time, name=msg[:15], args=[msg])
+    j = scheduler.add_job(alarmxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, 'date', run_date=alarm_time, name=msg[:15], args=[msg])
     return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p'))
 
-@app.route('/add_task/<task_tid>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
+@app.route('/add_task/<int:task_tid>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
 def add_task(task_tid, days, minutes, msg):
     alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
-    j = scheduler.add_job(alarm, 'date', id=task_tid, run_date=alarm_time, name=msg[:15], args=[task_tid])
+    j = scheduler.add_job(alarm, 'date', id=str(task_tid), run_date=alarm_time, name=msg[:15], args=[task_tid], replace_existing=True)
     z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
     return json.dumps(z)
    
