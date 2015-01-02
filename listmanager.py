@@ -925,7 +925,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         LBox.currentItemChanged.connect(self.filterlist) #12-19-2014
 
-
     def createtable(self):
 
         Properties = self.Properties
@@ -1047,7 +1046,6 @@ class ListManager(QtWidgets.QMainWindow):
             # Will enable RETURN again in save_title
             self.table.return_sc.setEnabled(False) 
 
-
     def updatecolumnwidths(self, col, old, new):  
         '''slot for sectionResized(int,int,int)'''
         print_("in updatecolumnwidths")
@@ -1056,8 +1054,6 @@ class ListManager(QtWidgets.QMainWindow):
         #print_("{}".format(repr(self.table)))
 
         self.Properties['col_widths'][col] = new
-
-
 
     def updatecolumnorder(self, logical, old, new):
         '''slot for sectionMoved(int,int,int)'''
@@ -1130,7 +1126,6 @@ class ListManager(QtWidgets.QMainWindow):
         
         self.myevent.signal.emit('incrementpriority', {'task':task, 'priority':priority})
 
-
     # order is bottom to top
     @update_row
     @check_task_selected
@@ -1201,7 +1196,6 @@ class ListManager(QtWidgets.QMainWindow):
             date.setDate(taskdate.year, taskdate.month,taskdate.day)
         else:
             date = None
-
 
         dlg = lmdialogs.TaskDueDate(title="Select a date", date=date)
 
@@ -2474,7 +2468,6 @@ class ListManager(QtWidgets.QMainWindow):
         # don't need to do following because resizing title column triggers method updatecolumnwidths
         #self.Properties['col_widths'][c] = w 
         
-        
     @check_modified
     def synchronize(self, checked, local=True):
         
@@ -2496,7 +2489,6 @@ class ListManager(QtWidgets.QMainWindow):
             print_("Unable to get toodledo key")
             return
         
-        # note this is calling the json synchronize2!
         self.sync_log, changes, tasklist, deletelist = synchronize2.synchronize(parent=self, 
                                                                                 showlogdialog=True, 
                                                                                 OkCancel=True,
@@ -2519,14 +2511,22 @@ class ListManager(QtWidgets.QMainWindow):
                 self.deletefromwhooshdb(id_)
 
         else:
+            # right now this does not depend on the remind flag at all but just on the fact that something changed
+            # could add task.remind == 1 and also used the due date and time would would mean changes to add_task or creating a new add_task
+            #alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
             for task in tasklist:
-                #this should use tid, not id - the id can and will be different between the databases but the tid should be the same
-                r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
-                print("The status code for the reminder request was:",r.status_code)
-                print_("The status code for the reminder request was: "+str(r.status_code))
-                res = r.json()
-                print("The response of the reminder request:",res)
-                print_("The response of the reminder request:"+repr(res))
+                #requests.get('https://api.github.com/user', auth=('user', 'pass'))
+                if task.remind == 1 and task.duetime > datetime.datetime.now(): ########################################################
+                    td = task.duetime - datetime.datetime.now() #########################################
+                    days = td.days #############################################3
+                    minutes = int(td.seconds/60) ################################
+                    #r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
+                    r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)})) 
+                    print("The status code for the reminder request was:",r.status_code)
+                    print_("The status code for the reminder request was: "+str(r.status_code))
+                    res = r.json()
+                    print("The response of the reminder request:",res)
+                    print_("The response of the reminder request:"+repr(res))
 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
@@ -3184,6 +3184,7 @@ class Table(QtWidgets.QTableWidget):
     def contextMenuEvent_(self, event):
         # this worked but there was a simpler way
         self.obj.tableContextMenuEvent(event)
+
     def mousePressEvent(self, e):
               
         self.leftpressed = e.button() == Qt.LeftButton
@@ -3236,12 +3237,7 @@ class Header(QtWidgets.QHeaderView):
             self.selectedcolumn = self.logicalIndexAt(e.pos())
         
         super(Header, self).mousePressEvent(e)
-
-
         
-
-
-    
 class TitleDelegate(QtWidgets.QItemDelegate):
     '''
     self.view.setItemDelegate(ViewDelegate(self))
@@ -3308,7 +3304,6 @@ class TitleDelegate(QtWidgets.QItemDelegate):
 
         # this is necessary to get the table to update and then save_title can access it
         model.setData(index, editor.text())
-
 
 class NoteManager(QtWidgets.QMainWindow):
     '''

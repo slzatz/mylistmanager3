@@ -41,10 +41,13 @@ tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_
 
 def alarm(task_tid):
     #task = session.query(Task).get(task_id)
+    print("task_tid=",task_tid)
+    print("type(task_tid)=",type(task_tid))
     try:
         task = session.query(Task).filter(Task.tid==task_tid).one()
     except Exception as e:
         print("Could not find task tid:",task_tid)
+        print("Exception: ",e)
         return
     subject = task.title
     body = task.note if task.note else ''
