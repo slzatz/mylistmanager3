@@ -2515,13 +2515,14 @@ class ListManager(QtWidgets.QMainWindow):
             # could add task.remind == 1 and also used the due date and time would would mean changes to add_task or creating a new add_task
             #alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
             for task in tasklist:
-                #requests.get('https://api.github.com/user', auth=('user', 'pass'))
+                #requests.get('https://api.github.com/user', auth=('user', 'pass')) auth=(c.aws_id, c.aws_pw)
                 if task.remind == 1 and task.duetime > datetime.datetime.now(): ########################################################
                     td = task.duetime - datetime.datetime.now() #########################################
                     days = td.days #############################################3
                     minutes = int(td.seconds/60) ################################
                     #r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
-                    r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)})) 
+                    #r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)})) 
+                    r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)}), auth=(c.aws_id, c.aws_pd)) 
                     print("The status code for the reminder request was:",r.status_code)
                     print_("The status code for the reminder request was: "+str(r.status_code))
                     res = r.json()

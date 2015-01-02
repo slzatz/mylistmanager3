@@ -8,10 +8,11 @@ import os
 import argparse
 import json
 from os.path import expanduser
+from functools import wraps
 home = expanduser('~')
 import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
-from flask import Flask
+from flask import Flask, request, Response
 from twitter import *
 from lmdb import *
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -89,6 +90,28 @@ app.config.from_pyfile('flask_settings.py')
 HOST = app.config['HOST'] 
 DEBUG = app.config['DEBUG']
 
+def check_auth(username, password):
+    """This function is called to check if a username /
+    password combination is valid.
+    """
+    return username ==  c.aws_id and password == c.aws_pw
+
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
 ############################# note - will need to create another task function to handle a simple reminder that was created outside of listmanager ###############
 @app.route('/add/<int:delay>/<msg>')
 def add(delay, msg):
@@ -97,6 +120,7 @@ def add(delay, msg):
     return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p'))
 
 @app.route('/add_task/<int:task_tid>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
+@requires_auth
 def add_task(task_tid, days, minutes, msg):
     alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
     j = scheduler.add_job(alarm, 'date', id=str(task_tid), run_date=alarm_time, name=msg[:50], args=[task_tid], replace_existing=True)
