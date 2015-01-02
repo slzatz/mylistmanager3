@@ -47,6 +47,11 @@ def alarm(task_tid):
     except Exception as e:
         print("Could not find task tid:",task_tid)
         print("Exception: ",e)
+        res = ses_conn.send_email(
+                        'manager.list@gmail.com',
+                        "Exception trying to find task_tid: {}".format(task_tid),
+                        "The exception was: {}".format(e),
+                        ['slzatz@gmail.com', 'szatz@webmd.net'])
         return
     subject = task.title
     body = task.note if task.note else ''
@@ -94,7 +99,7 @@ def add(delay, msg):
 @app.route('/add_task/<int:task_tid>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
 def add_task(task_tid, days, minutes, msg):
     alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
-    j = scheduler.add_job(alarm, 'date', id=str(task_tid), run_date=alarm_time, name=msg[:15], args=[task_tid], replace_existing=True)
+    j = scheduler.add_job(alarm, 'date', id=str(task_tid), run_date=alarm_time, name=msg[:50], args=[task_tid], replace_existing=True)
     z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
     return json.dumps(z)
    
