@@ -40,7 +40,6 @@ CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
 
 def alarm(task_tid):
-    #task = session.query(Task).get(task_id)
     print("task_tid=",task_tid)
     print("type(task_tid)=",type(task_tid))
     try:
@@ -55,11 +54,10 @@ def alarm(task_tid):
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
-    #res = sns_conn.publish(mytopic_arn, body, subject)
     res = ses_conn.send_email(
                         'manager.list@gmail.com',
-                        'Testng SES',
-                        'Hello my friends',
+                        subject,
+                        body,
                         ['slzatz@gmail.com', 'szatz@webmd.net'],
                         html_body=html_body)
     print("res=",res)
@@ -71,7 +69,6 @@ scheduler.add_jobstore('sqlalchemy', url=url)
 tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
 print("tasks=",tasks)
 for t in tasks:
-    #print(t.id)
     print(t.tid)
     j = scheduler.add_job(alarm, 'date', id=str(t.tid), run_date=t.duetime, name=t.title[:15], args=[t.title], replace_existing=True) 
 
