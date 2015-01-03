@@ -891,7 +891,7 @@ class ListManager(QtWidgets.QMainWindow):
         splitter.addWidget(table)
 
         if 'window_sizes' not in Properties:
-            Properties['window_sizes'] = [75,500]
+            Properties['window_sizes'] = [0,500] #[75,500] -> [0,500] should hide filterby list
 
         splitter.setSizes(Properties['window_sizes'])
 
@@ -2313,11 +2313,6 @@ class ListManager(QtWidgets.QMainWindow):
         
         Properties['window_sizes'][0] = 75 if Properties['window_sizes'][0]==0 else 0
         
-        # if Properties['window_sizes'][0]==0:
-            # Properties['window_sizes'][0]=75
-        # else:
-            # Properties['window_sizes'][0]=0
-
         splitter.setSizes(Properties['window_sizes'])
 
     def change_tab_name(self):
@@ -2511,17 +2506,11 @@ class ListManager(QtWidgets.QMainWindow):
                 self.deletefromwhooshdb(id_)
 
         else:
-            # right now this does not depend on the remind flag at all but just on the fact that something changed
-            # could add task.remind == 1 and also used the due date and time would would mean changes to add_task or creating a new add_task
-            #alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
             for task in tasklist:
-                #requests.get('https://api.github.com/user', auth=('user', 'pass')) auth=(c.aws_id, c.aws_pw)
-                if task.remind == 1 and task.duetime > datetime.datetime.now(): ########################################################
-                    td = task.duetime - datetime.datetime.now() #########################################
-                    days = td.days #############################################3
-                    minutes = int(td.seconds/60) ################################
-                    #r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':0, 'minutes':5, 'message':urllib.request.quote(task.title)})) 
-                    #r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)})) 
+                if task.remind == 1 and task.duetime > datetime.datetime.now():
+                    td = task.duetime - datetime.datetime.now() 
+                    days = td.days 
+                    minutes = int(td.seconds/60) 
                     r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)}), auth=(c.aws_id, c.aws_pw)) 
                     print("The status code for the reminder request was:",r.status_code)
                     print_("The status code for the reminder request was: "+str(r.status_code))
@@ -2571,7 +2560,6 @@ class ListManager(QtWidgets.QMainWindow):
         task_id = self.vim_files[path]
         f = open(path, mode='r')
         text = f.read()
-        #print(text)
         self.task.note = text
         session.commit()
        # kluge to get rid of extra line after a pre block
@@ -2595,7 +2583,7 @@ class ListManager(QtWidgets.QMainWindow):
         temp.close()
         self.vim_files[temp.name] = self.task.id
         print(repr(self.vim_files))
-        Popen([g.VIM, os.path.abspath(temp.name)])
+        Popen([g.VIM, "+set nonu", "+set lines=40", "+set columns=100", os.path.abspath(temp.name)])
         self.fs_watcher.addPath(os.path.abspath(temp.name))
         
     
