@@ -144,5 +144,13 @@ def index():
     z = list({'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')} for j in scheduler.get_jobs())
     return json.dumps(z)
 
+@app.route("/recent")
+def recent():
+    tasks = session.query(Task).filter(Task.modified > (datetime.now() - timedelta(days=2)))
+    s = ''
+    for n,t in enumerate(tasks):
+        s+='{}. {}; tid:{}; star: {}; remind: {} <br>'.format(n+1, t.title, t.tid, t.star, t.remind)
+    return s
+
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
