@@ -2060,7 +2060,6 @@ class ListManager(QtWidgets.QMainWindow):
      
         QtCore.QTimer.singleShot(0, lambda: self.modified.clear())
 
-
     def showcompleted(self, evt=None):
 
         self.Properties['show_completed'] = not self.Properties['show_completed']
@@ -2231,9 +2230,6 @@ class ListManager(QtWidgets.QMainWindow):
         img = QtGui.QIcon(self.arrows[sort['direction']])
         col_item.setIcon(img)
 
-
-
-
     def changefilterbycolumn(self):
 
         filter_by = ['folder','context','priority','tag'] #modified
@@ -2342,7 +2338,6 @@ class ListManager(QtWidgets.QMainWindow):
             self.Properties['tab']['value'] = 'saved_search'  
             self.active_search = None
             self.search.clear()
-            
         
     @check_modified
     @check_task_selected
@@ -2358,7 +2353,6 @@ class ListManager(QtWidgets.QMainWindow):
         self.highlighter.setDocument(self.note.document())
         term_list = [x for x in terms.split() if x.lower() not in ('and','or')] #don't want to highlight and, or
         self.highlighter.setkeywords(term_list)
-        
 
     def iconcolordialog(self, type_): #'folder';'context'
         
@@ -2586,7 +2580,6 @@ class ListManager(QtWidgets.QMainWindow):
         Popen([g.VIM, "+set nonu", "+set lines=40", "+set columns=100", os.path.abspath(temp.name)])
         self.fs_watcher.addPath(os.path.abspath(temp.name))
         
-    
     def print_note_to_log(self):
         print_(self.note.toHtml())
 
@@ -2772,7 +2765,6 @@ class ListManager(QtWidgets.QMainWindow):
         palette.setColor(QtGui.QPalette.Text, QtGui.QColor(0, 255, 0)) # lime green
         self.console.setPalette(palette)
 
-        
     def renew_alarms(self):
         
         now = datetime.datetime.now()

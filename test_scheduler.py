@@ -41,8 +41,7 @@ CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
 
 def alarm(task_tid):
-    print("task_tid=",task_tid)
-    print("type(task_tid)=",type(task_tid))
+
     try:
         task = session.query(Task).filter(Task.tid==task_tid).one()
     except Exception as e:
@@ -54,10 +53,12 @@ def alarm(task_tid):
                         "The exception was: {}".format(e),
                         ['slzatz@gmail.com', 'szatz@webmd.net'])
         return
+    
     subject = task.title
     body = task.note if task.note else ''
     html_body = markdown.markdown(body)
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
+
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
     res = ses_conn.send_email(
@@ -68,15 +69,26 @@ def alarm(task_tid):
                         html_body=html_body)
     print("res=",res)
 
+    #starred tasks automatically repeat their alarm every 24h
+    if task.star:
+        task.duedate = task.duetime = task.duetime + timedelta(days=1)
+        session.commit()
+        j = scheduler.add_job(alarm, 'date', id=str(task.tid), run_date=task.duetime, name=task.title[:15], args=[task.tid], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
+        print("Starred task was scheduled again")
+        print('Task tid:{}; star: {}; title:{}'.format(task.tid, task.star, task.title))
+        print("Alarm scheduled: {}".format(repr(j)))
+
 scheduler = BackgroundScheduler()
 url = 'sqlite:///scheduler_test.sqlite'
 scheduler.add_jobstore('sqlalchemy', url=url)
 
+# On restarting program, want to pick up the latest alarms
 tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
-print("tasks=",tasks)
+print("On restart, there are {} tasks that are being scheduled".format(tasks.count()))
 for t in tasks:
-    print(t.tid)
-    j = scheduler.add_job(alarm, 'date', id=str(t.tid), run_date=t.duetime, name=t.title[:15], args=[t.title], replace_existing=True) 
+    j = scheduler.add_job(alarm, 'date', id=str(t.tid), run_date=t.duetime, name=t.title[:50], args=[t.tid], replace_existing=True) 
+    print('Task tid:{}; star: {}; title:{}'.format(t.tid, t.star, t.title))
+    print("Alarm scheduled: {}".format(repr(j)))
 
 scheduler.start()
 
