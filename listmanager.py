@@ -1102,7 +1102,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         #self.a_togglestar.setChecked(self.task.star) # decided cute but unnecessary
 
-    def on_pmenu(self):
+    def on_pmenu(self, checked):
         self.p_menu.exec_(QtGui.QCursor.pos())
 
     # order is bottom to top
@@ -1279,7 +1279,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @update_whooshdb
     @check_task_selected
-    def updatecontext(self, title=None):
+    def updatecontext(self, checked, title=None):
         '''
         Called by each of the table widget context submenu actions and the toolbar menu widget
         and by method selectcontext (and appears in synchronize

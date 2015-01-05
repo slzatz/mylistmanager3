@@ -392,7 +392,8 @@ class MultiChoiceOrNew(QDialog):
             result = self.listWidget.findItems (text, Qt.MatchFixedString) #MatchFixedString flag performs a case insensitive search
             if result:  # if somehow '' is in a tag (for example trailing comma in tag) but this should not happen
                 item = result[0]
-            self.listWidget.setItemSelected(item, True)
+            #self.listWidget.setSelected(item, True)
+                item.setSelected(True)
 
     def accept(self):
         self.choices = [item.text() for item in self.listWidget.selectedItems()]
