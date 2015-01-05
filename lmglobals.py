@@ -74,9 +74,10 @@ def add_actions(target, actions):
 def internet_accessible():
     try:
         response=urllib.request.urlopen('http://www.google.com',timeout=1)
+    except urllib.error.URLError:
+        return False
+    else:
         return True
-    except urllib.error.URLError as err: pass
-    return False
 
 def check_modified(f):
     ''' A decorator that checks if there have been any field changes'''

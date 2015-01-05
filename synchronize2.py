@@ -72,7 +72,11 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
         
     log = ''
 
-    sync = session.query(Sync).get('client') #switching server to timestamp
+    try:
+        sync = session.query(Sync).get('client') 
+    except sqla_exc.OperationalError as e:
+        print("Connection to AWS RDS was probably lost:",e)
+        return
 
     last_client_sync = sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with toodledo
     last_server_sync = sync.unix_timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues
