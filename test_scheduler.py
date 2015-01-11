@@ -148,11 +148,16 @@ def index():
 def recent():
     tasks = session.query(Task).filter(and_(Task.completed == None, Task.modified > (datetime.now() - timedelta(days=2))))
     tasks2 = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.completed == None)).order_by(desc(Task.modified))
-    s = ''
-    for n,t in enumerate(tasks):
-        s+='{}. {}; tid:{}; star: {}; remind: {} <br>'.format(n+1, t.title, t.tid, t.star, t.remind)
+
+    z = list(j.id for j in scheduler.get_jobs())
+    tasks3 = session.query(Task).filter(Task.tid.in_(z))
+
+    #s = ''
+    #for n,t in enumerate(tasks):
+    #    s+='{}. {}; tid:{}; star: {}; remind: {} <br>'.format(n+1, t.title, t.tid, t.star, t.remind)
     #return s
-    return render_template("recent.html", tasks=tasks, tasks2=tasks2) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
+
+    return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
     
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
