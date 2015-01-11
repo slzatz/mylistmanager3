@@ -2494,7 +2494,7 @@ class ListManager(QtWidgets.QMainWindow):
                 self.createfoldermenu()
                 
             for task in tasklist:
-                self.updatewhooshentry(task)
+                self.updatewhooshentry(False, task=task) #False -> checked is because of QAction
                 
             for id_ in deletelist:
                 self.deletefromwhooshdb(id_)

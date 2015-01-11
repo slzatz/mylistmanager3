@@ -108,7 +108,7 @@ def update_whooshdb(f):
     
     def fn(lm, *args, **kwargs):
         z = f(lm, *args, **kwargs)
-        lm.updatewhooshentry(lm.task)
+        lm.updatewhooshentry(False, task=lm.task)
         return z
     return fn
    
