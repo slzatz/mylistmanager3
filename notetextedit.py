@@ -221,8 +221,8 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
     #@+node:slzatz.20100314151332.3130: *3* fontFixedPitch
     def fontFixedPitch(self):
         cursor = self.textCursor()
-        format = cursor.charFormat()
-        return format.fontFixedPitch()
+        format_ = cursor.charFormat()
+        return format_.fontFixedPitch()
 
     #@+node:slzatz.20100314151332.3131: *3* which_header
     def which_header(self):
@@ -234,7 +234,7 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
 
     #@+node:slzatz.20100314151332.3132: *3* textEffectMenu__ (not in use)
     def textEffectMenu__(self):
-        format = self.currentCharFormat()
+        #format_ = self.currentCharFormat()
         cursor = self.textCursor()
         blockformat = cursor.blockFormat()
         menu = QtGui.QMenu("Text Effect")
@@ -363,20 +363,21 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
             while iterator != block.end():
                 fragment = iterator.fragment()
                 if fragment.isValid():
-                    format = fragment.charFormat()
-                    family = format.fontFamily()
-                    color = format.foreground().color()
-                    text = html.escape(fragment.text()) # turns things like < into entities &lt;
+                    format_ = fragment.charFormat()
+                    family = format_.fontFamily()
+                    color = format_.foreground().color()
+                    #text = html.escape(fragment.text()) # turns things like < into entities &lt;
+                    text = fragment.text() # not sure escaping is necessary 
 
                     # If it's an anchor, don't want to do any other formatting
-                    if format.isAnchor():
+                    if format_.isAnchor():
                         text = '<a href="{0}">{0}</a> '.format(text)
                     else:
-                        if format.fontUnderline():
+                        if format_.fontUnderline():
                             text = "<u>{0}</u>".format(text)
-                        if format.fontItalic():
+                        if format_.fontItalic():
                             text = "<i>{0}</i>".format(text)
-                        if format.fontWeight() > QFont.Normal:
+                        if format_.fontWeight() > QFont.Normal:
                             text = "<b>{0}</b>".format(text)
 
                         if color != black or not family.isEmpty() and not block.blockFormat().nonBreakableLines():
@@ -437,7 +438,8 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
                     fragment = iterator.fragment()
                     if fragment.isValid():
                         char_format = fragment.charFormat()
-                        text = html.escape(fragment.text()) # turns chars like < into entities &lt;
+                        #text = html.escape(fragment.text()) # turns chars like < into entities &lt;
+                        text = fragment.text() ########################################################## 
                         text = text.replace('\u2028','  \n') # catches  u'\u2028 and replaces with markdown rep of <br /> may want to use QChar.LineSeparator
                         font_size = char_format.font().pointSize()
 

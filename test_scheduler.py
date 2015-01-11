@@ -12,7 +12,7 @@ from functools import wraps
 home = expanduser('~')
 import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
-from flask import Flask, request, Response
+from flask import Flask, request, Response, render_template, url_for #, Markup
 from twitter import *
 from lmdb import *
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -146,11 +146,13 @@ def index():
 
 @app.route("/recent")
 def recent():
-    tasks = session.query(Task).filter(Task.modified > (datetime.now() - timedelta(days=2)))
+    tasks = session.query(Task).filter(and_(Task.completed == None, Task.modified > (datetime.now() - timedelta(days=2))))
+    tasks2 = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.completed == None)).order_by(desc(Task.modified))
     s = ''
     for n,t in enumerate(tasks):
         s+='{}. {}; tid:{}; star: {}; remind: {} <br>'.format(n+1, t.title, t.tid, t.star, t.remind)
-    return s
-
+    #return s
+    return render_template("recent.html", tasks=tasks, tasks2=tasks2) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
+    
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)

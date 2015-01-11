@@ -1,0 +1,40 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+<head>
+    <title>Recent Tasks</title>
+</head>
+<body>
+    <h1>Recent Tasks</h1>
+    <ul id="navigation">
+    {% for task in tasks %}
+        <li> 
+            {% if task.star %}
+             <img src="{{ url_for('static', filename='img/star.png') }}"></img>
+            {% endif %}
+            {{ task.title }}
+            {% if task.remind %}
+            <i>{{" (next reminder: "+task.duetime.strftime('%a %b %d %Y %I:%M %p')+")" }}</i>
+            {% endif %}
+         </li>
+    {% endfor %}
+    </ul> 
+
+    <h1>Work Tasks</h1>
+    <ul id="navigation">
+    {% for task in tasks2 %}
+        <li> 
+            {% if task.star %}
+             <img src="{{ url_for('static', filename='img/star.png') }}"></img>
+            {% endif %}
+            {{ task.title }}
+            {% if task.remind %}
+            <i>{{" (next reminder: "+task.duetime.strftime('%a %b %d %Y %I:%M %p')+")" }}</i>
+            {% endif %}
+         </li>
+    {% endfor %}
+    </ul> 
+</body>
+</html>
+
+
+

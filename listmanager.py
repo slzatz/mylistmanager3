@@ -3051,7 +3051,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         return keyword_names
 
-    def updatewhooshentry(self, task=None):
+    def updatewhooshentry(self, checked, task=None):
         
         if task is None:
             task = self.task
