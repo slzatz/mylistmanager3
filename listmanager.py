@@ -2865,7 +2865,7 @@ class ListManager(QtWidgets.QMainWindow):
         
         print("do search")
 
-        query_string = self.search.text()
+        query_string = self.search.text().lower()
 
         if not query_string and self.active_search is None: 
             return
@@ -2973,7 +2973,8 @@ class ListManager(QtWidgets.QMainWindow):
                 tasks = session.query(Task).filter(Task.star==True)
             
             elif tab_value == 'alarm':
-                tasks = session.query(Task).filter(~or_(Task.remind == None, Task.remind ==0))  # note server thinks it's zero but I have lots of None should decide
+                #tasks = session.query(Task).filter(~or_(Task.remind == None, Task.remind ==0))  # note server thinks it's zero but I have lots of None should decide
+                tasks = session.query(Task).filter(and_(or_(Task.remind != None, Task.remind != 0), Task.duedate > datetime.datetime.now()))
                 
             else:
                print("We have a problem because that is a tab value of tab type app  that I don't recognize; tab_value =",tab_value)
