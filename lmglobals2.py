@@ -29,3 +29,4 @@ def internet_accessible():
     except urllib.error.URLError:
         return False
     else:
+        return True
