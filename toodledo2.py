@@ -18,10 +18,18 @@ import json
 import base64
 import re
 
-import lmdialogs
-import lmglobals as g
+try:
+    import lmdialogs
+except ImportError:
+    lmdialogs = None
 
-print_ = g.logger.write
+try:
+    import lmglobals as g
+except ImportError:
+    import lmglobals2 as g
+    print_ = print
+else:
+    print_ = g.logger.write
 
 print_("Hello from the toodledo2 module")
 

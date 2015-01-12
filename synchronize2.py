@@ -8,25 +8,26 @@ import sys
 import datetime
 import calendar
 import platform
-import configparser as configparser
 import json
 import urllib.request, urllib.parse, urllib.error
-import re
+#import re
 import base64
 from functools import partial
 import toodledo2
 from lmdb import *
-import lmglobals as g
-import lmdialogs
-
-
-print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
+try:
+    import lmglobals as g
+    import lmdialogs
+except ImportError:
+    print_ = print
+    pb = None
+else:
+    print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
+    pb = g.pb
 
 print_("Hello from the synchronize2 module")
 
-pb = g.pb #this requires listmanager to be instantiated
-
-def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
+def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
 
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
@@ -217,10 +218,12 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
         if not dlg.exec_():
             return "Canceled sync", [], [], []
 
-    pb.setRange(0, nn)
     nnn=0
-    pb.setValue(nnn)
-    pb.show()
+
+    if pb:
+        pb.setRange(0, nn)
+        pb.setValue(nnn)
+        pb.show()
 
     #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
 
@@ -250,8 +253,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             log += "{title} is a new context received from the server but it was a dupe of new client context\n".format(title=sc.name)
         
         nnn+=1
-        pb.setValue(nnn)
 
+        if pb:
+            pb.setValue(nnn)
 
     for c in client_new_contexts: # this is where we could check for simultaneous creation of folders by checking for title in server_folders
         temp_tid = c.tid
@@ -286,7 +290,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             log+= "{title} is in context {context}".format(title=t.title[:30], context=t.context.title) 
 
         nnn+=1
-        pb.setValue(nnn)
+    
+        if pb:
+            pb.setValue(nnn)
 
     #note these are from class Temp_tid and not class Context
     for c in alternate_client_new_contexts: 
@@ -320,11 +326,10 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
                 log+="{title} should to be changed from context_tid: {tid} to 'No Context'\n".format(tid=t.context_tid, title=t.title)
             
             nnn+=1
-            pb.setValue(nnn)
-            
-            
-           
 
+            if pb:
+                pb.setValue(nnn)
+            
     #no code for client deleted contexts yet
 
      #[{"id":"123","name":"Shopping","private":"0","archived":"0","ord":"1"},...]
@@ -357,7 +362,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             log += "{title} is a new folder received from the server but it was a dupe of new client folder\n".format(title=sf.name)
         
         nnn+=1
-        pb.setValue(nnn)
+
+        if pb:
+            pb.setValue(nnn)
 
     for f in client_new_folders:
         temp_tid = f.tid
@@ -394,7 +401,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             log+= "Task {title} in folder {folder} \n".format(title=t.title[:30], folder=t.folder.title)
 
         nnn+=1
-        pb.setValue(nnn)
+
+        if pb:
+            pb.setValue(nnn)
 
     #note these are from class Temp_tid and not class Folder
     for f in alternate_client_new_folders:
@@ -427,7 +436,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             
             
             nnn+=1
-            pb.setValue(nnn)
+
+            if pb:
+                pb.setValue(nnn)
             
     #no code for client deleted folders yet
 
@@ -505,7 +516,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
                 #self.updatexapianentry(task) # obviously self won't work
         
         nnn+=1
-        pb.setValue(nnn)
+
+        if pb:
+            pb.setValue(nnn)
 
     #Update tasks on server with client edited tasks
     #if client_edited_tasks:
@@ -547,7 +560,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
                 log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
             
             nnn+=1
-            pb.setValue(nnn)
+
+            if pb:
+                pb.setValue(nnn)
             
         n+=50
             
@@ -582,7 +597,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
                 log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
             
             nnn+=1
-            pb.setValue(nnn)
+
+            if pb:
+                pb.setValue(nnn)
             
         n+=50
         
@@ -608,7 +625,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
             log+="Task deleted on Server unsuccessful trying to delete on Client - could not find Client Task with tid = {0}\n".format(t.id)   
 
         nnn+=1
-        pb.setValue(nnn)
+
+        if pb:
+            pb.setValue(nnn)
         
     # uses deletelist
     tids_to_delete = []
@@ -655,7 +674,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
                     session.commit()     
                     
                     nnn+=1
-                    pb.setValue(nnn)
+
+                    if pb:
+                        pb.setValue(nnn)
                 
             
         
@@ -672,7 +693,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True):
 
     print_("***************** END SYNC *******************************************")
 
-    pb.hide()
+    if pb:
+        pb.hide()
 
     if showlogdialog:
         dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=parent)
@@ -717,10 +739,10 @@ def downloadtasksfromserver():
     print_("{} server contexts were downloaded".format(len_contexts))
     print_("{} server folders were downloaded".format(len_folders))
 
-    
-    pb.setRange(0, len_contexts+len_folders+len_tasks)
-    pb.setValue(0)
-    pb.show()
+    if pb: 
+        pb.setRange(0, len_contexts+len_folders+len_tasks)
+        pb.setValue(0)
+        pb.show()
     
     
     #server contexts --> client contexts
@@ -733,7 +755,8 @@ def downloadtasksfromserver():
 
         session.commit()
         
-        pb.setValue(n)
+        if pb:
+            pb.setValue(n)
 
     #server folders --> client folders    
     for n,f in enumerate(server_folders, n):
@@ -747,7 +770,8 @@ def downloadtasksfromserver():
 
         session.commit()
         
-        pb.setValue(n)
+        if pb:
+            pb.setValue(n)
 
     #server tasks -> client tasks
     for n,t in enumerate(server_tasks):
@@ -801,7 +825,8 @@ def downloadtasksfromserver():
                     print_(repr(e))
                     print_(task.title)
     
-        pb.setValue(n)
+        if pb:
+            pb.setValue(n)
     
    # #server contexts --> client contexts
    # 
@@ -842,5 +867,6 @@ def downloadtasksfromserver():
 
     print_("***************** END SYNC *******************************************")
     
-    pb.hide() 
+    if pb:
+        pb.hide() 
 
