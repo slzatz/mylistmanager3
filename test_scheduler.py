@@ -55,7 +55,7 @@ def sync():
     log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
 
     for task in tasklist:
-        if task.remind == 1 and task.duetime > (datetime.datetime.now() - timedelta(hours=5)): # need server offset
+        if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
             adjusted_dt = task.duetime + timedelta(hours=5)
             j = scheduler.add_job(alarm, 'date', id=str(task.tid), run_date=adjusted_dt, name=task.title[:50], args=[task.tid], replace_existing=True)
     
