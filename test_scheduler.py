@@ -47,16 +47,18 @@ recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
 def sync():
 
-    if toodledo2.keycheck():
-        log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
-    else:
+    if not toodledo2.keycheck():
         print("Could not get a good toodledo key")
-        res = ses_conn.send_email(sender,
-                            "Failure to obtain toodledo key",
-                            "",
-                            recipients) 
+        res = ses_conn.send_email(sender, "Failure to obtain toodledo key", "", recipients) 
         return
         
+    log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
+
+    for task in tasklist:
+        if task.remind == 1 and task.duetime > (datetime.datetime.now() - timedelta(hours=5)): # need server offset
+            adjusted_dt = task.duetime + timedelta(hours=5)
+            j = scheduler.add_job(alarm, 'date', id=str(task.tid), run_date=adjusted_dt, name=task.title[:50], args=[task.tid], replace_existing=True)
+    
     subject = "sync log"
     res = ses_conn.send_email(
                         'manager.list@gmail.com',
@@ -170,8 +172,8 @@ def add_task(task_tid, days, minutes, msg):
 
 @app.route("/sync")
 def do_immediate_sync():
-    j = scheduler.add_job(sync)
-    return "response={}".format(repr(j))
+    j = scheduler.add_job(sync, name="sync")
+    return json.dumps({'name':j.name})
    
 @app.route("/")
 def index():
