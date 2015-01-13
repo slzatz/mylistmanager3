@@ -46,7 +46,6 @@ sender = 'manager.list@gmail.com'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
 def sync():
-    pass
 
     if toodledo2.keycheck():
         log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
@@ -172,7 +171,7 @@ def add_task(task_tid, days, minutes, msg):
 @app.route("/sync")
 def do_immediate_sync():
     j = scheduler.add_job(sync)
-    return repr(j)
+    return "response={}".format(repr(j))
    
 @app.route("/")
 def index():
