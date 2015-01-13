@@ -3,6 +3,7 @@ import toodledo2
 import synchronize2
 import boto.ses
 import sys
+import config as c
 
 #from lmdb import *
 #s = remote_session
