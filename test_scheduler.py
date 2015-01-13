@@ -45,7 +45,7 @@ tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_
 sender = 'manager.list@gmail.com'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
-def sync:
+def sync():
     pass
 
     if toodledo2.keycheck():
