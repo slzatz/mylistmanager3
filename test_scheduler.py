@@ -18,6 +18,8 @@ from lmdb import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import boto.ses
 import markdown2 as markdown
+import toodledo2
+import synchronize2
 
 ses_conn = boto.ses.connect_to_region(
                                       "us-east-1",
@@ -39,6 +41,34 @@ CONSUMER_KEY = c.twitter_CONSUMER_KEY
 CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
 
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
+
+sender = 'manager.list@gmail.com'
+recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
+
+def sync:
+    pass
+
+    if toodledo2.keycheck():
+        log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
+    else:
+        print("Could not get a good toodledo key")
+        res = ses_conn.send_email(sender,
+                            "Failure to obtain toodledo key",
+                            "",
+                            recipients) 
+        return
+        
+    subject = "sync log"
+    res = ses_conn.send_email(
+                        'manager.list@gmail.com',
+                        "Sync Log",
+                        log,
+                        ['slzatz@gmail.com', 'szatz@webmd.net']) #,
+                        #html_body=html_body)
+    print("res=",res)
+
+    with open("sync_log", 'a') as f:
+        f.write(log)
 
 def alarm(task_tid):
 
@@ -138,6 +168,11 @@ def add_task(task_tid, days, minutes, msg):
     j = scheduler.add_job(alarm, 'date', id=str(task_tid), run_date=alarm_time, name=msg[:50], args=[task_tid], replace_existing=True)
     z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
     return json.dumps(z)
+
+@app.route("/sync")
+def do_immediate_sync():
+    j = scheduler.add_job(sync)
+    return repr(j)
    
 @app.route("/")
 def index():
