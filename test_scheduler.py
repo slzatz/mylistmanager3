@@ -60,12 +60,8 @@ def sync():
             j = scheduler.add_job(alarm, 'date', id=str(task.tid), run_date=adjusted_dt, name=task.title[:50], args=[task.tid], replace_existing=True)
     
     subject = "sync log"
-    res = ses_conn.send_email(
-                        'manager.list@gmail.com',
-                        "Sync Log",
-                        log,
-                        ['slzatz@gmail.com', 'szatz@webmd.net']) #,
-                        #html_body=html_body)
+    res = ses_conn.send_email(sender, "Sync Log", log, recipients)
+
     print("res=",res)
 
     with open("sync_log", 'a') as f:
@@ -78,11 +74,7 @@ def alarm(task_tid):
     except Exception as e:
         print("Could not find task tid:",task_tid)
         print("Exception: ",e)
-        res = ses_conn.send_email(
-                        'manager.list@gmail.com',
-                        "Exception trying to find task_tid: {}".format(task_tid),
-                        "The exception was: {}".format(e),
-                        ['slzatz@gmail.com', 'szatz@webmd.net'])
+        res = ses_conn.send_email(sender, "Exception trying to find task_tid: {}".format(task_tid), "The exception was: {}".format(e), recipients)
         return
     
     subject = task.title
@@ -92,12 +84,7 @@ def alarm(task_tid):
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
-    res = ses_conn.send_email(
-                        'manager.list@gmail.com',
-                        subject,
-                        body,
-                        ['slzatz@gmail.com', 'szatz@webmd.net'],
-                        html_body=html_body)
+    res = ses_conn.send_email(sender, subject, body, recipients, html_body=html_body)
     print("res=",res)
 
     #starred tasks automatically repeat their alarm every 24h
@@ -187,11 +174,6 @@ def recent():
 
     z = list(j.id for j in scheduler.get_jobs())
     tasks3 = session.query(Task).filter(Task.tid.in_(z))
-
-    #s = ''
-    #for n,t in enumerate(tasks):
-    #    s+='{}. {}; tid:{}; star: {}; remind: {} <br>'.format(n+1, t.title, t.tid, t.star, t.remind)
-    #return s
 
     return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
     

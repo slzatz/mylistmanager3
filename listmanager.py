@@ -2460,15 +2460,6 @@ class ListManager(QtWidgets.QMainWindow):
     @check_modified
     def synchronize(self, checked, local=True):
         
-        if not local:
-            reply = QtWidgets.QMessageBox.question(self,
-                                              "Confirmation",
-                                              "Are you sure you want to synchronize the remote db?",
-                                              QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
-
-            if reply == QtWidgets.QMessageBox.No:
-                print("You said no to synching the remote db")
-                return
 
         if not g.internet_accessible():
             QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
@@ -2486,31 +2477,43 @@ class ListManager(QtWidgets.QMainWindow):
         print("tasklist={0}".format([t.title for t in tasklist])) #this is a goofy print
         print("deletelist={0}".format(deletelist))
         
-        if local:
-            if 'contexts' in changes:
-                self.createcontextmenu()
-                
-            if 'folders' in changes:
-                self.createfoldermenu()
-                
-            for task in tasklist:
-                self.updatewhooshentry(False, task=task) #False -> checked is because of QAction
-                
-            for id_ in deletelist:
-                self.deletefromwhooshdb(id_)
+        if 'contexts' in changes:
+            self.createcontextmenu()
+            
+        if 'folders' in changes:
+            self.createfoldermenu()
+            
+        for task in tasklist:
+            self.updatewhooshentry(False, task=task) #False -> checked is because of QAction
+            
+        for id_ in deletelist:
+            self.deletefromwhooshdb(id_)
 
-        else:
-            for task in tasklist:
-                if task.remind == 1 and task.duetime > datetime.datetime.now():
-                    td = task.duetime - datetime.datetime.now() 
-                    days = td.days 
-                    minutes = int(td.seconds/60) 
-                    r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)}), auth=(c.aws_id, c.aws_pw)) 
-                    print("The status code for the reminder request was:",r.status_code)
-                    print_("The status code for the reminder request was: "+str(r.status_code))
-                    res = r.json()
-                    print("The response of the reminder request:",res)
-                    print_("The response of the reminder request:"+repr(res))
+        reply = QtWidgets.QMessageBox.question(self,
+                                          "Confirmation",
+                                          "Do you want to synchronize with the remote AWS db?",
+                                          QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+
+        if reply == QtWidgets.QMessageBox.No:
+            print("You said no to synching with the remote AWS db")
+            return
+
+        r = requests.get("http://54.173.234.69:5000/sync")
+        res = r.json()
+        print("The response to the remote sync request:",res)
+        print_("The response to the remote sync request:"+repr(res))
+        
+            #for task in tasklist:
+            #    if task.remind == 1 and task.duetime > datetime.datetime.now():
+            #        td = task.duetime - datetime.datetime.now() 
+            #        days = td.days 
+            #        minutes = int(td.seconds/60) 
+            #        r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)}), auth=(c.aws_id, c.aws_pw)) 
+            #        print("The status code for the reminder request was:",r.status_code)
+            #        print_("The status code for the reminder request was: "+str(r.status_code))
+            #        res = r.json()
+            #        print("The response of the reminder request:",res)
+            #        print_("The response of the reminder request:"+repr(res))
 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
