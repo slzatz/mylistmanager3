@@ -2486,7 +2486,7 @@ class ListManager(QtWidgets.QMainWindow):
         for task in tasklist:
             self.updatewhooshentry(False, task=task) #False -> checked is because of QAction
             
-        for id_ in deletelist:
+        for id_ in deletelist: #these need to be tids not ids since its tids in the whoosh db
             self.deletefromwhooshdb(id_)
 
         reply = QtWidgets.QMessageBox.question(self,
@@ -2498,22 +2498,15 @@ class ListManager(QtWidgets.QMainWindow):
             print("You said no to synching with the remote AWS db")
             return
 
-        r = requests.get("http://54.173.234.69:5000/sync")
-        res = r.json()
-        print("The response to the remote sync request:",res)
-        print_("The response to the remote sync request:"+repr(res))
-        
-            #for task in tasklist:
-            #    if task.remind == 1 and task.duetime > datetime.datetime.now():
-            #        td = task.duetime - datetime.datetime.now() 
-            #        days = td.days 
-            #        minutes = int(td.seconds/60) 
-            #        r = requests.get("http://54.173.234.69:5000/add_task/{tid}/{days}/{minutes}/{message}".format(**{'tid':task.tid, 'days':days, 'minutes':minutes, 'message':urllib.request.quote(task.title)}), auth=(c.aws_id, c.aws_pw)) 
-            #        print("The status code for the reminder request was:",r.status_code)
-            #        print_("The status code for the reminder request was: "+str(r.status_code))
-            #        res = r.json()
-            #        print("The response of the reminder request:",res)
-            #        print_("The response of the reminder request:"+repr(res))
+        try:
+            r = requests.get("http://54.173.234.69:5000/sync") #probably should add http auth  auth=(c.aws_id, c.aws_pw))
+        except:
+            QtWidgets.QMessageBox.warning(self,  'Alert', "Could not sync remote AWS db!")
+        else:
+            res = r.json()
+            print("The response to the remote sync request:",res)
+            print_("The response to the remote sync request:"+repr(res))
+            QtWidgets.QMessageBox.information(self,  'Remote Sync with AWS', "Sync with remote db appears to have happened")
 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
