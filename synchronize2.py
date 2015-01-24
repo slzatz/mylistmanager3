@@ -463,7 +463,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
             action = "updated"
             if task in client_edited_tasks:
                 client_edited_tasks.remove(task) # server changes win
-                
+                action+= "-server won"
+               
         #################### this shouldn't be necessary when they all go back to naive
         task.duetime = None ##########   just to deal with any lingering aware
         session.commit() #############
@@ -829,7 +830,7 @@ def downloadtasksfromserver():
         if pb:
             pb.setValue(n)
     
-   # #server contexts --> client contexts
+   # #server contexts --> client contexts (not sure this works but shouldn't create contexts or folders on server)
    # 
    # for n,c in enumerate(server_contexts, n):
    #     context = Context()
@@ -842,7 +843,7 @@ def downloadtasksfromserver():
    #     
    #     pb.setValue(n)
 
-   # #server folders --> client folders    
+   # #server folders --> client folders (not sure this works but shouldn't create contexts or folders on server)
    # for n,f in enumerate(server_folders, n):
    #     folder = Folder()
    #     session.add(folder)
@@ -858,8 +859,8 @@ def downloadtasksfromserver():
 
     #Update synch timestamps
     sync = session.query(Sync).get('client')
-    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
-    sync.unix_timestamp = int(time.time()+5)
+    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
+    sync.unix_timestamp = int(time.time()+2) #was 5, changed 01-24-2015
     session.commit()  
 
     print_("New Sync times")
