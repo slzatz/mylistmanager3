@@ -2486,7 +2486,7 @@ class ListManager(QtWidgets.QMainWindow):
         for task in tasklist:
             self.updatewhooshentry(False, task=task) #False -> checked is because of QAction
             
-        for id_ in deletelist: #these need to be tids not ids since its tids in the whoosh db
+        for id_ in deletelist: #these ids are local client task.ids and that is what whoosh uses
             self.deletefromwhooshdb(id_)
 
         reply = QtWidgets.QMessageBox.question(self,
@@ -2630,15 +2630,20 @@ class ListManager(QtWidgets.QMainWindow):
 
     @check_task_selected
     def whooshtaskinfo(self, check=False):
-        
-        text, ok = QtWidgets.QInputDialog.getText(self,"Whoosh","Enter search terms", QtWidgets.QLineEdit.Normal)
+        id_ = self.task.id
+        docnum = self.searcher.document_number(task_id=id_)
+        stored_fields = self.searcher.stored_fields(docnum)
+        print("stored fields (task.id)={} and whoosh docnum={}".format(stored_fields, docnum))
+        #keywords_and_scores = self.searcher.key_terms([docnum], 'title') #need to be vectored, which I don't really get
+        #print("key *title* terms=", keywords_and_scores)
+        text, ok = QtWidgets.QInputDialog.getText(self,"Whoosh","Enter search terms for task.id {}; Whoosh docnum {}".format(id_, docnum)) 
         
         if ok and text:
             print_(text)
             results = self.get_query_ids(text)
             
             try:
-                pos = results.index(self.task.id)
+                pos = results.index(id_)
             except ValueError:
                 print_("Not in list")
             else:
@@ -3073,10 +3078,14 @@ class ListManager(QtWidgets.QMainWindow):
         
     def deletefromwhooshdb(self, id_):
 
+        writer = self.ix.writer()
         try:
-            self.ix.delete_by_term('task_id', id_) 
-            self.ix.commit()
-        except:
+            #note documentation (in at least one place: How to index documents) has a mistake that says you can delete
+            #by doing ix.delete_by_term;ix.commit() but the right way is below: 
+            writer.delete_by_term('task_id', id_) 
+            writer.commit()
+        except Exception as e:
+            print("Problem deleting term from whoosh--",e)
             print("Task {0}:  -- was not in Whoosh DB".format(id_))
 
     def confirm(self, text):
