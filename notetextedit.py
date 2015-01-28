@@ -1,14 +1,3 @@
-
-#@+leo-ver=5-thin
-#@+node:slzatz.20141214092447.48: * @file C:/Users/szatz/python3/notetextedit.py
-#@@first
-#@@nowrap
-#@@tabwidth -4
-#@@language python
-#@+others
-#@+node:slzatz.20100314151332.3115: ** imports
-
-
 import sys
 import webbrowser
 import html
@@ -18,14 +7,10 @@ from functools import partial
 from PyQt5 import QtCore, QtGui, QtWidgets
 Qt = QtCore.Qt
 
-
-#@+node:slzatz.20100314151332.3116: ** class NoteTextEdit
 class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
 
     #(Bold, Italic, H2, Pre, Num_List, Bullet_List, H1, Remove, Plain, Code, H3, Anchor) = list(range(12))
 
-    #@+others
-    #@+node:slzatz.20100314151332.3117: *3* __init__
     def __init__(self, parent=None):
         super(NoteTextEdit, self).__init__(parent)
 
@@ -48,9 +33,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         
         self.highlighter = MyHighlighter(self) ############ 
 
-
-
-    #@+node:slzatz.20100314151332.3118: *3* toggleItalic
     def toggleItalic(self):
         if self.which_header():
             return
@@ -62,7 +44,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         char_format.setFontItalic(not italic)
         cursor.setCharFormat(char_format)
 
-    #@+node:slzatz.20100314151332.3119: *3* make_plain_text
     def make_plain_text(self):
         cursor = self.textCursor()
 
@@ -75,7 +56,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         block_format.setNonBreakableLines(False)
         cursor.setBlockFormat(block_format)
 
-    #@+node:slzatz.20100314151332.3120: *3* make_pre_block
     def make_pre_block(self):
         cursor = self.textCursor()
         block_format = cursor.blockFormat()
@@ -94,7 +74,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
             char_format.setFontFixedPitch(True)
             cursor.setCharFormat(char_format)
 
-    #@+node:slzatz.20100314151332.3121: *3* toggleBold
     def toggleBold(self):
         if self.which_header():
             return
@@ -106,7 +85,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         char_format.setFontWeight(QtGui.QFont.Normal if bold else QtGui.QFont.Bold)
         cursor.setCharFormat(char_format)
 
-    #@+node:slzatz.20100314151332.3122: *3* toggleCode
     def toggleCode(self):
         if self.which_header():
             return
@@ -135,7 +113,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         #cursor.removeSelectedText() #cursor.deleteChar()
         #cursor.insertHtml(text) # also self.insertHtml should work
 
-    #@+node:slzatz.20100314151332.3123: *3* create_anchor
     def create_anchor(self):
         cursor = self.textCursor()
         if not cursor.hasSelection():
@@ -159,19 +136,16 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         cursor.deleteChar()
         cursor.insertHtml(text) # also self.insertHtml should work
 
-    #@+node:slzatz.20100314151332.3124: *3* create_numbered_list
     def create_numbered_list(self):
         cursor = self.textCursor()
         if cursor.hasSelection():
             cursor.createList(QtGui.QTextListFormat.ListDecimal)
 
-    #@+node:slzatz.20100314151332.3125: *3* create_bulleted_list
     def create_bulleted_list(self):
         cursor = self.textCursor()
         if cursor.hasSelection():
             cursor.createList(QtGui.QTextListFormat.ListDisc)
 
-    #@+node:slzatz.20100314151332.3126: *3* make_heading
     def make_heading(self, heading):
         # not finished
         cursor = self.textCursor()
@@ -187,7 +161,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
 
         cursor.setCharFormat(char_format)
 
-    #@+node:slzatz.20100314151332.3127: *3* increment_heading
     def increment_heading(self):
         header = self.which_header()
         if header=='H3':
@@ -207,32 +180,23 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         else:
             self.make_heading(3)
 
-
-
-
-    #@+node:slzatz.20100314151332.3128: *3* sizeHint
     def sizeHint(self): # this makes the text box taller when launched than if I don't have it
         return QtCore.QSize(self.document().idealWidth() + 5, self.maximumHeight())
 
-    #@+node:slzatz.20100314151332.3129: *3* contextMenuEvent (not in use)
     def contextMenuEvent__(self, event): # this catches the context menu right click
         self.textEffectMenu()
 
-    #@+node:slzatz.20100314151332.3130: *3* fontFixedPitch
     def fontFixedPitch(self):
         cursor = self.textCursor()
         format_ = cursor.charFormat()
         return format_.fontFixedPitch()
 
-    #@+node:slzatz.20100314151332.3131: *3* which_header
     def which_header(self):
         cursor = self.textCursor()
         char_format = cursor.charFormat()
         ps = char_format.font().pointSize()
         return {20:'H1', 15:'H2', 12:'H3'}.get(ps)
 
-
-    #@+node:slzatz.20100314151332.3132: *3* textEffectMenu__ (not in use)
     def textEffectMenu__(self):
         #format_ = self.currentCharFormat()
         cursor = self.textCursor()
@@ -295,7 +259,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         self.ensureCursorVisible()
         menu.exec_(self.viewport().mapToGlobal(self.cursorRect().center()))
 
-    #@+node:slzatz.20100314151332.3133: *3* setTextEffect__ (not in use)
     def setTextEffect__(self):
         action = self.sender()
 
@@ -316,14 +279,12 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         if action is not None and isinstance(action, QAction):
             d[action.data()]()    
 
-    #@+node:slzatz.20100314151332.3134: *3* mouseMoveEvent
     def mouseMoveEvent(self, event):
         pos = event.pos()
         anch = self.anchorAt(pos)
         self.viewport().setCursor(Qt.PointingHandCursor if anch else Qt.IBeamCursor)
         QtWidgets.QTextEdit.mouseMoveEvent(self, event)
 
-    #@+node:slzatz.20100314151332.3135: *3* mouseReleaseEvent
     def mouseReleaseEvent(self, event):
         pos = event.pos()
         url = self.anchorAt(pos)
@@ -336,7 +297,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         else:
             QtWidgets.QTextEdit.mouseReleaseEvent(self, event)
 
-    #@+node:slzatz.20100314151332.3136: *3* insertFromMimeData
     def insertFromMimeData(self, source):
         # note sure really necessary since it actually appears to paste URLs correctly
         # I am stripping the http
@@ -351,7 +311,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         else:   
             QtWidgets.QTextEdit.insertFromMimeData(self, source)
 
-    #@+node:slzatz.20100314151332.3137: *3* toSimpleHtml (not in use)
     def toSimpleHtml(self):
         pre = False
         para = '' 
@@ -411,7 +370,6 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
 
         return para 
 
-    #@+node:slzatz.20100314151332.3138: *3* toMarkdown
     def toMarkdown(self):
         references = ''
         i = 1
@@ -478,11 +436,7 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
             block = block.next()
         return doc+references
 
-    #@-others
-#@+node:slzatz.20120309062415.1681: ** class MyHighlighter
 class MyHighlighter(QtGui.QSyntaxHighlighter):
-    #@+others
-    #@+node:slzatz.20120309062415.1682: *3* __init__
     def __init__(self, parent=None):
         super(MyHighlighter, self).__init__(parent)
         self.parent = parent
@@ -496,7 +450,6 @@ class MyHighlighter(QtGui.QSyntaxHighlighter):
         self.regex_keywords = []
         
 
-    #@+node:slzatz.20120309062415.1683: *3* highlightBlock
     def highlightBlock(self, text):
         #print("In highlightBlock")
         for regex in self.regex_keywords:
@@ -510,7 +463,6 @@ class MyHighlighter(QtGui.QSyntaxHighlighter):
                 index = regex.indexIn(text, index + length)
                 #print("subsequent index={0}".format(index))
         self.setCurrentBlockState(0)
-    #@+node:slzatz.20120309095958.1685: *3* setkeywords
     def setkeywords(self, keywords=None):
         
         self.regex_keywords = []
@@ -522,8 +474,6 @@ class MyHighlighter(QtGui.QSyntaxHighlighter):
             regex = QtCore.QRegExp("\\b" + word, Qt.CaseInsensitive)
             self.regex_keywords.append(regex)
 
-    #@-others
-#@+node:slzatz.20100314151332.3139: ** main
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     note = NoteTextEdit()
@@ -569,5 +519,3 @@ Hello people
     print(note.toHtml())
 
 
-#@-others
-#@-leo
