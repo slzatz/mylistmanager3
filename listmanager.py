@@ -56,11 +56,11 @@ import lmglobals as g #moved from below on 12-21-2014
 import lminterpreter
 
 from whoosh.index import create_in
-from whoosh.fields import TEXT, KEYWORD, NUMERIC
+from whoosh.fields import Schema, TEXT, KEYWORD, NUMERIC
 import whoosh.index as index
-from whoosh.query import Or, Prefix
+from whoosh.query import Term, Or, Prefix
 from whoosh.filedb.filestore import FileStorage
-
+from whoosh import analysis
 from lmdb import *
 
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
@@ -664,28 +664,29 @@ class ListManager(QtWidgets.QMainWindow):
                  
         self.itemfont = {-1:normal, 0:normal, 1:normal, 2:normal, 3:bold}         
         self.deleteditemfont = {-1:strikeout, 0:strikeout, 1:strikeout, 2:strikeout, 3:boldstrikeout}
+        
+        self.folder_icons = {c.title:(QtGui.QIcon("bitmaps/folder_icons/{}.png".format(c.title)), '') for c in session.query(Folder)}
 
-        self.folder_icons = {}
+        #self.folder_icons = {}
+        #for f in session.query(Folder):
+        #    if f.image:
+        #        pxmap = QtGui.QPixmap()
+        #        pxmap.loadFromData(f.image, 'PNG')
+        #        icon = (QtGui.QIcon(pxmap), '') 
+        #    else:
+        #        icon = ('',)
+        #    self.folder_icons[f.title] = icon
 
-        for f in session.query(Folder):
-            if f.image:
-                pxmap = QtGui.QPixmap()
-                pxmap.loadFromData(f.image, 'PNG')
-                icon = (QtGui.QIcon(pxmap), '') 
-            else:
-                icon = ('',)
-            self.folder_icons[f.title] = icon
-
-        self.context_icons = {}
-
-        for c in session.query(Context):
-            if c.image:
-                pxmap = QtGui.QPixmap()
-                pxmap.loadFromData(c.image, 'PNG')
-                icon = (QtGui.QIcon(pxmap), '') 
-            else:
-                icon = ('',)
-            self.context_icons[c.title] = icon
+        self.context_icons = {c.title:(QtGui.QIcon("bitmaps/folder_icons/{}.png".format(c.title)), '') for c in session.query(Context)}
+        #self.context_icons = {}
+        #for c in session.query(Context):
+        #    if c.image:
+        #        pxmap = QtGui.QPixmap()
+        #        pxmap.loadFromData(c.image, 'PNG')
+        #        icon = (QtGui.QIcon(pxmap), '') 
+        #    else:
+        #        icon = ('',)
+        #    self.context_icons[c.title] = icon
             
         #{'context': self.context_icons, 'folder' self.folder_icons, 'app':{'star':fjdsl,'alarm':jfkdjfdk, 'search':lkfdldskf}, 'recent', {}, 'tag': {}}
 
@@ -2521,8 +2522,13 @@ class ListManager(QtWidgets.QMainWindow):
         
         #note that you can boost the weighting of a field - Schema(title=TEXT(field_boost=2.0...
         #If unique=True on a field then the value of this field may be used to replace documents with the same value when the user calls document_update() on an IndexWriter. 
-        schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) #probably better to do signed=False 
-        
+        #the below works - I used that schema and then search on Prefix
+        #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) #probably better to do signed=False 
+
+        #Below is my take on how you use a custom Tokenizer inclusing Ngram that only looks at the start of words
+        #phrase = False means we're not indexing across words which doesn't make sense when doing real-time incremental searching
+        my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
+        schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
         if not os.path.exists("indexdir"):
             os.mkdir("indexdir")
         
@@ -2533,7 +2539,7 @@ class ListManager(QtWidgets.QMainWindow):
         for n,task in enumerate(tasks):
 
             writer.add_document(title=task.title,
-                                           tag = task.tag, 
+                                           #tag = task.tag, 
                                            note = task.note, 
                                            task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
                                            
@@ -2905,8 +2911,12 @@ class ListManager(QtWidgets.QMainWindow):
         '''
         Now based on Whoosh 
         '''
+        #Question as to whether this should be an n-gram search - below uses n-gram
+        query = Or([Term('title', query_string), Term('note', query_string)])
+        
+        #the below works and uses Prefix to search on beginning of work v. n-gram
+        #query = Or([Prefix('title', query_string), Prefix('note', query_string)]) #needs tags
 
-        query = Or([Prefix('title', query_string), Prefix('note', query_string)]) #needs tags
         print(repr(query))
         results = self.searcher.search(query, limit=50)
         
@@ -3061,7 +3071,7 @@ class ListManager(QtWidgets.QMainWindow):
         writer = self.ix.writer()
         writer.update_document(task_id=task.id,
                                title=task.title,
-                               tag=task.tag,
+                               #tag=task.tag,
                                note=task.note)
         writer.commit()
         
