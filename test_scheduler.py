@@ -177,5 +177,11 @@ def recent():
 
     return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
     
+@app.route("/incoming" methods=['POST'])
+def incoming():
+    body = request.form['body']
+    #envelope, headers, body, attachments
+    return body
+
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
