@@ -179,7 +179,7 @@ def recent():
     
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
-    if request.method = 'POST':
+    if request.method == 'POST':
         body = request.form['body']
         print(body) #envelope, headers, body, attachments
     else:
