@@ -42,7 +42,9 @@ CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
 
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
 
-sender = 'manager.list@gmail.com'
+#sender = 'manager.list@gmail.com'
+#using cloudmailin makes it possible to respond
+sender = '6697b86bca34dcd126cb@cloudmailin.net'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
 def sync():
@@ -85,6 +87,8 @@ def alarm(task_tid):
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
     res = ses_conn.send_email(sender, subject, body, recipients, html_body=html_body)
+    print("res=",res)
+    res = ses_conn.send_email(sender, subject, body, recipients)
     print("res=",res)
 
     #starred tasks automatically repeat their alarm every 24h
@@ -180,10 +184,36 @@ def recent():
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
     if request.method == 'POST':
-        body = request.form.get('body', "No Body")
-        print(body) #envelope, headers, body, attachments
+        #for z in request.form:
+        #    print("{}: {}".format(z, request.form[z]))
+        #headers[Date]
+        #headers[Subject]
+        #plain
+        subject = request.form.get('headers[Subject]')
+        if subject.lower().startswith('re:'):
+            subject = subject[3:].lstrip()
+            task = session.query(Task).filter(Task.title==subject).all()
+            if len(task) > 1:
+                print("More than one task had the title: {}".format(subject))
+                return "More than one task had the title: {}".format(subject)
+            elif len(task) == 0:
+                print("No task matched: {}".format(subject))
+                return "No task matched: {}".format(subject)
+
+            print("There is only one task with the title: {}".format(subject))
+
+            body = request.form.get('plain')
+            print(body) 
+            task = task[0]
+            task.note = body
+            session.commit()
+            j = scheduler.add_job(sync, name="sync")
+            return 'Updated task with new body and initiated sync'
+        else:
+            return "Email subject did not start with 're:'"
+
     else:
-        return 'OK'
+        return 'It was not a post method'
 
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
