@@ -66,7 +66,7 @@ def sync():
 
     print("res=",res)
 
-    with open("sync_log", 'a') as f:
+    with open("sync_log", 'w') as f:
         f.write(log)
 
 def alarm(task_tid):
@@ -164,8 +164,14 @@ def add_task(task_tid, days, minutes, msg):
 @app.route("/sync")
 def do_immediate_sync():
     j = scheduler.add_job(sync, name="sync")
-    return json.dumps({'name':j.name})
+    return "Initiated sync - check /sync-log to see what happened"
    
+@app.route("/sync-log")
+def sync_log():
+    with open("sync_log", 'r') as f:
+        z = f.read()
+    return z
+
 @app.route("/")
 def index():
     z = list({'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')} for j in scheduler.get_jobs())
@@ -207,10 +213,13 @@ def incoming():
             task = task[0]
             task.note = body
             session.commit()
+            #j = scheduler.add_job(sync, name="sync")
+            return "Updated task with new body"
+        elif subject.lower().startswith('sync'):
             j = scheduler.add_job(sync, name="sync")
-            return 'Updated task with new body and initiated sync'
+            return "Initiated sync"
         else:
-            return "Email subject did not start with 're:'"
+            return "Email subject did not start with 're:' or sync"
 
     else:
         return 'It was not a post method'
