@@ -164,13 +164,13 @@ def add_task(task_tid, days, minutes, msg):
 @app.route("/sync")
 def do_immediate_sync():
     j = scheduler.add_job(sync, name="sync")
-    return "Initiated sync - check /sync-log to see what happened"
+    return Response("Initiated sync - check /sync-log to see what happened", mimetype='text/plain')
    
 @app.route("/sync-log")
 def sync_log():
     with open("sync_log", 'r') as f:
         z = f.read()
-    return z
+    return Response(z, mimetype='text/plain')
 
 @app.route("/")
 def index():

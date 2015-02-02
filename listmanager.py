@@ -2504,11 +2504,20 @@ class ListManager(QtWidgets.QMainWindow):
         except:
             QtWidgets.QMessageBox.warning(self,  'Alert', "Could not sync remote AWS db!")
         else:
-            res = r.json()
+            res = r.text
             print("The response to the remote sync request:",res)
             print_("The response to the remote sync request:"+repr(res))
             QtWidgets.QMessageBox.information(self,  'Remote Sync with AWS', "Sync with remote db appears to have happened")
 
+        try:
+            r = requests.get("http://54.173.234.69:5000/sync-log")
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self,  'Alert', "Could not retrieve AWS db sync log!")
+        else:
+            log = r.text
+            dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=self)
+            dlg.exec_()
+            
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
