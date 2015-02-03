@@ -2505,10 +2505,11 @@ class ListManager(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self,  'Alert', "Could not sync remote AWS db!")
         else:
             res = r.text
-            print("The response to the remote sync request:",res)
-            print_("The response to the remote sync request:"+repr(res))
             QtWidgets.QMessageBox.information(self,  'Remote Sync with AWS', "Sync with remote db appears to have happened")
 
+        # note that it seems very possible that we could be requesting the log before the AWS sync to Toodledo is done
+        # appears to be pretty hard to determine that the sync is done when you are running it in a thread
+        # via apschedular.  I could run it in the main flask thread and block flask as an alternative
         try:
             r = requests.get("http://54.173.234.69:5000/sync-log")
         except Exception as e:

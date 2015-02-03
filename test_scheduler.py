@@ -44,7 +44,7 @@ tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_
 
 #sender = 'manager.list@gmail.com'
 #using cloudmailin makes it possible to respond
-sender = '6697b86bca34dcd126cb@cloudmailin.net'
+sender = 'mylistmanager <6697b86bca34dcd126cb@cloudmailin.net>'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
 def sync():
@@ -56,6 +56,9 @@ def sync():
         
     log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
 
+    with open("sync_log", 'w') as f:
+        f.write(log)
+
     for task in tasklist:
         if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
             adjusted_dt = task.duetime + timedelta(hours=5)
@@ -65,9 +68,6 @@ def sync():
     res = ses_conn.send_email(sender, "Sync Log", log, recipients)
 
     print("res=",res)
-
-    with open("sync_log", 'w') as f:
-        f.write(log)
 
 def alarm(task_tid):
 
