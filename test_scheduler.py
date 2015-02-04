@@ -81,15 +81,17 @@ def alarm(task_tid):
     
     subject = task.title
     body = task.note if task.note else ''
-    html_body = markdown.markdown(body)
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
-    res = ses_conn.send_email(sender, subject, body, recipients, html_body=html_body)
-    print("res=",res)
     res = ses_conn.send_email(sender, subject, body, recipients)
     print("res=",res)
+
+    if body:
+        html_body = markdown.markdown(body)
+        res = ses_conn.send_email(sender, subject, body, recipients, html_body=html_body)
+        print("res=",res)
 
     #starred tasks automatically repeat their alarm every 24h
     if task.star:
