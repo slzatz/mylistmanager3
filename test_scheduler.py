@@ -7,7 +7,7 @@ import sys
 import os
 import argparse
 import json
-from os.path import expanduser
+from os.path import expanduser, isfile
 from functools import wraps
 home = expanduser('~')
 import config as c
@@ -47,7 +47,12 @@ tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_
 sender = 'mylistmanager <6697b86bca34dcd126cb@cloudmailin.net>'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
+#global
+sync_done = isfile('sync_log')
+
 def sync():
+    global sync_done
+    sync_done = False
 
     if not toodledo2.keycheck():
         print("Could not get a good toodledo key")
@@ -58,6 +63,8 @@ def sync():
 
     with open("sync_log", 'w') as f:
         f.write(log)
+
+    sync_done = True
 
     for task in tasklist:
         if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
@@ -170,9 +177,12 @@ def do_immediate_sync():
    
 @app.route("/sync-log")
 def sync_log():
-    with open("sync_log", 'r') as f:
-        z = f.read()
-    return Response(z, mimetype='text/plain')
+    if sync_done:
+        with open("sync_log", 'r') as f:
+            z = f.read()
+        return Response(z, mimetype='text/plain')
+    else:
+        return Response("Sync currently underway", mimetype='text/plain')
 
 @app.route("/")
 def index():
