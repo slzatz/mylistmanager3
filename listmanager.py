@@ -13,7 +13,7 @@ import notetextedit
 import lmdialogs
 
 import os
-import time
+from time import asctime, sleep
 import sys
 import datetime
 import platform
@@ -2503,22 +2503,26 @@ class ListManager(QtWidgets.QMainWindow):
             r = requests.get("http://54.173.234.69:5000/sync") #probably should add http auth  auth=(c.aws_id, c.aws_pw))
         except:
             QtWidgets.QMessageBox.warning(self,  'Alert', "Could not sync remote AWS db!")
-        else:
-            res = r.text
-            QtWidgets.QMessageBox.information(self,  'Remote Sync with AWS', "Sync with remote db appears to have happened")
+            return
 
-        # note that it seems very possible that we could be requesting the log before the AWS sync to Toodledo is done
-        # appears to be pretty hard to determine that the sync is done when you are running it in a thread
-        # via apschedular.  I could run it in the main flask thread and block flask as an alternative
-        try:
-            r = requests.get("http://54.173.234.69:5000/sync-log")
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self,  'Alert', "Could not retrieve AWS db sync log!")
-        else:
-            log = r.text
-            dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=self)
-            dlg.exec_()
-            
+        n = 1
+        while n < 5:
+            try:
+                r = requests.get("http://54.173.234.69:5000/sync-log")
+            except Exception as e:
+                QtWidgets.QMessageBox.warning(self,  'Alert', "Could not retrieve AWS db sync log!")
+                break
+            else:
+                log = r.text
+                if len(log) > 100:
+                    dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=self)
+                    dlg.exec_()
+                    break 
+                n+=1
+                sleep(1)
+
+        print("Number of attemps: {}".format(n))
+                
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
@@ -3414,7 +3418,7 @@ class Logger (QtWidgets.QPlainTextEdit):
         #QtGui.QPlainTextEdit.__init__(self, parent)
         super(Logger, self).__init__(parent)
 
-        self.appendPlainText("%s\n"%time.asctime())
+        self.appendPlainText("%s\n"%asctime())
 
         self.path = logfile
 
@@ -3446,7 +3450,7 @@ class Logger (QtWidgets.QPlainTextEdit):
         
     def clear_text(self):
         self.clear()
-        self.appendPlainText("%s\n"%time.asctime()) 
+        self.appendPlainText("%s\n"%asctime()) 
 
     def save_and_clear(self):
         f = file(self.path,'a')
@@ -3454,7 +3458,7 @@ class Logger (QtWidgets.QPlainTextEdit):
         f.close()
 
         self.clear()
-        self.appendPlainText("%s\n"%time.asctime())
+        self.appendPlainText("%s\n"%asctime())
 
         QtGui.QMessageBox.information(self,  'Information', "Appended test to logfile.txt")
 
