@@ -2506,7 +2506,7 @@ class ListManager(QtWidgets.QMainWindow):
             return
 
         n = 1
-        while n < 5:
+        while n < 6:
             try:
                 r = requests.get("http://54.173.234.69:5000/sync-log")
             except Exception as e:
