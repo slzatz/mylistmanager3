@@ -47,12 +47,16 @@ tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_
 sender = 'mylistmanager <6697b86bca34dcd126cb@cloudmailin.net>'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
+if not isfile('sync_log'):
+    with open("sync_log", 'w') as f:
+        f.write("There is currently no sync file present")
+
 #global
-sync_done = isfile('sync_log')
+sync_in_progress = False
 
 def sync():
-    global sync_done
-    sync_done = False
+    global sync_in_progress
+    sync_in_progress = True
 
     if not toodledo2.keycheck():
         print("Could not get a good toodledo key")
@@ -64,7 +68,7 @@ def sync():
     with open("sync_log", 'w') as f:
         f.write(log)
 
-    sync_done = True
+    sync_in_progress = False
 
     for task in tasklist:
         if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
@@ -172,17 +176,20 @@ def add_task(task_tid, days, minutes, msg):
 
 @app.route("/sync")
 def do_immediate_sync():
-    j = scheduler.add_job(sync, name="sync")
-    return Response("Initiated sync - check /sync-log to see what happened", mimetype='text/plain')
+    if sync_in_progress:
+        return Response("There appears to be a sync already going on", mimetype='text/plain')
+    else:
+        j = scheduler.add_job(sync, name="sync")
+        return Response("Initiated sync - check /sync-log to see what happened", mimetype='text/plain')
    
 @app.route("/sync-log")
 def sync_log():
-    if sync_done:
+    if sync_in_progress:
+        return Response("Sync currently underway", mimetype='text/plain')
+    else:
         with open("sync_log", 'r') as f:
             z = f.read()
         return Response(z, mimetype='text/plain')
-    else:
-        return Response("Sync currently underway", mimetype='text/plain')
 
 @app.route("/")
 def index():
