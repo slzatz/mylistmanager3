@@ -26,10 +26,11 @@ ses_conn = boto.ses.connect_to_region(
                                       aws_access_key_id=c.aws_access_key_id,
                                       aws_secret_access_key=c.aws_secret_access_key)
     
-parser = argparse.ArgumentParser(description='Command line options for determining which db.')
+parser = argparse.ArgumentParser(description='Command line options for determining which db; sending html email.')
 
-# for all of the following: if the command line option is not present then the value is True
-parser.add_argument( '--aws', action='store_true', help="Use AWS version of database")
+# for all of the following: if the command line option is not present then the value is the opposite of below
+parser.add_argument( '--aws', action='store_true', help="Use postgres db located in AWS RDS")
+parser.add_argument( '--html', action='store_true', help="Send both a plain and HTML email")
 args = parser.parse_args()
 
 session = remote_session if args.aws else local_session
@@ -42,7 +43,6 @@ CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
 
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
 
-#sender = 'manager.list@gmail.com'
 #using cloudmailin makes it possible to respond
 sender = 'mylistmanager <6697b86bca34dcd126cb@cloudmailin.net>'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
@@ -92,6 +92,8 @@ def alarm(task_tid):
     
     subject = task.title
     body = task.note if task.note else ''
+    header = "star: {} priority: {} context: {}".format(task.star, task.priority, task.context.title)
+    body = header+"======================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
@@ -99,7 +101,7 @@ def alarm(task_tid):
     res = ses_conn.send_email(sender, subject, body, recipients)
     print("res=",res)
 
-    if body:
+    if args.html and body:
         html_body = markdown.markdown(body)
         res = ses_conn.send_email(sender, subject, body, recipients, html_body=html_body)
         print("res=",res)
@@ -216,7 +218,13 @@ def incoming():
         #plain
         subject = request.form.get('headers[Subject]')
         if subject.lower().startswith('re:'):
-            subject = subject[3:].lstrip()
+            pos = subject.find('|')
+            if pos != -1:
+                title = subject[3:pos].strip()
+                mods = subject[pos+1:].strip().split()
+            else:
+                title = subject[3:].strip()
+                mods = []
             task = session.query(Task).filter(Task.title==subject).all()
             if len(task) > 1:
                 print("More than one task had the title: {}".format(subject))
@@ -228,13 +236,32 @@ def incoming():
             print("There is only one task with the title: {}".format(subject))
 
             body = request.form.get('plain')
-            print(body) 
+            pattern = "=============\n"
+            pos = body.find(pattern)
+            note = body[pos+len(pattern):] if pos!=-1 else body
+            #print(body) 
             task = task[0]
-            task.note = body
+            task.note = note
+
+            if mods:
+                for m in mods:
+                    if '!' in m:
+                        task.priority = len(m) if len(m) < 4 else 3
+                    if '0' in m or 'zero' in m:
+                        task.priority = 0
+                    if 'nostar' in m:
+                        task.star = False
+                    if '*' in m or 'star' in m:
+                        task.star = True
+
             session.commit()
+
+            #at one time automatically synced and that may actually be a good idea
             #j = scheduler.add_job(sync, name="sync")
+
             return "Updated task with new body"
-        elif subject.lower().startswith('sync'):
+
+        elif subject.lower().strip() == 'sync': #startswith('sync'):
             j = scheduler.add_job(sync, name="sync")
             return "Initiated sync"
         else:
