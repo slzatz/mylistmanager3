@@ -93,7 +93,7 @@ def alarm(task_tid):
     subject = task.title
     body = task.note if task.note else ''
     header = "star: {} priority: {} context: {} reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
-    body = header+"\n\n======================================================================\n"+body
+    body = header+"\n\n======================================================================++++\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
@@ -236,9 +236,9 @@ def incoming():
             print("There is only one task with the title: {}".format(subject))
 
             body = request.form.get('plain')
-            pattern = "=============\n"
+            pattern = "=============++++"
             pos = body.find(pattern)
-            note = body[pos+len(pattern):] if pos!=-1 else body
+            note = body[1+pos+len(pattern):] if pos!=-1 else body
             #print(body) 
             task = task[0]
             task.note = note
