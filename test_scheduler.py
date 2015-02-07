@@ -92,7 +92,7 @@ def alarm(task_tid):
     
     subject = task.title
     body = task.note if task.note else ''
-    header = "star: {} priority: {} context: {}".format(task.star, task.priority, task.context.title)
+    header = "star: {} priority: {} context: {} reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
     body = header+"\n======================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
@@ -247,12 +247,14 @@ def incoming():
                 for m in mods:
                     if '!' in m:
                         task.priority = len(m) if len(m) < 4 else 3
-                    if '0' in m or 'zero' in m:
+                    if m in ('0', 'zero'):
                         task.priority = 0
-                    if 'nostar' in m:
+                    if m == 'nostar':
                         task.star = False
-                    if '*' in m or 'star' in m:
+                    if m in ('*', 'star'):
                         task.star = True
+                    if m == 'off':
+                        task.remind = None
 
             session.commit()
 
