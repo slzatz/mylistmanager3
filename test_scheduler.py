@@ -92,8 +92,9 @@ def alarm(task_tid):
     
     subject = task.title
     body = task.note if task.note else ''
-    header = "star: {} priority: {} context: {} reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
-    body = header+"\n\n======================================================================++++\n"+body
+    hints = "| priority: !! or zero or 0; alarm: off; star: star or * or nostar; remind: off"
+    header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
+    body = header+hints+"\n\n======================================================================++++\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
