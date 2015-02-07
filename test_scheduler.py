@@ -93,7 +93,7 @@ def alarm(task_tid):
     subject = task.title
     body = task.note if task.note else ''
     header = "star: {} priority: {} context: {} reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
-    body = header+"\n======================================================================\n"+body
+    body = header+"\n\n======================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
@@ -225,7 +225,7 @@ def incoming():
             else:
                 title = subject[3:].strip()
                 mods = []
-            task = session.query(Task).filter(Task.title==subject).all()
+            task = session.query(Task).filter(Task.title==title).all()
             if len(task) > 1:
                 print("More than one task had the title: {}".format(subject))
                 return "More than one task had the title: {}".format(subject)
