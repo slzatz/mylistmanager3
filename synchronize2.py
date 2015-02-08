@@ -10,7 +10,6 @@ import calendar
 import platform
 import json
 import urllib.request, urllib.parse, urllib.error
-#import re
 import base64
 from functools import partial
 import toodledo2
@@ -264,8 +263,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         try:
             [server_context] = toodledo_call('contexts/add', name=c.title) #[{"id":"12345","name":"MyContext"}]
 
-        except toodledo2.ToodledoError as tooderror:
-            print_(repr(tooderror))
+        except toodledo2.ToodledoError as e:
+            print_(repr(e))
             print_("There was a problem adding new client context {} to the server".format(c.title))
 
             if tooderror.errorcode == 5: # duplicate name errorcode
@@ -374,8 +373,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         try:
             [server_folder] = toodledo_call('folders/add', name=c.title) 
                  
-        except toodledo2.ToodledoError as tooderror:
-            print_(repr(tooderror))
+        except toodledo2.ToodledoError as e:
+            print_(repr(e))
             print_("There was a problem adding new client folder {} to the server".format(f.title))
 
             if tooderror.errorcode == 5: # duplicate name errorcode
@@ -543,10 +542,10 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
                 z = {a:_typemap[a] (getattr(t, attr_map.get(a,a))) for a in _typemap}
                 lst.append(z)
             
-            except Exception as value:
+            except Exception as e:
                 
                 print_("Problem in client-edited-tasks with id: {0}: {1}".format(t.id,t.title))
-                print_(repr(value))
+                print_(repr(e))
         
         kwargs = {'tasks':json.dumps(lst, separators=(',',':')), 'fields':'folder,star,priority,duedate,context,tag,added,note,startdate,duetime,remind'}
         #kwargs=[{"id":"1234","title":"My Task","modified":1281990824,"completed":0,"folder":"0","star":"0"},{"id":"1235","title":"Another","modified":1280877483,"completed":0,"folder":"0","star":"1"}]
@@ -655,8 +654,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         try:
             server_tasks = toodledo_call('tasks/delete', tasks=json.dumps(tids_to_delete, separators=(',',':')))
             #[{"id":"1234"},{"id":"1235"}]
-        except toodledo2.ToodledoError as value:
-            print_(repr(value))
+        except toodledo2.ToodledoError as e:
+            print_(repr(e))
             print_("There was a problem deleting deleted client tasks from the server")
               
         else:  

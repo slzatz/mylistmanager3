@@ -94,7 +94,7 @@ def alarm(task_tid):
     body = task.note if task.note else ''
     hints = "| priority: !! or zero or 0; alarm: off; star: star or * or nostar; remind: off"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
-    body = header+hints+"\n\n======================================================================++++\n"+body
+    body = header+hints+"\n==================================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
@@ -212,11 +212,6 @@ def recent():
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
     if request.method == 'POST':
-        #for z in request.form:
-        #    print("{}: {}".format(z, request.form[z]))
-        #headers[Date]
-        #headers[Subject]
-        #plain
         subject = request.form.get('headers[Subject]')
         if subject.lower().startswith('re:'):
             pos = subject.find('|')
@@ -237,8 +232,8 @@ def incoming():
             print("There is only one task with the title: {}".format(subject))
 
             body = request.form.get('plain')
-            pattern = "=============++++"
-            pos = body.find(pattern)
+            pattern = "================="
+            pos = body.rfind(pattern)
             note = body[1+pos+len(pattern):] if pos!=-1 else body
             #print(body) 
             task = task[0]
@@ -259,7 +254,7 @@ def incoming():
 
             session.commit()
 
-            #at one time automatically synced and that may actually be a good idea
+            #at one point it was automatically syncing and that may actually be a good idea
             #j = scheduler.add_job(sync, name="sync")
 
             return "Updated task with new body"
