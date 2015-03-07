@@ -2,7 +2,6 @@
 A program to manage information
 python3-compatible version
 '''
-
 import sip  
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -122,6 +121,8 @@ update_row = g.update_row
 class ListManager(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(ListManager, self).__init__(parent)
+        
+        
         self.setWindowTitle("My Listmanager")
 
         status = self.statusBar()
@@ -141,6 +142,7 @@ class ListManager(QtWidgets.QMainWindow):
                 self.restoreGeometry(settings.value('MainWindow/Geometry'))
                 self.restoreState(settings.value('MainWindow/State')) 
 
+     
         if not DB_EXISTS:
             
             context = Context(tid=0, title='No Context')
@@ -635,7 +637,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         #self.display['icon'] = lambda x: self.folder_icons[x.folder.title]
 
-            
         # the initial set of properties for each page
         #tab['type']  are strings like 'context', 'folder', 'active_search', 'saved_search','all', 'recent' and 
         #tab['value'] are strings like 'work', 'todo' and for searches the query terms and 
@@ -828,7 +829,7 @@ class ListManager(QtWidgets.QMainWindow):
 
     def createsavedtab(self, properties, n): 
 
-    #for i, properties in enumerate(self.savedtabs): # probably wouldn't need self
+        #for i, properties in enumerate(self.savedtabs): # probably wouldn't need self
      
         aa = QtGui.QAction(properties['title'], self)
         
@@ -3491,4 +3492,6 @@ if __name__ == '__main__':
     
     mainwin.show()
     app.exec_() 
+
+
 
