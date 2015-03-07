@@ -1,4 +1,3 @@
-
 import sys
 import os
 import datetime
@@ -25,7 +24,6 @@ sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'local_engine', 'remote_engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'local_session', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc']
 
 metadata = MetaData()
-
 task_table = Table('task',metadata,
               Column('id', Integer, primary_key=True),
               Column('tid', Integer), #, unique=True, nullable=False), #the toodledo id ... unique=True, nullable=False), needs to be non-unique because we get the tids on sync
