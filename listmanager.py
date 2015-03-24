@@ -23,7 +23,7 @@ import re
 import textwrap
 import base64
 import io
-import importlib #for plugins - I think new in 2.7
+import importlib #for plugins
 import argparse
 import tempfile
 from subprocess import Popen
@@ -64,7 +64,7 @@ from lmdb import *
 
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
-# for all of the following: if the command line option is not present then the value is True and startup is normal
+# for all of the following: if the command line option is not present then the value is the opposite of the action
 parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")

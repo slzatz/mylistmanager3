@@ -1,1 +1,0 @@
-c:\python34\python listmanager_aws.py
