@@ -216,9 +216,12 @@ class ListManager(QtWidgets.QMainWindow):
 
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
-        if DB_EXISTS:
+        #if DB_EXISTS:
+        if os.path.exists("indexdir"):
             self.ix = index.open_dir("indexdir")
             self.searcher = self.ix.searcher()
+        else:
+            self.searcher = None
 
         self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
 
@@ -488,7 +491,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_startdate = action("Set Startdate", partial(self.setdate, which='startdate'), icon='office-calendar')
         a_resetinterp = action("Reset Console", self.resetinterp)
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
-        a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb)
+        a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+N')
 
         add_actions(toolmenu, (a_synchronize_local, a_synchronize_remote, a_showsync_log, None, a_updatewhooshentry,
@@ -1389,7 +1392,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         session.commit()
         
-        #this should be better
+        #task.tag is a string of keywords separated by commas
         task.tag = ','.join(kwn.name for kwn in task.keywords)
         session.commit()
 
@@ -2540,10 +2543,11 @@ class ListManager(QtWidgets.QMainWindow):
         #the below works - I used that schema and then search on Prefix
         #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) #probably better to do signed=False 
 
-        #Below is my take on how you use a custom Tokenizer inclusing Ngram that only looks at the start of words
+        #Below is my take on how you use a custom Tokenizer including Ngram that only looks at the start of words
         #phrase = False means we're not indexing across words which doesn't make sense when doing real-time incremental searching
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
-        schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
+        #schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
+        schema = Schema(title=TEXT(my_analyzer, phrase=False), tag=KEYWORD(commas=True, lowercase=True, scorable=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
         if not os.path.exists("indexdir"):
             os.mkdir("indexdir")
         
@@ -2553,10 +2557,42 @@ class ListManager(QtWidgets.QMainWindow):
 
         for n,task in enumerate(tasks):
 
-            writer.add_document(title=task.title,
-                                           #tag = task.tag, 
-                                           note = task.note, 
-                                           task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
+            writer.add_document(title = task.title,
+                                tag = task.tag, 
+                                note = task.note, 
+                                task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
+                                           
+            self.pb.setValue(n)
+             
+        writer.commit()
+        
+        print_("Whoosh database indexing complete")
+        
+        self.pb.hide()
+
+    def create_whooshdb2(self):
+        tasks = session.query(Task)
+        r = tasks.count()
+        self.pb.setRange(0, r)
+        self.pb.setValue(0)
+        self.pb.show()
+        
+        my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
+        schema = Schema(content=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
+        if not os.path.exists("indexdir"):
+            os.mkdir("indexdir")
+        
+        # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
+        ix = create_in("indexdir", schema)
+        writer = ix.writer()
+
+        for n,task in enumerate(tasks):
+
+            note = task.note if task.note else '' 
+            text = ' '.join(k.name for k in task.keywords) + ' ' + task.title + ' ' + note
+
+            writer.add_document(content = text, 
+                                task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
                                            
             self.pb.setValue(n)
              
@@ -2926,14 +2962,15 @@ class ListManager(QtWidgets.QMainWindow):
         '''
         Now based on Whoosh 
         '''
-        #Question as to whether this should be an n-gram search - below uses n-gram
-        query = Or([Term('title', query_string), Term('note', query_string)])
+        #Not sure whether this should be an n-gram search or a Prefix search - below uses n-gram except for tag
+        #query = Or([Term('title', query_string), Term('note', query_string), Prefix('tag', query_string)])
         
         #the below works and uses Prefix to search on beginning of work v. n-gram
         #query = Or([Prefix('title', query_string), Prefix('note', query_string)]) #needs tags
-
-        print(repr(query))
-        results = self.searcher.search(query, limit=50)
+       
+        #print(repr(query))
+        #results = self.searcher.search(query, limit=50)
+        results = self.searcher.search(Term('content', query_string), limit=50)
         
         return [r['task_id'] for r in results] 
 
@@ -3084,10 +3121,16 @@ class ListManager(QtWidgets.QMainWindow):
             task = self.task
         
         writer = self.ix.writer()
-        writer.update_document(task_id=task.id,
-                               title=task.title,
-                               #tag=task.tag,
-                               note=task.note)
+#        writer.update_document(task_id=task.id,
+#                               title=task.title,
+#                               tag=task.tag,
+#                               note=task.note)
+#
+        note = task.note if task.note else '' 
+        text = ' '.join(k.name for k in task.keywords) + ' ' + task.title + ' ' + note
+
+        writer.add_document(content = text, 
+                            task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
         writer.commit()
         
         #Note While the writer is open and during the commit, the index is still available for reading. 
