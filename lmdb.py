@@ -13,8 +13,6 @@ from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
-#import lmglobals as g
-
 from aws_credentials import rds_uri
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
@@ -35,7 +33,7 @@ task_table = Table('task',metadata,
               Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
-              Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and its only a date
+              Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and it's only a date
               Column('completed', Date),
               Column('duedate', Date),
               Column('note', Text),
@@ -166,7 +164,7 @@ viewonly=True, foreign_keys=[folder_table.c.tid], remote_side=[task_table.c.cont
 #viewonly=True, foreign_keys=[keyword_table.c.id], remote_side=[task_table.c.context_tid])
 })
 
-# note can also do:  keywords = session.query(Keyword).join(['taskkeywords','task','context']).filter(Context.title=='Health')
+# note that you can also do:  keywords = session.query(Keyword).join(['taskkeywords','task','context']).filter(Context.title=='Health')
 
 mapper(Task, task_table, 
 properties = { #'children':relation(Task, 

@@ -2538,8 +2538,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.pb.setValue(0)
         self.pb.show()
         
-        #note that you can boost the weighting of a field - Schema(title=TEXT(field_boost=2.0...
-        #If unique=True on a field then the value of this field may be used to replace documents with the same value when the user calls document_update() on an IndexWriter. 
+        #If unique=True on a field then value of this field may be used to replace documents with the same value when the user calls document_update() on an IndexWriter. 
         #the below works - I used that schema and then search on Prefix
         #schema = Schema(title=TEXT, tag=KEYWORD, note=TEXT, task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True)) #probably better to do signed=False 
 
@@ -2547,7 +2546,7 @@ class ListManager(QtWidgets.QMainWindow):
         #phrase = False means we're not indexing across words which doesn't make sense when doing real-time incremental searching
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         #schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        schema = Schema(title=TEXT(my_analyzer, phrase=False), tag=KEYWORD(commas=True, lowercase=True, scorable=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
+        schema = Schema(title=TEXT(my_analyzer, phrase=False), tag=KEYWORD(commas=True, lowercase=True, scorable=True), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
         if not os.path.exists("indexdir"):
             os.mkdir("indexdir")
         
