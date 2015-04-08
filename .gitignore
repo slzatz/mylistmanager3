@@ -3,3 +3,7 @@
 *.leo
 *.bat
 __pycache__
+config.py
+*.swp
+*.bac
+
