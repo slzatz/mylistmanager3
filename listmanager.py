@@ -1284,7 +1284,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @update_whooshdb
     @check_task_selected
-    def updatecontext(self, checked, title=None):
+    def updatecontext(self, checked=None, title=None):
         '''
         Called by each of the table widget context submenu actions and the toolbar menu widget
         and by method selectcontext (and appears in synchronize

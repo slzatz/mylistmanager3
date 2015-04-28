@@ -13,7 +13,7 @@ from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
-from aws_credentials import rds_uri
+from config import rds_uri
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
@@ -75,6 +75,7 @@ context_table = Table('context', metadata,
                  Column('textcolor', Integer),
                  Column('image', LargeBinary)
 )
+
 folder_table = Table('folder', metadata,
                  Column('id', Integer, primary_key=True),
                  Column('tid', Integer, unique=True, nullable=False), #the toodledo id
@@ -88,12 +89,15 @@ folder_table = Table('folder', metadata,
                  Column('textcolor', Integer),
                  Column('image', LargeBinary)
 )
+
 temp_tid_table = Table('temp_tid', metadata,
                  Column('id', Integer, primary_key=True),
                  Column('title', String(32)),
                  Column('type_', String(32)),
                  Column('created', DateTime, default=datetime.datetime.now), 
 )
+
+
 keyword_table = Table('keyword', metadata,
                  Column('id',Integer, primary_key=True),
                  Column('name', String(25), unique=True, nullable=False), #note tag is <=65
@@ -102,6 +106,7 @@ taskkeyword_table = Table('task_keyword', metadata,
                       Column('task_id', Integer, ForeignKey('task.id'), primary_key=True), 
                       Column('keyword_id', Integer, ForeignKey('keyword.id'), primary_key=True), 
 )
+
 sync_table = Table('sync', metadata,
                       Column('machine', String(20), primary_key=True), #NYCPSSZATZ1 or dell4300
                       Column('timestamp', DateTime),
@@ -170,7 +175,6 @@ mapper(Task, task_table,
 properties = { #'children':relation(Task, 
 'taskkeywords':relation(TaskKeyword, lazy=True, backref='task') #was lazy=False; note that he default loader strategy is lazy=True so it isn't necessary here
 })
-
 mapper(Folder, folder_table, properties = {
 'tasks':relation(Task, backref='folder')
 })
@@ -183,6 +187,7 @@ mapper(TaskKeyword, taskkeyword_table, properties= {
 mapper(Sync, sync_table)
 
 mapper(Temp_tid, temp_tid_table)
+
 
 #metadata.bind = engine # I think only really necessary if you're issuing a metadata.create_all(engine) command
 #metadata.create_all(engine) # only creates if tables not present but not
