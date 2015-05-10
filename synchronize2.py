@@ -703,11 +703,12 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         
     return log,changes,tasklist,deletelist 
     
-def downloadtasksfromserver():
+def downloadtasksfromserver(local=True):
     '''
     sends all tasks on server down to client
     '''
 
+    session = local_session if local else remote_session
     toodledo_call = toodledo2.toodledo_call
     
     # I should make it possible to select only certain contexts
