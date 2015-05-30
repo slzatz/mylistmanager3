@@ -117,10 +117,11 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         cursor = self.textCursor()
         if not cursor.hasSelection():
             return
-        #text = str(cursor.selectedText()) # need unicode for if below
         text = cursor.selectedText() # 03/13/2010
 
-        if text.startswith('http://'):
+        if text.startswith('https://'):
+            text = '<a href="{0}">{1}</a> '.format(text, text[8:])
+        elif text.startswith('http://'):
             text = '<a href="{0}">{1}</a> '.format(text, text[7:])
         else:
             text = '<a href="http://{0}">{0}</a> '.format(text)
@@ -290,7 +291,7 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         url = self.anchorAt(pos)
 
         if url:            
-            if not url.startswith('http://'): #linux seems to need this
+            if not url.startswith('http'): #linux seems to need this
                 url = 'http://{0}'.format(url)
             #webbrowser.open(str(url), new=2, autoraise=True)
             webbrowser.open(url, new=2, autoraise=True) # 03/13/2010

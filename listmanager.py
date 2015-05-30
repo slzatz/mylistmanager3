@@ -1,6 +1,6 @@
 '''
 A program to manage information
-python3-compatible version
+This is the python3-compatible version
 '''
 import sip  
 from PyQt5 import QtCore, QtGui, QtWidgets

@@ -4,7 +4,7 @@ import urllib.request, urllib.error, urllib.parse
 import configparser as configparser
 
 from PyQt5 import QtGui,QtWidgets
-from aws_credentials import rds_uri
+from config import rds_uri
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 CONFIG_FILE = os.path.join(cwd,'mylistmanager.ini')

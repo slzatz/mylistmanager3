@@ -61,8 +61,8 @@ task_table = Table('task',metadata,
 # remind : An integer that represents the number of minutes prior to the duedate/time that a reminder will be sent. 
 #Set it to 0 for no reminder. Values will be constrained to this list of 
 #valid numbers (0, 1, 15, 30, 45, 60, 90, 120, 180, 240, 1440, 2880, 4320, 5760, 7200, 8640, 10080, 20160, 43200). 
-#Additionally, if the user does not have a Pro account, the only valid numbers are 0,60. If you submit an invalid number, it will be
-# rounded up or down to a valid non zero value.
+#Additionally, if the user does not have a Pro account, the only valid numbers are 0,60. If you submit an invalid number, 
+#it will be rounded up or down to a valid non zero value.
 
 context_table = Table('context', metadata,
                  Column('id', Integer, primary_key=True),
