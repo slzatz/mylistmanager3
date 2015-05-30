@@ -2936,6 +2936,9 @@ class ListManager(QtWidgets.QMainWindow):
         if len(query_string) < 3:
             return
         
+        if len(query_string) > 7:
+            query_string = query_string[:7]
+
         if self.active_search:
             self.tab_manager.setCurrentWidget(self.active_search)
             self.Properties['query_string'] = query_string
