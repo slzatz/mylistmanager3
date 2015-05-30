@@ -30,6 +30,17 @@ from subprocess import Popen
 import resources
 import requests
 
+parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
+
+# for all of the following: if the command line option is not present then the value is the opposite of the action
+parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
+parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
+parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
+parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
+parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
+
+args = parser.parse_args()
+
 # age is cython-created function more to check cython out than that it was absolutely necessary
 try:
     from age_c import age
@@ -60,27 +71,6 @@ import whoosh.index as index
 from whoosh.query import Term, Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 from whoosh import analysis
-from lmdb import *
-
-parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
-
-# for all of the following: if the command line option is not present then the value is the opposite of the action
-parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
-parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
-parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
-parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
-parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
-
-args = parser.parse_args()
-
-if args.sqlite:
-    #g.DB_URI = g.sqlite_uri
-    session = local_session
-    engine = local_engine
-else:
-    #g.DB_URI = g.rds_uri 
-    session = remote_session
-    engine = remote_engine
 
 if args.db_create:
     print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
@@ -97,16 +87,27 @@ else:
         
 if not DB_EXISTS and args.sqlite:
     db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
-
+    print("db_directory=",db_directory)
     try:
-        os.makedirs(db_directory)
-    except OSError:
+        os.mkdir(db_directory)
+    except OSError as e:
+        print(e)
         sys.exit("Could not create directory for sqlite database")
 
 from lmdb import *
 
-if args.db_create:
-    engine.echo = True
+#if args.db_create:
+#    engine.echo = True
+
+if args.sqlite:
+    #g.DB_URI = g.sqlite_uri
+    session = local_session
+    engine = local_engine
+else:
+    #g.DB_URI = g.rds_uri 
+    session = remote_session
+    engine = remote_engine
+
 
 VERSION = '0.8'
 

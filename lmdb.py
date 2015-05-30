@@ -202,3 +202,6 @@ local_session = Local_Session()
 remote_engine = create_engine(rds_uri, echo=False)
 Remote_Session = sessionmaker(bind=remote_engine)
 remote_session = Remote_Session()
+
+metadata.bind = local_engine
+metadata.create_all(local_engine)
