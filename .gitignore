@@ -6,4 +6,5 @@ __pycache__
 config.py
 *.swp
 *.bac
-
+indexdir/
+lmdb/
