@@ -405,7 +405,11 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
                         # a fragment can only be an anchor, italics, bold or mono
 
                         if char_format.isAnchor():
-                            references += "  [{0}]: {1}\n".format(i, char_format.anchorHref())                            
+                            if text.startswith('http'):
+                                references += "  [{0}]: {1}\n".format(i, text)
+                            else:
+                                references += "  [{0}]: {1}\n".format(i, char_format.anchorHref())                            
+
                             text = "[{0}][{1}]".format(text,i)
                             i+=1
                         elif font_size > 10:
