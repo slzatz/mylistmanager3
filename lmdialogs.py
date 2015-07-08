@@ -716,6 +716,7 @@ class ModifyColumns(QDialog):
         self.lst = lst
 
         super(ModifyColumns, self).accept()
+
 class LWidget(QtWidgets.QListWidget):
     def __init__(self, parent=None, lst=None):
         super(LWidget, self).__init__(parent) ###########
@@ -743,7 +744,7 @@ class LWidget(QtWidgets.QListWidget):
             if platform.uname()[0]=='Linux':
                 items = self.selectedItems()
                 self.takeItem(self.row(items[0]))
-            return
+            #return #6-28-2015 trying to correct no drag and drop in same window
         print("drop event", event)
         event.setDropAction(Qt.MoveAction) #MoveAction
         #QListWidget.dropEvent(self, event)

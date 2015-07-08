@@ -268,5 +268,12 @@ def incoming():
     else:
         return 'It was not a post method'
 
+@app.route('/echo/<artist>/<source>') #0.0.0.0:5000/2145/0/10/how%20are%20you
+def echo(artist, source):
+    print(artist)
+    print(source)
+    z = {'artist':artist, 'source':source}
+    return json.dumps(z)
+
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)

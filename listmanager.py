@@ -43,7 +43,10 @@ args = parser.parse_args()
 
 # age is cython-created function more to check cython out than that it was absolutely necessary
 try:
-    from age_c import age
+    #from age_c import age
+    #import age_mod
+    #age = lambda x:age_mod.age(x).decode('utf8')
+    from age_mod3 import age # c library using agelib.c that I created in C - note that there are age_mod.pyd, age_mod2.pyd and age_mod3.pyd (the latter tries to free the memory)
 except ImportError:
     print("Unable to import age c funtion")
     def age(z):
@@ -623,7 +626,8 @@ class ListManager(QtWidgets.QMainWindow):
             'title':      {'label':'title',    'width':550,'align': center, 'sortable':True, 'fixed':False,'action':lambda x: None,     'display': lambda x:(x.title,)},
             'tid':        {'label':'tid',      'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (str(x.tid) if x.tid else '',)},
             'folder_tid': {'label':'f_tid',    'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (str(x.folder_tid) if x.folder_tid else '',)},
-            'modified':   {'label':'modified', 'width':85, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.modified.strftime(format1) if x.added else '',)},
+            #'modified':   {'label':'modified', 'width':85, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.modified.strftime(format1) if x.added else '',)},
+            'modified':   {'label':'modified', 'width':85, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (age((TODAY - x.modified.date()).days),)},
             'completed':  {'label':'completed','width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.completed.strftime(format1) if x.completed else '',)},
             'added':      {'label':'added',    'width':75, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.added.strftime(format1) if x.added else '',)},
             'created':    {'label':'created',  'width':115, 'align': center, 'sortable':True, 'fixed':True, 'action':lambda x: None,     'display': lambda x: (x.created.strftime(format2) if x.created else '',)},
@@ -1707,6 +1711,8 @@ class ListManager(QtWidgets.QMainWindow):
         tab = self.Properties['tab']
 
         if  tab['value'] != 'active_search':
+            if 'tab_icon' in self.Properties:
+                del self.Properties['tab_icon']
             cg.set('Startup', 'current_tab', json.dumps(self.Properties))
 
         if not cg.has_section('Properties'):
