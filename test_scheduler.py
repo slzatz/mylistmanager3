@@ -53,6 +53,7 @@ if not isfile('sync_log'):
 
 #global
 sync_in_progress = False
+sonos_companion = {'artist':None, 'source':None, 'updated':False}
 
 def sync():
     global sync_in_progress
@@ -272,8 +273,19 @@ def incoming():
 def echo(artist, source):
     print(artist)
     print(source)
-    z = {'artist':artist, 'source':source}
-    return json.dumps(z)
+    sonos_companion['artist'] = artist
+    sonos_companion['source'] = source
+    sonos_companion['updated'] = True
+    return json.dumps(sonos_companion)
+
+@app.route('/sonos_companion_check') #0.0.0.0:5000/2145/0/10/how%20are%20you
+def sonos_companion_check():
+    if sonos_companion['updated']:
+        temp = dict(sonos_companion)
+        sonos_companion['updated'] = False
+        return json.dumps(temp)
+    else:
+        return json.dumps(sonos_companion)
 
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
