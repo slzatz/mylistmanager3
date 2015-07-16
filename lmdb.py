@@ -188,12 +188,6 @@ mapper(Sync, sync_table)
 
 mapper(Temp_tid, temp_tid_table)
 
-
-#metadata.bind = engine # I think only really necessary if you're issuing a metadata.create_all(engine) command
-#metadata.create_all(engine) # only creates if tables not present but not
-#Session = sessionmaker()
-#Session.configure(bind=engine)
-
 # note that even if databases don't exist these won't fail
 local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False}, echo=False)
 Local_Session = sessionmaker(bind=local_engine)
@@ -203,5 +197,6 @@ remote_engine = create_engine(rds_uri, echo=False)
 Remote_Session = sessionmaker(bind=remote_engine)
 remote_session = Remote_Session()
 
-metadata.bind = local_engine
-metadata.create_all(local_engine)
+#metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
+#metadata.create_all(local_engine) # only creates if tables not present but not
+
