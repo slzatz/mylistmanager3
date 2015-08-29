@@ -25,39 +25,11 @@ else:
     print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
     pb = g.pb
 
-print_("Hello from the synchronize2 module")
+print_("Hello from the synchronize3 module")
 
 def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
 
-    #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
-    #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
-    #...","remind":"0","star":"0","duedate":1336478400,"startdate":0,"added":1336132800,"duetime":1336456800}
-
-    attr_map = dict(id='tid', folder='folder_tid', context='context_tid')
-
-    _convert = lambda x: calendar.timegm(x.timetuple()) if x else 0
-    #previously _convert_ = lambda x: int(time.mktime(x.timetuple())) if x else 0, 
-    #it's not the same and I think current _convert function is correct but not 100% sure
-
-    _typemap = {
-                
-                    'id': str, 
-                    'title': lambda x:x,
-                    'tag': lambda x: x if x else '',
-                    'folder': str,
-                    'context': str,
-                    'remind': lambda x: str(x) if x else "0",
-                    'startdate': _convert,
-                    'duedate': _convert,
-                    'duetime': _convert,
-                    'completed': _convert,
-                    'star': lambda x: str(int(x)), 
-                    'priority': str,
-                    'note': lambda x:x,
-
-                        }
-
-    #not using parent
+    #Note that we are not using parent
 
     nn = 0
 
@@ -73,13 +45,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         
     log = ''
 
-    try:
-        sync = session.query(Sync).get('client') 
-    except sqla_exc.OperationalError as e:
-        print("Connection to AWS RDS was probably lost:",e)
-        return
+    sync = local_session.query(Sync).get('client') 
 
-    last_client_sync = sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with toodledo
+    last_client_sync = sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with postgreSQL
     last_server_sync = sync.unix_timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues
 
     log+= "LISTMANAGER SYNCRONIZATION\n"
@@ -89,120 +57,99 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     log+= "The last time client & server were synced (based on client clock) was {0}, which was {1} days and {2} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
     log+= "Unix timestamp (client clock) for last sync is {0} ---> {1}\n".format(last_server_sync, datetime.datetime.fromtimestamp(last_server_sync).isoformat(' ')[:19])
 
-    account_info = toodledo_call('account/get')
-
-    # {"lastedit_folder":"1281457337","lastedit_context":"1281457997","lastedit_goal":"1280441959","lastedit_location":"1280441959",
-    #"lastedit_task":"1281458832","lastdelete_task":"1280898329","lastedit_notebook":"1280894728","lastdelete_notebook":"1280898329"}
-
-    log+= "The last task edited on server was at {0} ---> {1}.\n".format(account_info.lastedit_task, datetime.datetime.fromtimestamp(account_info.lastedit_task).isoformat(' ')[:19])
-    log+= "The last task deleted on server was at {0} ---> {1}.\n".format(account_info.lastdelete_task, datetime.datetime.fromtimestamp(account_info.lastdelete_task).isoformat(' ')[:19])
-    #contexts
-    #http://api.toodledo.com/2/contexts/get.php?key=YourKey
-    #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
-
-    if account_info.lastedit_context and account_info.lastedit_context > last_server_sync:
-        server_contexts = toodledo_call('contexts/get')
-        nn+=len(server_contexts)
-        log+="There were change(s) to server Contexts since the last sync and all {0} Contexts were downloaded.\n".format(len(server_contexts))
-        changes.append('contexts')
+    #get new server contexts
+    server_new_contexts = remote_session.query(Context).filter(Context.created > last_server_sync).all()
+    if server_new_contexts:
+        nn+=len(server_new_contexts)
+        log+= "New server Contexts added since the last sync: {0}.\n".format(len(server_new_contexts))
     else:
-        server_contexts = []
-        log+="There were no Context changes (edits, deletions, additions) on the server since the last sync.\n"
-
-    #folders
-    if account_info.lastedit_folder and account_info.lastedit_folder > last_server_sync:
-        #[{"id":"123","name":"Shopping","private":"0","archived":"0","ord":"1"},...]
-        server_folders = toodledo_call('folders/get')
-        nn+=len(server_folders)
-        log+="There were change(s) to server Folders since the last sync and all {0} Folders were downloaded.\n".format(len(server_folders))
-        changes.append('folders')
+        log+="There were no new server Contexts added since the last sync.\n"   
+            
+    #get new server folders
+    server_new_folders = remote_session.query(Folder).filter(Folder.created > last_server_sync).all() 
+    if server_new_folders:
+        nn+=len(server_new_folders) 
+        log+= "New server Folders added since the last sync: {0}.\n".format(len(server_new_folders))
     else:
-        server_folders = []
-        log+="There were no Folder changes (edits, deletions, additions) on the server since the last sync.\n"
+        log+="There were no new server Folders added since the last sync.\n"    
 
-    #tasks
-    if account_info.lastedit_task and account_info.lastedit_task > last_server_sync:
-        server_updated_tasks = []
-        n= 0
-        while 1:
-            # always returns id, title, modified, completed
-            stats,tasks = toodledo_call('tasks/get', start=str(n), end=str(n+1000), modafter=last_server_sync, fields='folder,star,priority,duedate,context,tag,added,note,startdate,duetime,remind')
-            server_updated_tasks.extend(tasks)
-            if stats['num'] < 1000:
-                break
-            n+=1000
+    #server tasks -- may not need both edited and new since modified should pick up both
+    #server_new_tasks = remote_session.query(Task).filter(and_(Task.created > last_server_sync, Task.deleted==False)).all() 
+    #if server_new_tasks:
+    #    log+= "New server Tasks added since the last sync: {0}.\n".format(len(server_new_tasks))
+    #else:
+    #    log+="There were no new server Tasks added since the last sync.\n\n"        
 
+    #server_edited_tasks = remote_session.query(Task).filter(and_(Task.modified > last_server_sync, Task.deleted==False)).all()
+
+    #if server_edited_tasks:
+    #    nn+=len(server_edited_tasks)
+    #    log+="Edited server Tasks since the last sync: {0}.\n".format(len(server_edited_tasks))
+    #else:
+    #    log+="There were no edited server Tasks since the last sync.\n" 
+
+    #server tasks
+    server_updated_tasks = remote_session.query(Task).filter(and_(Task.modified > last_server_sync, Task.deleted==False)).all()
+
+    if server_updated_tasks:
         nn+=len(server_updated_tasks)
-        log+="Created and/or modified Server Tasks since the last sync: {0}.\n".format(len(server_updated_tasks))
+        log+="Updated (new and modified) server Tasks since the last sync: {0}.\n".format(len(server_updated_tasks))
     else:
-        server_updated_tasks = []
-        log+="There were no Tasks created and/or modified on the server since the last sync.\n"
+        log+="There were no updated (new and modified) server Tasks since the last sync.\n" 
 
-    #deleted tasks
-    if account_info.lastdelete_task and account_info.lastdelete_task > last_server_sync:
-        stats,server_deleted_tasks = toodledo_call('tasks/deleted', after=last_server_sync) 
+    #server deletes
+    server_deleted_tasks = remote_session.query(Task).filter(Task.deleted==True).all()
+    if server_deleted_tasks:
         nn+=len(server_deleted_tasks)
-        log+="Server Tasks deleted since the last sync: {0}.\n\n".format(len(server_deleted_tasks))
+        log+="Deleted server Tasks since the last sync: {0}.\n".format(len(server_deleted_tasks))
     else:
-        server_deleted_tasks = []
-        log+="There were no Tasks that were deleted on the server since the last sync.\n\n"
+        log+="There were no server Tasks deleted since the last sync.\n" 
 
-    #contexts
-    client_new_contexts = session.query(Context).filter(Context.created > last_client_sync).all()
+    log+="\nThe total number of changes is {0}.\n".format(nn)
+    ####################################################################################################################################################
+    #####################################################################################################################################################################
+    #local contexts
+    client_new_contexts = local_session.query(Context).filter(Context.created > last_client_sync).all()
     if client_new_contexts:
         nn+=len(client_new_contexts)
         log+= "New client Contexts added since the last sync: {0}.\n".format(len(client_new_contexts))
     else:
         log+="There were no new client Contexts added since the last sync.\n"   
             
-    alternate_client_new_contexts = session.query(Temp_tid).filter_by(type_='context').all()
+    alternate_client_new_contexts = local_session.query(Temp_tid).filter_by(type_='context').all()
 
     if alternate_client_new_contexts:
         log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
     else:
         log+="Alternate method: There were no new client Contexts added since the last sync.\n\n"        
 
-    #folders
-    client_new_folders = session.query(Folder).filter(Folder.created > last_client_sync).all() 
+    #local folders
+    client_new_folders = local_session.query(Folder).filter(Folder.created > last_client_sync).all() 
     if client_new_folders:
         nn+=len(client_new_folders) 
         log+= "New client Folders added since the last sync: {0}.\n".format(len(client_new_folders))
     else:
         log+="There were no new client Folders added since the last sync.\n"    
 
-    alternate_client_new_folders = session.query(Temp_tid).filter_by(type_='folder').all()
+    alternate_client_new_folders = local_session.query(Temp_tid).filter_by(type_='folder').all()
 
     if alternate_client_new_folders:
         log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
     else:
         log+="Alternate method: There were no new client Folders added since the last sync.\n\n"        
 
-    #tasks
-    client_new_tasks = session.query(Task).filter(and_(Task.tid==None, Task.deleted==False)).all()
-    if client_new_tasks:
-        nn+=len(client_new_tasks)
-        log+="New client Tasks added since the last sync: {0}.\n".format(len(client_new_tasks))
-    else:
-        log+="There were no new client Tasks added since the last sync.\n" 
-        
-    alternate_client_new_tasks = session.query(Task).filter(and_(Task.created > last_client_sync, Task.deleted==False)).all() 
-    if alternate_client_new_tasks:
-        log+= "Alternate method: New client Tasks added since the last sync: {0}.\n".format(len(alternate_client_new_tasks))
-    else:
-        log+="Alternate method: There were no new client Tasks added since the last sync.\n\n"        
-        
+    #local tasks
+    client_updated_tasks = local_session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==False)).all()
 
-    client_edited_tasks = session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==False, Task.tid!=None)).all()
-
-    if client_edited_tasks:
-        nn+=len(client_edited_tasks)
-        log+="Edited client Tasks since the last sync: {0}.\n".format(len(client_edited_tasks))
+    if client_updated_tasks:
+        nn+=len(client_updated_tasks)
+        log+="Updated (new and modified) client Tasks since the last sync: {0}.\n".format(len(client_updated_tasks))
     else:
-        log+="There were no edited client Tasks since the last sync.\n" 
+        log+="There were no updated (new and modified) client Tasks since the last sync.\n" 
 
-    #deletes
-    client_deleted_tasks = session.query(Task).filter(Task.deleted==True).all()
-    #client_deleted_tasks = session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==True, Task.tid != None)).all()
+    #local deletes
+    client_deleted_tasks = local_session.query(Task).filter(Task.deleted==True).all()
+    #client_deleted_tasks = local_session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==True, Task.tid != None)).all()
     if client_deleted_tasks:
         nn+=len(client_deleted_tasks)
         log+="Deleted client Tasks since the last sync: {0}.\n".format(len(client_deleted_tasks))
@@ -210,7 +157,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         log+="There were no client Tasks deleted since the last sync.\n" 
 
     log+="\nThe total number of changes is {0}.\n".format(nn)
-     
+
+    ####################################################################################################################################################
+
     if showlogdialog and OkCancel:
 
         dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=parent, OkCancel=True)
@@ -227,65 +176,74 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
 
     #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
 
-    for sc in server_contexts:
+    # put new server contexts on the client
+    for sc in server_new_contexts:
+
+        # not sure there is any reason that this new server context would be on the client
         try:
-            context = session.query(Context).filter_by(tid=sc.id).one()
+            context = local_session.query(Context).filter_by(tid=sc.id).one()
             
         except sqla_orm_exc.NoResultFound:
               
             context = Context()
-            session.add(context)
+            local_session.add(context)
             context.tid = sc.id 
             
-            log += "{title} is a new context received from the server\n".format(title=sc.name)
+            log += "{title} is a new context received from the server\n".format(title=sc.title)
 
-        context.title = sc.name
+        context.title = sc.title
         
         try:
-            session.commit()
+            local_session.commit()
             
         except sqla_exc.IntegrityError:
-            session.rollback()
+            local_session.rollback()
             # probably means we ran into the unusual circumstance where context was simultaneously created on client and server
-            context.title = sc.name+' from server'
-            session.commit()
+            context.title = sc.title+' from server'
+            local_session.commit()
             
-            log += "{title} is a new context received from the server but it was a dupe of new client context\n".format(title=sc.name)
+            log += "{title} is a new context received from the server but it was a dupe of new client context\n".format(title=sc.title)
         
         nnn+=1
 
         if pb:
             pb.setValue(nnn)
 
+    # put new client contexts on the server
     for c in client_new_contexts: # this is where we could check for simultaneous creation of folders by checking for title in server_folders
+
         temp_tid = c.tid
 
+        # note that there could be a context with this title (created by another client) since last sync with current client
+
         try:
-            [server_context] = toodledo_call('contexts/add', name=c.title) #[{"id":"12345","name":"MyContext"}]
+            server_context = remote_session.query(Context).filter_by(title=c.title).one()
 
-        except toodledo2.ToodledoError as e:
-            print_(repr(e))
+        except sqla_orm_exc.NoResultFound:
+
+            context = Context(title=c.title)
+            remote_session.add(context)
+            remote_session.commit()
+            
+            server_context = remote_session.query(Context).filter_by(title=c.title).one()
+
+            log += "{title} is a new context received from the server\n".format(title=sc.title)
             print_("There was a problem adding new client context {} to the server".format(c.title))
-
-            if tooderror.errorcode == 5: # duplicate name errorcode
-                 [server_context] = toodledo_call('contexts/add', name=c.title+' from client')
-            else:
-                continue
 
         server_tid = server_context.id
         c.tid = server_tid
-        session.commit()
+        local_session.commit()
         log+= "Context {title} was added to server and received tid: {tid}\n".format(title=server_context.name, tid=server_tid)
         
         #need to update all tasks that used the temp_tid
         log+= "\nClient tasks that were updated with context id (tid) obtained from server:\n"
         
-        tasks_with_temp_tid = session.query(Task).filter_by(context_tid=temp_tid) #tasks_with_temp_tid = c.tasks may be a better but would have to move higher
+        tasks_with_temp_tid = local_session.query(Task).filter_by(context_tid=temp_tid) #tasks_with_temp_tid = c.tasks may be a better but would have to move higher
         
         # These changes on client do not get transmitted to the server because they are between old sync time and new sync time
         for t in tasks_with_temp_tid:
             t.context_tid = server_tid
-            session.commit()
+            local_session.commit()
             
             log+= "{title} is in context {context}".format(title=t.title[:30], context=t.context.title) 
 
@@ -297,67 +255,68 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     #note these are from class Temp_tid and not class Context
     for c in alternate_client_new_contexts: 
         log+="alternative method: new context: {0}".format(c.title)
-        session.delete(c)
-        session.commit()
-    #server_contexts = client.getContexts()
-    if server_contexts:
-        server_context_tids = set([sc.id for sc in server_contexts])
-        client_context_tids = set([cc.tid for cc in session.query(Context).filter(Context.tid!=0)])
+        local_session.delete(c)
+        local_session.commit()
 
-        client_not_server = client_context_tids - server_context_tids
+    # the following is intended to catch contexts deleted on the server
+    server_context_tids = set([sc.id for sc in remote_session.query(Context).filter(Context.tid!=0)])
+    client_context_tids = set([cc.tid for cc in local_session.query(Context).filter(Context.tid!=0)])
 
-        for tid in client_not_server:
-            cc = session.query(Context).filter_by(tid=tid).one()
-            tasks = session.query(Task).filter_by(context_tid=tid).all()
-            title = cc.title
-            session.delete(cc)
-            session.commit()
-            #Note that the delete sets context_tid=None for all tasks in the context
-            #I wonder how you set to zero - this is done "manually" below
-            log+= "Deleted client context tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
+    client_not_server = client_context_tids - server_context_tids
 
-            #These tasks are marked as changed by server so don't need to do this
-            #They temporarily pick of context_tid of None after the context is deleted on the client
-            #When tasks are updated later in sync they pick up correct folder_tid=0
+    for tid in client_not_server:
+        cc = local_session.query(Context).filter_by(tid=tid).one()
+        tasks = local_session.query(Task).filter_by(context_tid=tid).all()
+        title = cc.title
+        local_session.delete(cc)
+        local_session.commit()
+        #Note that the delete sets context_tid=None for all tasks in the context
+        #I wonder how you set to zero - this is done "manually" below
+        log+= "Deleted client context tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
 
-            log+= "\nClient tasks that should be updated with context tid = 0 because the Context was deleted from the server:\n"
-            
-            for t in tasks:
-                log+="{title} should to be changed from context_tid: {tid} to 'No Context'\n".format(tid=t.context_tid, title=t.title)
-            
-            nnn+=1
+        #These tasks are marked as changed by server so don't need to do this
+        #They temporarily pick of context_tid of None after the context is deleted on the client
+        #When tasks are updated later in sync they pick up correct folder_tid=0
 
-            if pb:
-                pb.setValue(nnn)
-            
-    #no code for client deleted contexts yet
+        log+= "\nClient tasks that should be updated with context tid = 0 because the Context was deleted from the server:\n"
+        
+        for t in tasks:
+            log+="{title} should to be changed from context_tid: {tid} to 'No Context'\n".format(tid=t.context_tid, title=t.title)
+        
+        nnn+=1
 
-     #[{"id":"123","name":"Shopping","private":"0","archived":"0","ord":"1"},...]
-    for sf in server_folders:
+        if pb:
+            pb.setValue(nnn)
+        
+#no code for client deleted contexts yet
+
+    #put new server folders on the client
+    for sf in server_new_folders:
+
         try:
-            folder = session.query(Folder).filter_by(tid=sf.id).one()
+            folder = local_session.query(Folder).filter_by(tid=sf.id).one()
             
         except sqla_orm_exc.NoResultFound:
             
             folder = Folder()
-            session.add(folder)
+            local_session.add(folder)
             folder.tid = sf.id
             log+= "New folder created on client with tid: {tid}; {title}\n".format(tid=sf.id, title=sf.name) # new server folders
 
-        folder.title = sf.name
+        folder.title = sf.title
         folder.archived = sf.archived
         folder.private = sf.private
         folder.order= sf.order 
 
         try:
-            session.commit()
+            local_session.commit()
             
         except sqla_exc.IntegrityError:
-            session.rollback()
+            local_session.rollback()
             # probably means we ran into the unusual circumstance where folder was simultaneously created on client and server
             # and title (name) already existed
-            folder.title = sf.name+' from server'
-            session.commit()
+            folder.title = sf.title +' from server'
+            local_session.commit()
             
             log += "{title} is a new folder received from the server but it was a dupe of new client folder\n".format(title=sf.name)
         
@@ -371,20 +330,21 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
 
         #[{"id":"12345","name":"MyFolder","private":"0","archived":"0","ord":"1"}]
         try:
-            [server_folder] = toodledo_call('folders/add', name=c.title) 
+            #[server_folder] = toodledo_call('folders/add', name=c.title) 
+            server_folder = remote_session.query(Folder).filter_by(title=f.title).one()
                  
-        except toodledo2.ToodledoError as e:
+        #except toodledo2.ToodledoError as e:
+        except Exception as e:
+            folder = Folder(title=f.title)
+            remote_session.add(folder)
+            remote_session.commit()
             print_(repr(e))
             print_("There was a problem adding new client folder {} to the server".format(f.title))
 
-            if tooderror.errorcode == 5: # duplicate name errorcode
-                 [server_folder] = toodledo_call('folders/add', name=f.title+' from client')
-            else:
-                continue
 
         server_tid = server_folder.id
         f.tid = server_tid
-        session.commit()
+        local_session.commit()
         #tasks_with_temp_tid = f.tasks #see below could use this before you change the folders tid
         log+= "Folder {title} was added to server and received tid: {tid}\n".format(title=server_folder.name, tid=server_tid)
 
@@ -396,7 +356,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         # These changes on client do not get transmitted to the server because they are between old sync time and new sync time
         for t in tasks_with_temp_tid:
             t.folder_tid = server_tid
-            session.commit() 
+            local_session.commit() 
 
             log+= "Task {title} in folder {folder} \n".format(title=t.title[:30], folder=t.folder.title)
 
@@ -411,35 +371,35 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         session.delete(f)
         session.commit()
 
-    if server_folders:
-        server_folder_tids = set([sf.id for sf in server_folders])
-        client_folder_tids = set([cf.tid for cf in session.query(Folder).filter(Folder.tid!=0)])
+    # deleting from client, folders deleted on server
+    server_folder_tids = set([sf.id for sf in remote_session.query(Folder).filter(Folder.tid!=0)])
+    client_folder_tids = set([cf.tid for cf in local_session.query(Folder).filter(Folder.tid!=0)])
 
-        client_not_server = client_folder_tids - server_folder_tids
+    client_not_server = client_folder_tids - server_folder_tids
 
-        for tid in client_not_server:
-            cf = session.query(Folder).filter_by(tid=tid).one()
-            tasks = session.query(Task).filter_by(folder_tid=tid).all() #seems like it needs to be here
-            title = cf.title
-            session.delete(cf)
-            session.commit()
-            log+= "Deleted client folder tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
+    for tid in client_not_server:
+        cf = session.query(Folder).filter_by(tid=tid).one()
+        tasks = session.query(Task).filter_by(folder_tid=tid).all() #seems like it needs to be here
+        title = cf.title
+        session.delete(cf)
+        session.commit()
+        log+= "Deleted client folder tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
 
-            #These tasks are marked as changed by server so don't need to do this
-            #They temporarily pick of folder_tid of None after the folder is deleted on the client
-            #When tasks are updated later in sync they pick up correct folder_tid=0
+        #These tasks are marked as changed by server so don't need to do this
+        #They temporarily pick of folder_tid of None after the folder is deleted on the client
+        #When tasks are updated later in sync they pick up correct folder_tid=0
 
-            log+= "\nClient tasks that should be updated with folder tid = 0 because Folder was deleted from the server:\n"
-            
-            for t in tasks:
-                log+="{title} should to be changed from folder_tid: {tid} to 'No Folder'\n".format(tid=t.folder_tid, title=t.title)
-            
-            
-            nnn+=1
+        log+= "\nClient tasks that should be updated with folder tid = 0 because Folder was deleted from the server:\n"
+        
+        for t in tasks:
+            log+="{title} should to be changed from folder_tid: {tid} to 'No Folder'\n".format(tid=t.folder_tid, title=t.title)
+        
+        
+        nnn+=1
 
-            if pb:
-                pb.setValue(nnn)
-            
+        if pb:
+            pb.setValue(nnn)
+        
     #no code for client deleted folders yet
 
     # Update client with server changes - both new and edited tasks
@@ -449,15 +409,15 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     if server_updated_tasks:
         log+= "\nTask that were updated/created on Server that need to be updated/created on client:\n"
 
-    for t in server_updated_tasks:
+    for st in server_updated_tasks:
         
-        task = session.query(Task).filter_by(tid=t.id).first()
+        task = local_session.query(Task).filter_by(tid=st.id).first()
         
         if not task:
             action = "created"
             task = Task()
-            session.add(task)
-            task.tid = t.id
+            local_session.add(task)
+            task.tid = st.id
         else:
             action = "updated"
             if task in client_edited_tasks:
@@ -466,144 +426,50 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
                
         #################### this shouldn't be necessary when they all go back to naive
         task.duetime = None ##########   just to deal with any lingering aware
-        session.commit() #############
+        local_session.commit() #############
 
-        task.context_tid = t.context
-        task.duedate = t.duedate
+        task.context_tid = st.context
+        task.duedate = st.duedate
         #task.duetime = (t.duetime + datetime.timedelta(hours=4)) if t.duetime else None #########
-        task.duetime = t.duetime if t.duetime else None #########
-        task.remind = t.remind
-        task.startdate = t.startdate if t.startdate else t.added ################ may 2, 2012
-        task.folder_tid = t.folder
-        task.title = t.title
-        task.added = t.added
-        task.star = t.star
-        task.priority = t.priority
-        task.tag = t.tag
-        task.completed = t.completed if t.completed else None
-        task.note = t.note
+        task.duetime = st.duetime if st.duetime else None #########
+        task.remind = st.remind
+        task.startdate = st.startdate if st.startdate else st.added ################ may 2, 2012
+        task.folder_tid = st.folder_tid ####################################################################################################
+        task.title = st.title
+        task.added = st.added
+        task.star = st.star
+        task.priority = st.priority
+        task.tag = st.tag
+        task.completed = st.completed if st.completed else None
+        task.note = st.note
 
-        # I am not calling parent at the moment so wondering if this should just be removed
-        # try:
-            # task.parent_tid = t.parent #only in pro accounts
-        # except:
-            # pass
+        local_session.commit() #new/updated client task commit
 
-        session.commit() #new/updated client task commit
-
-        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=t.id, star=t.star, priority=t.priority, completed=t.completed, title=t.title[:30])
+        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=st.id, star=st.star, priority=st.priority, completed=st.completed, title=st.title[:30])
 
         if task.tag:
             for tk in task.taskkeywords:
-                session.delete(tk)
-            session.commit()
+                local_session.delete(tk)
+            local_session.commit()
 
             for kwn in task.tag.split(','):
-                keyword = session.query(Keyword).filter_by(name=kwn).first()
+                keyword = local_session.query(Keyword).filter_by(name=kwn).first()
                 if keyword is None:
                     keyword = Keyword(kwn)
-                    session.add(keyword)
-                    session.commit()
+                    local_session.add(keyword)
+                    local_session.commit()
                 tk = TaskKeyword(task,keyword)
-                session.add(tk)
+                local_session.add(tk)
 
-            session.commit()
+            local_session.commit()
             
         tasklist.append(task)
-        
-        #could the xapian be done here?
-        #if XAPIANENABLED:
-            #for task in tasklist:
-                #self.updatexapianentry(task) # obviously self won't work
         
         nnn+=1
 
         if pb:
             pb.setValue(nnn)
 
-    #Update tasks on server with client edited tasks
-    #if client_edited_tasks:
-    log+= "\nTasks edited on this client that were updated on the server:\n" if client_edited_tasks else ''
-        
-    n=0
-    while 1:
-        client_tasks = client_edited_tasks[n:n+50]
-        print_("client_edited_tasks; n = {}".format(n))
-        if not client_tasks:
-            break
-            
-        lst = []
-            
-        for t in client_tasks:
-            
-            # some old tasks may have some weird stuff in things like completed 
-            try:
-                            
-                z = {a:_typemap[a] (getattr(t, attr_map.get(a,a))) for a in _typemap}
-                lst.append(z)
-            
-            except Exception as e:
-                
-                print_("Problem in client-edited-tasks with id: {0}: {1}".format(t.id,t.title))
-                print_(repr(e))
-        
-        kwargs = {'tasks':json.dumps(lst, separators=(',',':')), 'fields':'folder,star,priority,duedate,context,tag,added,note,startdate,duetime,remind'}
-        #kwargs=[{"id":"1234","title":"My Task","modified":1281990824,"completed":0,"folder":"0","star":"0"},{"id":"1235","title":"Another","modified":1280877483,"completed":0,"folder":"0","star":"1"}]
-        # separators option is just compacting representation
-        
-        server_tasks = toodledo_call('tasks/edit', **kwargs)
-        
-        for c,s in zip(client_tasks, server_tasks):
-            
-            if 'errorCode' in s:
-                log+="Task tid: {0} title: {1} could not be updated on server; errorCode: {2} - errorDesc: {3}".format(c.tid, c.title, s.errorCode, s.get('errorDesc', ''))
-            else:
-                log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
-            
-            nnn+=1
-
-            if pb:
-                pb.setValue(nnn)
-            
-        n+=50
-            
-    log+="\nNew client tasks that were added to the server:\n" if client_new_tasks else ''
-
-    n=0
-    while 1:
-        client_tasks = client_new_tasks[n:n+50] #can only upload 50 tasks at a time according to API
-        print_("client_new_tasks; n = {}".format(n))
-        if not client_tasks:
-            break
-
-        lst = []
-        for t in client_tasks:         
-            z = {a:_typemap[a] (getattr(t, attr_map.get(a,a))) for a in _typemap}          
-            lst.append(z)
-
-        kwargs = {'tasks':json.dumps(lst, separators=(',',':')), 'fields':'folder,star,priority,duedate,context,tag,added,note,startdate,duetime,remind'}
-        #[{"id":"1234","title":"My Task","modified":1281990824,"completed":0,"folder":"0","star":"0"}, {"id":"1235","title":"Another","modified":1280877483,"completed":0,"folder":"0","star":"1","ref":"98765"}]
-        
-        server_tasks = toodledo_call('tasks/add', **kwargs)
-        
-        for c,s in zip(client_tasks, server_tasks):
-            
-            if 'errorCode' in s:
-                log+="Task sqlite id: {0} title: {1} could not be updated on server; errorCode: {2} - errorDesc: {3}".format(c.id, c.title, s.errorCode, s.get('errorDesc', ''))
-            else:
-                c.tid = s.id    # need to pick up the server id for each task
-                c.added = s.added #### April 24, 2012
-                session.commit()
-                
-                log+="Task tid: {id}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(**s)
-            
-            nnn+=1
-
-            if pb:
-                pb.setValue(nnn)
-            
-        n+=50
-        
     # Delete from client tasks deleted on server
     # uses deletelist
     for t in server_deleted_tasks:
@@ -830,33 +696,6 @@ def downloadtasksfromserver(local=True):
         if pb:
             pb.setValue(n)
     
-   # #server contexts --> client contexts (not sure this works but shouldn't create contexts or folders on server)
-   # 
-   # for n,c in enumerate(server_contexts, n):
-   #     context = Context()
-   #     session.add(context)
-   #     context.tid = c.id
-   #     context.title = c.name
-   #     #context.default = c.def
-
-   #     session.commit()
-   #     
-   #     pb.setValue(n)
-
-   # #server folders --> client folders (not sure this works but shouldn't create contexts or folders on server)
-   # for n,f in enumerate(server_folders, n):
-   #     folder = Folder()
-   #     session.add(folder)
-   #     folder.tid = f.id
-   #     folder.title = f.name
-   #     folder.archived = f.archived
-   #     folder.private = f.private
-   #     folder.order= f.order
-
-   #     session.commit()
-   #     
-   #     pb.setValue(n)
-
     #Update synch timestamps
     sync = session.query(Sync).get('client')
     sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server

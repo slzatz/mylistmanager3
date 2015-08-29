@@ -30,7 +30,9 @@ task_table = Table('task',metadata,
               Column('title',String(255)),
               Column('tag',String(64)),
               Column('folder_tid', Integer, ForeignKey('folder.tid'), default=0), #use the toodledo id
+              #Column('folder_id', Integer, ForeignKey('folder.id'), default=0), #use the postgreSQL id
               Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
+              #Column('context_id', Integer, ForeignKey('context.id'), default=0), #use the postgrSQL id
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
               Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and it's only a date
