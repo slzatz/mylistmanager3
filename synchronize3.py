@@ -399,10 +399,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         else:
             action = "updated"
                
-        task.duetime = None ##########   just to deal with any lingering aware
-        local_session.commit() #############
-
-        task.context_tid = st.context
+        task.context_tid = st.context_tid
         task.duedate = st.duedate
         task.duetime = st.duetime if st.duetime else None #########
         task.remind = st.remind
@@ -708,6 +705,9 @@ def downloadtasksfromserver(local=True):
         task.note = t.note
         task.remind = t.remind
         
+        task.duetime = t.duetime if t.duetime else None
+        task.startdate = t.startdate if t.startdate else t.added 
+
 #        try:
 #            task.parent_tid = t.parent #only in pro accounts
 #        except:

@@ -772,7 +772,8 @@ class ListManager(QtWidgets.QMainWindow):
             print_("Unable to get toodledo key")
             return
         
-        synchronize2.downloadtasksfromserver()
+        #synchronize2.downloadtasksfromserver()
+        synchronize3.downloadtasksfromserver(local=False)
         
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb()
@@ -3539,7 +3540,7 @@ if __name__ == '__main__':
     # import is here so synchronize and toodledo are imported after ListManager instance is created since synchronize accesses pb and logger
     #and toodledo2 prints to logger
  
-    import synchronize2
+    import synchronize3
     import toodledo2
     
     mainwin.show()

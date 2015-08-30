@@ -30,9 +30,9 @@ task_table = Table('task',metadata,
               Column('title',String(255)),
               Column('tag',String(64)),
               #Column('folder_tid', Integer, ForeignKey('folder.tid'), default=0), #use the toodledo id
-              Column('folder_tid', Integer, ForeignKey('folder.id'), default=0), #use the postgreSQL id
+              Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #use the postgreSQL id
               #Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
-              Column('context_tid', Integer, ForeignKey('context.id'), default=0), #use the postgrSQL id
+              Column('context_tid', Integer, ForeignKey('context.id'), default=1), #use the postgrSQL id
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
               Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and it's only a date
@@ -195,10 +195,13 @@ local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False
 Local_Session = sessionmaker(bind=local_engine)
 local_session = Local_Session()
 
-remote_engine = create_engine(rds_uri, echo=False)
+remote_engine = create_engine(rds_uri, echo=True)
 Remote_Session = sessionmaker(bind=remote_engine)
 remote_session = Remote_Session()
 
 #metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
 #metadata.create_all(local_engine) # only creates if tables not present but not
+
+metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
+metadata.create_all(remote_engine) # only creates if tables not present but not
 
