@@ -687,10 +687,18 @@ def downloadtasksfromserver(local=True):
         
         task = Task()
         session.add(task)
-        task.tid = t.id                           
-        task.context_tid = t.context 
+        task.tid = t.id 
+                                  
+        #task.context_tid = t.context 
+        context = session.query(Context).filter_by(tid = t.context).one()
+        task.context_tid = context.id
+        
         task.duedate = t.duedate          
-        task.folder_tid = t.folder          
+        
+        #task.folder_tid = t.folder
+        folder = session.query(Folder).filter_by(tid = t.folder).one()
+        task.folder_tid = folder.id
+           
         task.title = t.title
         task.added = t.added                
         task.star = t.star
