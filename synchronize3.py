@@ -606,7 +606,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     
 def downloadtasksfromserver(local=True):
     '''
-    sends all tasks on server down to client
+    this version downloads tasks from toodledo to a database that can be postgreSQL or sqlite and located anywhere
     '''
 
     session = local_session if local else remote_session
@@ -624,7 +624,8 @@ def downloadtasksfromserver(local=True):
     n= 0
     while 1:
         # always returns id, title, modified, completed
-        stats,tasks = toodledo_call('tasks/get', start=str(n), end=str(n+1000), fields='folder,star,priority,duedate,context,tag,added,note')
+        # also note that duetime and startdate were added 08302015
+        stats,tasks = toodledo_call('tasks/get', start=str(n), end=str(n+1000), fields='folder,star,priority,duedate,duetime,startdate, context,tag,added,note')
         server_tasks.extend(tasks)
         if stats['num'] < 1000:
             break
@@ -686,13 +687,15 @@ def downloadtasksfromserver(local=True):
         session.add(task)
         task.tid = t.id 
                                   
+        # the commented out line immediately below is what was here previously and the two lines below that are for the postgreSQL server
         #task.context_tid = t.context 
         context = session.query(Context).filter_by(tid = t.context).one()
         task.context_tid = context.id
         
         task.duedate = t.duedate          
         
-        #task.folder_tid = t.folder
+        # the commented out line immediately below is what was here previously and the two lines below that are for the postgreSQL server
+        # task.folder_tid = t.folder
         folder = session.query(Folder).filter_by(tid = t.folder).one()
         task.folder_tid = folder.id
            
@@ -705,6 +708,7 @@ def downloadtasksfromserver(local=True):
         task.note = t.note
         task.remind = t.remind
         
+        # the two lines below were missing and not being pulled off toodledo - not sure why and I added them
         task.duetime = t.duetime if t.duetime else None
         task.startdate = t.startdate if t.startdate else t.added 
 
