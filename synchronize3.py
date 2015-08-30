@@ -28,9 +28,6 @@ else:
 print_("Hello from the synchronize3 module")
 
 def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
-
-    #Note that we are not using parent
-
     nn = 0
 
     changes = [] #server changed context and folder
@@ -73,22 +70,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     else:
         log+="There were no new server Folders added since the last sync.\n"    
 
-    #server tasks -- may not need both edited and new since modified should pick up both
-    #server_new_tasks = remote_session.query(Task).filter(and_(Task.created > last_server_sync, Task.deleted==False)).all() 
-    #if server_new_tasks:
-    #    log+= "New server Tasks added since the last sync: {0}.\n".format(len(server_new_tasks))
-    #else:
-    #    log+="There were no new server Tasks added since the last sync.\n\n"        
-
-    #server_edited_tasks = remote_session.query(Task).filter(and_(Task.modified > last_server_sync, Task.deleted==False)).all()
-
-    #if server_edited_tasks:
-    #    nn+=len(server_edited_tasks)
-    #    log+="Edited server Tasks since the last sync: {0}.\n".format(len(server_edited_tasks))
-    #else:
-    #    log+="There were no edited server Tasks since the last sync.\n" 
-
-    #server tasks
+    #get server updated tasks
     server_updated_tasks = remote_session.query(Task).filter(and_(Task.modified > last_server_sync, Task.deleted==False)).all()
 
     if server_updated_tasks:
@@ -97,7 +79,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     else:
         log+="There were no updated (new and modified) server Tasks since the last sync.\n" 
 
-    #server deletes
+    #get server deleted tasks
     server_deleted_tasks = remote_session.query(Task).filter(Task.deleted==True).all()
     if server_deleted_tasks:
         nn+=len(server_deleted_tasks)
@@ -108,7 +90,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     log+="\nThe total number of changes is {0}.\n".format(nn)
     ####################################################################################################################################################
     #####################################################################################################################################################################
-    #local contexts
+    #get new local  contexts
     client_new_contexts = local_session.query(Context).filter(Context.created > last_client_sync).all()
     if client_new_contexts:
         nn+=len(client_new_contexts)
@@ -116,14 +98,14 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     else:
         log+="There were no new client Contexts added since the last sync.\n"   
             
+
     alternate_client_new_contexts = local_session.query(Temp_tid).filter_by(type_='context').all()
 
     if alternate_client_new_contexts:
         log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
     else:
         log+="Alternate method: There were no new client Contexts added since the last sync.\n\n"        
-
-    #local folders
+    #get new local folders
     client_new_folders = local_session.query(Folder).filter(Folder.created > last_client_sync).all() 
     if client_new_folders:
         nn+=len(client_new_folders) 
@@ -131,14 +113,14 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     else:
         log+="There were no new client Folders added since the last sync.\n"    
 
+
     alternate_client_new_folders = local_session.query(Temp_tid).filter_by(type_='folder').all()
 
     if alternate_client_new_folders:
         log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
     else:
         log+="Alternate method: There were no new client Folders added since the last sync.\n\n"        
-
-    #local tasks
+    #get new local tasks
     client_updated_tasks = local_session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==False)).all()
 
     if client_updated_tasks:
@@ -147,7 +129,9 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     else:
         log+="There were no updated (new and modified) client Tasks since the last sync.\n" 
 
-    #local deletes
+
+
+    #get local deleted tasks
     client_deleted_tasks = local_session.query(Task).filter(Task.deleted==True).all()
     #client_deleted_tasks = local_session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==True, Task.tid != None)).all()
     if client_deleted_tasks:
@@ -156,9 +140,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
     else:
         log+="There were no client Tasks deleted since the last sync.\n" 
 
-    log+="\nThe total number of changes is {0}.\n".format(nn)
 
-    ####################################################################################################################################################
+    log+="\nThe total number of changes is {0}.\n".format(nn)
 
     if showlogdialog and OkCancel:
 
@@ -173,9 +156,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         pb.setRange(0, nn)
         pb.setValue(nnn)
         pb.show()
-
-    #[{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
-
     # put new server contexts on the client
     for sc in server_new_contexts:
 
@@ -248,7 +228,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
             log+= "{title} is in context {context}".format(title=t.title[:30], context=t.context.title) 
 
         nnn+=1
-    
+
         if pb:
             pb.setValue(nnn)
 
@@ -259,8 +239,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         local_session.commit()
 
     # the following is intended to catch contexts deleted on the server
-    server_context_tids = set([sc.id for sc in remote_session.query(Context).filter(Context.tid!=0)])
-    client_context_tids = set([cc.tid for cc in local_session.query(Context).filter(Context.tid!=0)])
+    server_context_tids = set([sc.id for sc in remote_session.query(Context)])
+    client_context_tids = set([cc.tid for cc in local_session.query(Context)])
 
     client_not_server = client_context_tids - server_context_tids
 
@@ -288,7 +268,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         if pb:
             pb.setValue(nnn)
         
-#no code for client deleted contexts yet
+    #no code for client deleted contexts yet
 
     #put new server folders on the client
     for sf in server_new_folders:
@@ -324,6 +304,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
 
         if pb:
             pb.setValue(nnn)
+
 
     for f in client_new_folders:
         temp_tid = f.tid
@@ -364,7 +345,6 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
 
         if pb:
             pb.setValue(nnn)
-
     #note these are from class Temp_tid and not class Folder
     for f in alternate_client_new_folders:
         log+="alternative method: new folder: {0}".format(f.title)
@@ -372,17 +352,17 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         session.commit()
 
     # deleting from client, folders deleted on server
-    server_folder_tids = set([sf.id for sf in remote_session.query(Folder).filter(Folder.tid!=0)])
-    client_folder_tids = set([cf.tid for cf in local_session.query(Folder).filter(Folder.tid!=0)])
+    server_folder_tids = set([sf.id for sf in remote_session.query(Folder)])
+    client_folder_tids = set([cf.tid for cf in local_session.query(Folder)])
 
     client_not_server = client_folder_tids - server_folder_tids
 
     for tid in client_not_server:
-        cf = session.query(Folder).filter_by(tid=tid).one()
-        tasks = session.query(Task).filter_by(folder_tid=tid).all() #seems like it needs to be here
+        cf = local_session.query(Folder).filter_by(tid=tid).one()
+        tasks = local_session.query(Task).filter_by(folder_tid=tid).all() #seems like it needs to be here
         title = cf.title
-        session.delete(cf)
-        session.commit()
+        local_session.delete(cf)
+        local_session.commit()
         log+= "Deleted client folder tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
 
         #These tasks are marked as changed by server so don't need to do this
@@ -402,9 +382,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         
     #no code for client deleted folders yet
 
-    # Update client with server changes - both new and edited tasks
-    # fields='folder,star,priority,duedate,context,tag,added,note' plus always returns id, title, modified, completed 
-    # note that while modified is passed from the server we don't do anything with it since client and server modified are different
+
 
     if server_updated_tasks:
         log+= "\nTask that were updated/created on Server that need to be updated/created on client:\n"
@@ -420,21 +398,16 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
             task.tid = st.id
         else:
             action = "updated"
-            if task in client_edited_tasks:
-                client_edited_tasks.remove(task) # server changes win
-                action+= "-server won"
                
-        #################### this shouldn't be necessary when they all go back to naive
         task.duetime = None ##########   just to deal with any lingering aware
         local_session.commit() #############
 
         task.context_tid = st.context
         task.duedate = st.duedate
-        #task.duetime = (t.duetime + datetime.timedelta(hours=4)) if t.duetime else None #########
         task.duetime = st.duetime if st.duetime else None #########
         task.remind = st.remind
         task.startdate = st.startdate if st.startdate else st.added ################ may 2, 2012
-        task.folder_tid = st.folder_tid ####################################################################################################
+        task.folder_tid = st.folder_tid 
         task.title = st.title
         task.added = st.added
         task.star = st.star
@@ -462,6 +435,67 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
                 local_session.add(tk)
 
             local_session.commit()
+            
+        tasklist.append(task)
+        
+        nnn+=1
+
+        if pb:
+            pb.setValue(nnn)
+
+    if client_updated_tasks:
+        log+= "\nTask that were updated/created on Client that need to be updated/created on Server:\n"
+
+    for ct in client_updated_tasks:
+        
+        task = remote_session.query(Task).filter_by(id=ct.tid).first() # could also do get(ct.tid)
+        
+        if not task:
+            action = "created"
+            task = Task()
+            remote_session.add(task)
+            remote.session.commit()
+            ct.tid = task.id
+            local_session.commit()
+        else:
+            action = "updated"
+            if task in server_updated_tasks:
+                action+= "-server won"
+                continue
+
+        task.context_tid = ct.context_tid
+        task.duedate = ct.duedate
+        task.duetime = ct.duetime if st.duetime else None #########
+        task.remind = ct.remind
+        task.startdate = ct.startdate if ct.startdate else ct.added ################ may 2, 2012
+        task.folder_tid = ct.folder_tid 
+        task.title = ct.title
+        task.added = ct.added
+        task.star = ct.star
+        task.priority = ct.priority
+        task.tag = ct.tag
+        task.completed = ct.completed if st.completed else None
+        task.note = ct.note
+
+        remote_session.commit() #new/updated client task commit
+
+        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=st.id, star=st.star, priority=st.priority, completed=st.completed, title=st.title[:30])
+
+        if task.tag:
+            for tk in task.taskkeywords:
+                remote_session.delete(tk)
+            remote_session.commit()
+
+            for kwn in task.tag.split(','):
+                keyword = remote_session.query(Keyword).filter_by(name=kwn).first()
+                if keyword is None:
+                    keyword = Keyword(kwn)
+                    remote_session.add(keyword)
+                    remote_session.commit()
+                tk = TaskKeyword(task,keyword)
+                remote_session.add(tk)
+
+            remote_session.commit()
             
         tasklist.append(task)
         
@@ -547,6 +581,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
                 
             
         
+
+
     sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
 
     sync.unix_timestamp = int(time.time()+5) #time.time returns a float but we're constantly using int timestamps
@@ -568,6 +604,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         dlg.exec_()
         
     return log,changes,tasklist,deletelist 
+
+
     
 def downloadtasksfromserver(local=True):
     '''
