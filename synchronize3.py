@@ -1,5 +1,8 @@
 '''
-module to sync toodledo with a local/cloud database
+module to sync remote sql-based server (currently postgreSQL) database with a local (currently sqlite) database
+But confusingly the downloadtasksfromserver is about downloading from toodledo to sql-based server with
+the additional factor that you want to run the sql-based server in front of the local database such that the
+local server cannot synch directly with toodledo only the remote server can.
 '''
 
 import os
@@ -28,6 +31,9 @@ else:
 print_("Hello from the synchronize3 module")
 
 def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
+    '''
+    This synch is designed to be between postgreSQL and sqlite.  It is not the synch between toodledo and postgreSQL
+    '''
     nn = 0
 
     changes = [] #server changed context and folder
@@ -167,7 +173,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
               
             context = Context()
             local_session.add(context)
-            context.tid = sc.id 
+            context.tid = sc.id # note that this allows you to go from server supplied context tid to postgreSQL supplied Context.id
             
             log += "{title} is a new context received from the server\n".format(title=sc.title)
 
@@ -280,7 +286,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
             
             folder = Folder()
             local_session.add(folder)
-            folder.tid = sf.id
+            folder.tid = sf.id # note that this allows you to go from server supplied fildder tid to postgreSQL supplied Folder.id
+            
             log+= "New folder created on client with tid: {tid}; {title}\n".format(tid=sf.id, title=sf.name) # new server folders
 
         folder.title = sf.title
@@ -398,7 +405,8 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
             task.tid = st.id
         else:
             action = "updated"
-               
+            
+        #  Note that since this synch is between postgreSQL that you don't want to modify the context_tid or folder_tid
         task.context_tid = st.context_tid
         task.duedate = st.duedate
         task.duetime = st.duetime if st.duetime else None #########
