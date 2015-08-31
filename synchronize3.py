@@ -30,7 +30,7 @@ else:
 
 print_("Hello from the synchronize3 module")
 
-def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
+def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
     '''
     This synch is designed to be between postgreSQL and sqlite.  It is not the synch between toodledo and postgreSQL
     '''
@@ -610,9 +610,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         
     return log,changes,tasklist,deletelist 
 
-
-    
-def downloadtasksfromserver(local=True):
+def downloadtasksfromtoodledo(local=True):
     '''
     this version downloads tasks from toodledo to a database that can be postgreSQL or sqlite and located anywhere
     '''

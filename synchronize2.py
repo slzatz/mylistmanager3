@@ -27,7 +27,7 @@ else:
 
 print_("Hello from the synchronize2 module")
 
-def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
+def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
 
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
@@ -703,7 +703,7 @@ def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # 
         
     return log,changes,tasklist,deletelist 
     
-def downloadtasksfromserver(local=True):
+def downloadtasksfrompostgres(local=True):
     '''
     sends all tasks on server down to client
     '''
