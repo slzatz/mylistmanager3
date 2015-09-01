@@ -613,6 +613,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
 def downloadtasksfromtoodledo(local=True):
     '''
     this version downloads tasks from toodledo to a database that can be postgreSQL or sqlite and located anywhere
+    This does replace the toodledo tid used in task.folder_tid and task.context_tid to use the postgres folder and context ids
     '''
 
     session = local_session if local else remote_session

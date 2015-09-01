@@ -703,9 +703,10 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         
     return log,changes,tasklist,deletelist 
     
-def downloadtasksfrompostgres(local=True):
+def downloadtasksfromtoodledo(local=True):
     '''
     sends all tasks on server down to client
+    This is the current production version that uses all toodledo tids
     '''
 
     session = local_session if local else remote_session
