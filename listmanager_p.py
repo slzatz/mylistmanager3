@@ -1,6 +1,8 @@
 '''
-A program to manage information
-This is the python3-compatible version
+This version is used when you want to access a remote postgresql database
+and synch it with toodledo
+Don't start with -s
+and when you want to create the database need --db_create
 '''
 import sip  
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -36,7 +38,7 @@ parser = argparse.ArgumentParser(description='Command line options mainly for de
 parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
-parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
+#parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
 parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
 
 args = parser.parse_args()
@@ -88,29 +90,13 @@ if args.db_create:
 else:
     DB_EXISTS = True
         
-if not DB_EXISTS and args.sqlite:
-    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
-    print("db_directory=",db_directory)
-    try:
-        os.mkdir(db_directory)
-    except OSError as e:
-        print(e)
-        sys.exit("Could not create directory for sqlite database")
-
 from lmdb_p import *
 
 #if args.db_create:
 #    engine.echo = True
 
-if args.sqlite:
-    #g.DB_URI = g.sqlite_uri
-    session = local_session
-    engine = local_engine
-else:
-    #g.DB_URI = g.rds_uri 
-    session = remote_session
-    engine = remote_engine
-
+session = remote_session
+engine = remote_engine
 
 VERSION = '0.8'
 
@@ -155,10 +141,10 @@ class ListManager(QtWidgets.QMainWindow):
             session.add(folder)
             session.commit()
             
-            # eliminate tasks with ids < 4 because I SetItemData based on sqlite id but if that data is < 4, I know it's a collapse bar
+            # eliminate tasks with ids < 4 because I SetItemData based on primary task id but if that data is < 4, I know it's a collapse bar
             # so I don't want a real task to have an id < 4
-            # fortunately right now sqlite doesn't reclaim the ids of deleted items
-            # sqlite starts numbering ids at 1
+            # it appears that neither postgresql nor sqlite reclaim the ids of deleted items
+            # and that numbering of ids starts at 1
             
             # this creates the tasks and then deletes them to consume the 0 through 3 ids; don't need/can't delete -1
             
@@ -2471,7 +2457,7 @@ class ListManager(QtWidgets.QMainWindow):
         #self.Properties['col_widths'][c] = w 
         
     @check_modified
-    def synchronize(self, checked, local=True):
+    def synchronize(self, checked, local=False):
         
 
         if not g.internet_accessible():

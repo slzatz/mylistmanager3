@@ -1,6 +1,7 @@
 '''
-A program to manage information
-This is the python3-compatible version
+This version is used when you want to access a local sqlite database
+and synch it with a remote postgresql database
+and when you want to create the database need --db_create
 '''
 import sip  
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -36,7 +37,7 @@ parser = argparse.ArgumentParser(description='Command line options mainly for de
 parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
-parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
+#parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
 parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
 
 args = parser.parse_args()
@@ -88,7 +89,7 @@ if args.db_create:
 else:
     DB_EXISTS = True
         
-if not DB_EXISTS and args.sqlite:
+if not DB_EXISTS:
     db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
     print("db_directory=",db_directory)
     try:
@@ -97,20 +98,14 @@ if not DB_EXISTS and args.sqlite:
         print(e)
         sys.exit("Could not create directory for sqlite database")
 
-from lmdb_p import *
+from lmdb_s import *
 
 #if args.db_create:
 #    engine.echo = True
 
-if args.sqlite:
-    #g.DB_URI = g.sqlite_uri
-    session = local_session
-    engine = local_engine
-else:
-    #g.DB_URI = g.rds_uri 
-    session = remote_session
-    engine = remote_engine
-
+#g.DB_URI = g.sqlite_uri
+session = local_session
+engine = local_engine
 
 VERSION = '0.8'
 
@@ -149,10 +144,12 @@ class ListManager(QtWidgets.QMainWindow):
      
         if not DB_EXISTS:
             
-            context = Context(tid=0, title='No Context')
+            context = Context(tid=1, title='No Context')# were 0 when using toodledo as server
             session.add(context)
-            folder = Folder(tid=0, title="No Folder")
+
+            folder = Folder(tid=1, title="No Folder") # were 0 when using toodledo as server
             session.add(folder)
+
             session.commit()
             
             # eliminate tasks with ids < 4 because I SetItemData based on sqlite id but if that data is < 4, I know it's a collapse bar
@@ -179,11 +176,13 @@ class ListManager(QtWidgets.QMainWindow):
             
             session.commit()
             
-            sync = Sync('client')
+            client_sync = Sync('client')
             #sync = session.query(Sync).get('client') #switching server to timestamp
-            session.add(sync)
-            sync.timestamp = datetime.datetime.fromordinal(1)
-            sync.unix_timestamp = 1
+            session.add(client_sync)
+            #sync.timestamp = datetime.datetime.fromordinal(1)
+            #sync.unix_timestamp = 1
+            server_sync = Sync('server')
+            session.add(server_sync)
             session.commit()
 
         # self.PageProperties is the dictionary of dictionaries that carry the various properties for each notebook page
@@ -768,15 +767,15 @@ class ListManager(QtWidgets.QMainWindow):
         sends all tasks on server down to client
         '''
         print_("Got here in downloadtasksfromserver")
-        if not toodledo2.keycheck():
-            print_("Unable to get toodledo key")
-            return
+        #if not toodledo2.keycheck():
+        #    print_("Unable to get toodledo key")
+        #    return
         
         #synchronize2.downloadtasksfromserver()
         synchronize3.downloadtasksfrompostgres(local=True)
         
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
-            self.create_whooshdb()
+            self.create_whooshdb2()
             
             self.ix = index.open_dir("indexdir")
             self.searcher = self.ix.searcher()
@@ -788,9 +787,9 @@ class ListManager(QtWidgets.QMainWindow):
     def createfoldermenu(self):
         self.f_menu = QtWidgets.QMenu(self)
         
-        folders = session.query(Folder).filter(Folder.tid!=0).all()
+        folders = session.query(Folder).filter(Folder.tid!=1).all()
         folders.sort(key=lambda f:str.lower(f.title))
-        no_folder = session.query(Folder).filter_by(tid=0).one()
+        no_folder = session.query(Folder).filter_by(tid=1).one()
         folders = [no_folder] + folders
         
         iconGroup = QtWidgets.QActionGroup(self)
@@ -805,9 +804,9 @@ class ListManager(QtWidgets.QMainWindow):
     def createcontextmenu(self):
         self.c_menu = QtWidgets.QMenu(self)
         
-        contexts = session.query(Context).filter(Context.tid!=0).all()
+        contexts = session.query(Context).filter(Context.tid!=1).all()# was 0 with toodledo
         contexts.sort(key=lambda c:str.lower(c.title))
-        no_context = session.query(Context).filter_by(tid=0).one()
+        no_context = session.query(Context).filter_by(tid=1).one()
         contexts = [no_context] + contexts
         
         self.contextGroup = QtWidgets.QActionGroup(self)
@@ -2777,45 +2776,43 @@ class ListManager(QtWidgets.QMainWindow):
     @check_modified
     def ontaskinfo(self, check, retrieve_server=False): #appear to have to add check to all of them because triggered is returning check 12-21-2014
 
+        import lmdb_p
+
         print_("check={}".format(check))
 
         task = self.task
 
         f = lambda x: x if x is not None else ''
 
-        c_map = {'sqlite_id':'id', 'context_id':'context_tid', 'folder_id':'folder_tid'} #dialog label:actual label
+        #c_map = {'sqlite_id':'id', 'context_id':'context_tid', 'folder_id':'folder_tid'} #dialog label:actual label
+        c_map = {}
         s_map = {'tid':'id', 'folder_id':'folder', 'context_id':'context'}
 
-        labels = ('sqlite_id', 'tid', 'star', 'priority', 'title', 'context','context_id', 'folder','folder_id', 'tag', 'added', 'modified', 'duedate', 'duetime','startdate','completed','note')
+        #labels = ('sqlite_id', 'tid', 'star', 'priority', 'title', 'context','context_id', 'folder','folder_id', 'tag', 'added', 'modified', 'duedate', 'duetime','startdate','completed','note')
+        labels = ('id', 'tid', 'star', 'priority', 'title', 'context','context_tid', 'folder','folder_tid', 'tag', 'added', 'modified', 'duedate', 'duetime','startdate','completed','note')
 
+        task.context
+        task.folder
         c_task = dict(task.__dict__)
+        #print(c_task)
         c_task = {lab:f(c_task[c_map.get(lab,lab)]) for lab in labels} 
         c_task.update(context=c_task['context'].title, folder=c_task['folder'].title)
 
         if task.tid and retrieve_server: # if it's a new task that hasn't gotten a tid from server yet, there won't be a server task to retrieve
             
-            if not toodledo2.keycheck():
-                print_("Could not retrieve server info because could not get key")
-                return
+            try:
+                server_task = lmdb_p.remote_session.query(lmdb_p.Task).filter_by(id=task.tid).one()
 
-            toodledo_call = toodledo2.toodledo_call
-              
-            s_folders = toodledo_call('folders/get') #[{"id":"123","name":"Shopping","private":"0","archived":"0","ord":"1"},...
-            s_folders_map =  {z['id']:z['name'] for z in s_folders}   
+            except sqla_orm_exc.NoResultFound:
+                s_task = {}
 
-            s_contexts = toodledo_call('contexts/get') # [{"id":"123","name":"Work"},{"id":"456","name":"Home"},{"id":"789","name":"Car"}]
-            s_contexts_map =  {z['id']:z['name'] for z in s_contexts}   
-
-            stats, s_task = toodledo_call('tasks/get', id_=task.tid, fields='folder,star,priority,duedate,duetime,startdate,context,tag,added,note') #{"num":"2","total":"2"}, [{"id":"1234","title":"Buy Milk","modified":1281990824,"completed":0,"folder":"5409195","star":"1","priority":"-1"},{"id":"1235","title":"Fix flat tire","modified":1280877483,"completed":1280808000,"folder":"0","star":"0","priority":"0"}]
-
-            if s_task:
-                s_task = s_task[0]
-                s_task['sqlite_id'] = ''
-                s_task = {lab:f(s_task[s_map.get(lab,lab)]) for lab in labels}
-                s_task['folder'] = s_folders_map.get(s_task['folder_id']  , 'No Folder')
-                s_task['context'] = s_contexts_map.get(s_task['context_id']  , 'No Context')
-        else:
-            s_task = {}
+            else:
+                server_task.context
+                server_task.folder
+                s_task = dict(server_task.__dict__)
+                #print(s_task)
+                s_task = {lab:f(s_task[c_map.get(lab,lab)]) for lab in labels} 
+                s_task.update(context=s_task['context'].title, folder=s_task['folder'].title)
 
         dlg = lmdialogs.TaskInfo("Compare", data = [c_task, s_task], labels=labels, parent=self)
 

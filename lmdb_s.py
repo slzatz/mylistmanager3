@@ -112,7 +112,7 @@ taskkeyword_table = Table('task_keyword', metadata,
 sync_table = Table('sync', metadata,
                       Column('machine', String(20), primary_key=True), #NYCPSSZATZ1 or dell4300
                       Column('timestamp', DateTime),
-                      Column('unix_timestamp', Integer)
+                      #Column('unix_timestamp', Integer) #09022015
 )
 
 class Task(object):
@@ -199,9 +199,9 @@ remote_engine = create_engine(rds_uri, echo=True)
 Remote_Session = sessionmaker(bind=remote_engine)
 remote_session = Remote_Session()
 
-#metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
-#metadata.create_all(local_engine) # only creates if tables not present but not
+metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
+metadata.create_all(local_engine) # only creates if tables not present but not
 
-metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
-metadata.create_all(remote_engine) # only creates if tables not present but not
+#metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
+#metadata.create_all(remote_engine) # only creates if tables not present but not
 

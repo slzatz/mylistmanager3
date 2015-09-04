@@ -27,7 +27,7 @@ else:
 
 print_("Hello from the synchronize2 module")
 
-def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
+def synchronize(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
 
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [

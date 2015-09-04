@@ -164,8 +164,8 @@ class Temp_tid(object):
         self.type_ = type_
 
 mapper(Context, context_table, properties = {'folders':relation(Folder,
-primaryjoin=and_(context_table.c.tid==task_table.c.context_tid,folder_table.c.tid==task_table.c.folder_tid),
-viewonly=True, foreign_keys=[folder_table.c.tid], remote_side=[task_table.c.context_tid]), #backref=backref('contexts', remote_side=[task_table.c.folder_tid])),
+primaryjoin=and_(context_table.c.id==task_table.c.context_tid, folder_table.c.id==task_table.c.folder_tid),
+viewonly=True, foreign_keys=[folder_table.c.id], remote_side=[task_table.c.context_tid]), #backref=backref('contexts', remote_side=[task_table.c.folder_tid])),
 'tasks':relation(Task, backref='context'),
 #'keywords':relation(Keyword, primaryjoin=and_(keyword_table.c.id==taskkeyword_table.c.keyword_id, task_table.c.id==taskkeyword_table.c.task_id, context_table.c.tid==task_table.c.context_tid),
 #viewonly=True, foreign_keys=[keyword_table.c.id], remote_side=[task_table.c.context_tid])

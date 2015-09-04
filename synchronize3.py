@@ -16,7 +16,7 @@ import urllib.request, urllib.parse, urllib.error
 import base64
 from functools import partial
 import toodledo2
-from lmdb import *
+from lmdb_p import * ###################################################################################################################################################
 
 try:
     import lmglobals as g
@@ -40,25 +40,25 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
     tasklist= [] #server changed tasks
     deletelist = [] #server deleted tasks
 
-    session = local_session if local else remote_session
-    print(session.get_bind())
-    toodledo_call = toodledo2.toodledo_call
+    #session = local_session if local else remote_session
+    #print(session.get_bind())
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         
     log = ''
 
-    sync = local_session.query(Sync).get('client') 
+    client_sync = local_session.query(Sync).get('client') 
+    server_sync = local_session.query(Sync).get('server') 
 
-    last_client_sync = sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with postgreSQL
-    last_server_sync = sync.unix_timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues
+    last_client_sync = client_sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with postgreSQL
+    last_server_sync = server_sync.timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues
 
     log+= "LISTMANAGER SYNCRONIZATION\n"
     log+="Local\n" if local else "Remote\n"
     log+= "Local Time is {0}\n\n".format(datetime.datetime.now())
     delta = datetime.datetime.now() - last_client_sync
     log+= "The last time client & server were synced (based on client clock) was {0}, which was {1} days and {2} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
-    log+= "Unix timestamp (client clock) for last sync is {0} ---> {1}\n".format(last_server_sync, datetime.datetime.fromtimestamp(last_server_sync).isoformat(' ')[:19])
+    #log+= "Unix timestamp (client clock) for last sync is {0} ---> {1}\n".format(last_server_sync, datetime.datetime.fromtimestamp(last_server_sync).isoformat(' ')[:19])
 
     #get new server contexts
     server_new_contexts = remote_session.query(Context).filter(Context.created > last_server_sync).all()
@@ -345,7 +345,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
         #need to update all tasks that used the temp_tid
         log+= "Client tasks that were updated with folder id (tid) obtained from server:\n"
 
-        tasks_with_temp_tid = session.query(Task).filter_by(folder_tid=temp_tid) #tasks_with_temp_tid = f.tasks may be a better way to go but would have to move higher
+        tasks_with_temp_tid = local_session.query(Task).filter_by(folder_tid=temp_tid) #tasks_with_temp_tid = f.tasks may be a better way to go but would have to move higher
 
         # These changes on client do not get transmitted to the server because they are between old sync time and new sync time
         for t in tasks_with_temp_tid:
@@ -361,8 +361,8 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
     #note these are from class Temp_tid and not class Folder
     for f in alternate_client_new_folders:
         log+="alternative method: new folder: {0}".format(f.title)
-        session.delete(f)
-        session.commit()
+        local_session.delete(f)
+        local_session.commit()
 
     # deleting from client, folders deleted on server
     server_folder_tids = set([sf.id for sf in remote_session.query(Folder)])
@@ -470,7 +470,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
             action = "created"
             task = Task()
             remote_session.add(task)
-            remote.session.commit()
+            remote_session.commit()
             ct.tid = task.id
             local_session.commit()
         else:
@@ -481,7 +481,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
 
         task.context_tid = ct.context_tid
         task.duedate = ct.duedate
-        task.duetime = ct.duetime if st.duetime else None #########
+        task.duetime = ct.duetime if ct.duetime else None #########
         task.remind = ct.remind
         task.startdate = ct.startdate if ct.startdate else ct.added ################ may 2, 2012
         task.folder_tid = ct.folder_tid 
@@ -490,12 +490,12 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
         task.star = ct.star
         task.priority = ct.priority
         task.tag = ct.tag
-        task.completed = ct.completed if st.completed else None
+        task.completed = ct.completed if ct.completed else None
         task.note = ct.note
 
         remote_session.commit() #new/updated client task commit
 
-        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=st.id, star=st.star, priority=st.priority, completed=st.completed, title=st.title[:30])
+        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=ct.id, star=ct.star, priority=ct.priority, completed=ct.completed, title=ct.title[:30])
 
         if task.tag:
             for tk in task.taskkeywords:
@@ -523,7 +523,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
     # Delete from client tasks deleted on server
     # uses deletelist
     for t in server_deleted_tasks:
-        task = session.query(Task).filter_by(tid=t.id).first()
+        task = local_session.query(Task).filter_by(tid=t.id).first()
         if task:
                     
             log+="Task deleted on Server deleted task on Client - id: {id_}; tid: {tid}; title: {title}\n".format(id_=task.id,tid=task.tid,title=task.title[:30])
@@ -531,11 +531,11 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
             deletelist.append(task.id)
             
             for tk in task.taskkeywords:
-                session.delete(tk)
-            session.commit()
+                local_session.delete(tk)
+            local_session.commit()
         
-            session.delete(task)
-            session.commit() 
+            local_session.delete(task)
+            local_session.commit() 
             
         else:
             
@@ -546,68 +546,44 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
         if pb:
             pb.setValue(nnn)
         
-    # uses deletelist
+    # uses deletelist #######################needs to be re-written below
     tids_to_delete = []
     client_tasks = []
     for t in client_deleted_tasks:
         # need 'if' below because a task could be new and then deleted and therefore have not tid; 
         # it will be removed from client but can't send anything to server
         if t.tid:
-            tids_to_delete.append(t.tid)
-            client_tasks.append(t)
-        else:
-            deletelist.append(t.id)
-            for tk in t.taskkeywords:
-                session.delete(tk)
-            session.commit()
-                    
-            session.delete(t)
-            session.commit()     
+            try:
+                task = remote_session.query(Task).get(tid)
+            except Exception as e:
+                print(e)
+            else:
+                task.deleted = True
+                remote_session.commit()
+            #tids_to_delete.append(t.tid)
+            #client_tasks.append(t)
+        #else:
+        deletelist.append(t.id)
+        for tk in t.taskkeywords:
+            local_session.delete(tk)
+        local_session.commit()
+                
+        local_session.delete(t)
+        local_session.commit()     
          
     #http://api.toodledo.com/2/tasks/delete.php?key=YourKey;tasks=["1234"%2C"1235"]
 
-    if tids_to_delete:
-        try:
-            server_tasks = toodledo_call('tasks/delete', tasks=json.dumps(tids_to_delete, separators=(',',':')))
-            #[{"id":"1234"},{"id":"1235"}]
-        except toodledo2.ToodledoError as e:
-            print_(repr(e))
-            print_("There was a problem deleting deleted client tasks from the server")
-              
-        else:  
-            for c,s in zip(client_tasks, server_tasks):
-                if 'errorCode' in s:
-                    log+="Task sqlite id: {0} title: {1} could not be deleted on server; errorCode: {2} - errorDesc: {3}".format(c.id, c.title[:30], s.errorCode, s.get('errorDesc', ''))
-                else:
-                    log+= "Successfully deleted this task on server - tid: {tid} - {title}\n".format(tid=s.id, title=c.title[:30])
-            
-                    deletelist.append(c.id) 
-            
-                    for tk in c.taskkeywords:
-                        session.delete(tk)
-                    session.commit()
-                    
-                    session.delete(c)
-                    session.commit()     
-                    
-                    nnn+=1
+    client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # giving a little buffer if the db takes time to update on client or server
 
-                    if pb:
-                        pb.setValue(nnn)
-                
-            
-        
+    connection = remote_engine.connect()
+    result = connection.execute("select extract(epoch from now())")
+    server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=2)
 
+    local_session.commit()  
 
-    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
-
-    sync.unix_timestamp = int(time.time()+5) #time.time returns a float but we're constantly using int timestamps
-
-    session.commit()  
-
-    log+= "\nNew Sync times:\n"
-    log+= "isoformat: {0}\n".format(sync.timestamp.isoformat(' '))
-    log+= "   unix ts: {0}\n".format(sync.unix_timestamp)
+    log+="New Sync times\n"
+    log+="client timestamp: {}\n".format(client_sync.timestamp.isoformat(' '))
+    log+="server timestamp: {}\n".format(server_sync.timestamp.isoformat(' '))
     log+= "Time is {0}\n\n".format(datetime.datetime.now())
 
     print_("***************** END SYNC *******************************************")
@@ -621,7 +597,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=False, local
         
     return log,changes,tasklist,deletelist 
 
-def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local=True): # if running outside gui, the showdialog=False, OKCancel=False
+def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local=False): # if running outside gui, the showdialog=False, OKCancel=False
 
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
@@ -1062,13 +1038,18 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         task.duetime = None ##########   just to deal with any lingering aware
         session.commit() #############
 
-        task.context_tid = t.context
+        context = session.query(Context).filter_by(tid=t.context).one()
+        task.context_tid = context.id
+        #task.context_tid = t.context
+
         task.duedate = t.duedate
         #task.duetime = (t.duetime + datetime.timedelta(hours=4)) if t.duetime else None #########
         task.duetime = t.duetime if t.duetime else None #########
         task.remind = t.remind
         task.startdate = t.startdate if t.startdate else t.added ################ may 2, 2012
-        task.folder_tid = t.folder
+        folder = session.query(Folder).filter_by(tid=t.folder).one()
+        task.folder_tid = folder.id
+        #task.folder_tid = t.folder
         task.title = t.title
         task.added = t.added
         task.star = t.star
@@ -1134,13 +1115,16 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
             try:
                             
                 z = {a:_typemap[a] (getattr(t, attr_map.get(a,a))) for a in _typemap}
+                z['folder'] = str(t.folder.tid)
+                z['context'] = str(t.context.tid)
                 lst.append(z)
             
             except Exception as e:
                 
                 print_("Problem in client-edited-tasks with id: {0}: {1}".format(t.id,t.title))
                 print_(repr(e))
-        
+
+        print(lst) 
         kwargs = {'tasks':json.dumps(lst, separators=(',',':')), 'fields':'folder,star,priority,duedate,context,tag,added,note,startdate,duetime,remind'}
         #kwargs=[{"id":"1234","title":"My Task","modified":1281990824,"completed":0,"folder":"0","star":"0"},{"id":"1235","title":"Another","modified":1280877483,"completed":0,"folder":"0","star":"1"}]
         # separators option is just compacting representation
@@ -1173,6 +1157,8 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         lst = []
         for t in client_tasks:         
             z = {a:_typemap[a] (getattr(t, attr_map.get(a,a))) for a in _typemap}          
+            z['folder'] = str(t.folder.tid)
+            z['context'] = str(t.context.tid)
             lst.append(z)
 
         kwargs = {'tasks':json.dumps(lst, separators=(',',':')), 'fields':'folder,star,priority,duedate,context,tag,added,note,startdate,duetime,remind'}
@@ -1454,36 +1440,24 @@ def downloadtasksfromtoodledo(local=True):
     if pb:
         pb.hide() 
 
-def downloadtasksfrompostres(local=True):
+def downloadtasksfrompostgres(local=True):
     '''
     this version downloads tasks from toodledo to a database that can be postgreSQL or sqlite and located anywhere
     This does replace the toodledo tid used in task.folder_tid and task.context_tid to use the postgres folder and context ids
     '''
 
     session = local_session if local else remote_session
-    toodledo_call = toodledo2.toodledo_call
     
-    # I should make it possible to select only certain contexts
     print_("Starting the process of downloading tasks from server")
     
-    account_info = toodledo_call('account/get')
-    # {"lastedit_folder":"1281457337","lastedit_context":"1281457997","lastedit_goal":"1280441959","lastedit_location":"1280441959",
-    #"lastedit_task":"1281458832","lastdelete_task":"1280898329","lastedit_notebook":"1280894728","lastdelete_notebook":"1280898329"}
-
-    # note that Toodledo API only lets you bring back 1000 tasks at a time
-   
-
-
-    #tasks = remote_session.query(Task).order_by(Task.id).[n:n+1000]
     remote_tasks = remote_session.query(Task)
     remote_contexts = remote_session.query(Context)
     remote_folders = remote_session.query(Folder)
     
     len_contexts = remote_session.query(Context).count()
     len_folders = remote_session.query(Folder).count()
-    len_tasks = lremote_session.query(Task).count()
+    len_tasks = remote_session.query(Task).count()
 
-    #print_("last task changed on server: {}".format(account_info.lastedit_task))
     print_("{} server tasks were downloaded".format(len_tasks))
     print_("{} server contexts were downloaded".format(len_contexts))
     print_("{} server folders were downloaded".format(len_folders))
@@ -1494,10 +1468,12 @@ def downloadtasksfrompostres(local=True):
         pb.show()
     
     #server contexts --> client contexts       
-        
+    n=0 
     for rc in remote_contexts:
+        if rc.tid == 0:
+            continue
         context = Context()
-        
+        n+=1
         # the sqlite context.tid gets set to the postgres context.id
         # note the the postgres context.tid holds the toodledo context id
         context.tid = rc.id
@@ -1510,15 +1486,17 @@ def downloadtasksfrompostres(local=True):
 
     #server folders --> client folders    
     for rf in remote_folders:
+        if rf.tid == 0:
+            continue
         folder = Folder()
-        
+        n+=1
         # the sqlite folder.tid gets set to the postgres folder.id
         # note the the postgres folder.tid holds the toodledo folder id
         folder.tid = rf.id
         folder.title = rf.title
-        folder.archived = f.archived
-        folder.private = f.private
-        folder.order= f.order
+        folder.archived = rf.archived
+        folder.private = rf.private
+        folder.order= rf.order
         local_session.add(folder)
         local_session.commit()
         
@@ -1526,8 +1504,8 @@ def downloadtasksfrompostres(local=True):
             pb.setValue(n)
 
     #server tasks -> client tasks
-    for rt in server_tasks:
-        
+    for rt in remote_tasks:
+        n+=1
         #if t.context_id != 1633429:     #if you only want to download one context
             #continue                            # might also not want to pick up folders and contexts
         
@@ -1551,8 +1529,8 @@ def downloadtasksfrompostres(local=True):
         task.remind = rt.remind
         
         # the two lines below were missing and not being pulled off toodledo - not sure why and I added them
-        task.duetime = rt.duetime if t.duetime else None
-        task.startdate = rt.startdate if t.startdate else t.added 
+        task.duetime = rt.duetime if rt.duetime else None
+        task.startdate = rt.startdate if rt.startdate else rt.added 
 
 #        try:
 #            task.parent_tid = t.parent #only in pro accounts
@@ -1589,14 +1567,20 @@ def downloadtasksfrompostres(local=True):
             pb.setValue(n)
     
     #Update synch timestamps
-    sync = session.query(Sync).get('client')
-    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
-    sync.unix_timestamp = int(time.time()+2) #was 5, changed 01-24-2015
+    client_sync = local_session.query(Sync).get('client')
+    client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
+
+    #sync.unix_timestamp = int(time.time()+2) #was 5, changed 01-24-2015
+    server_sync = local_session.query(Sync).get('server')
+    connection = remote_engine.connect()
+    result = connection.execute("select extract(epoch from now())")
+    server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=2)
+    #server_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
     local_session.commit()  
 
     print_("New Sync times")
-    print_("isoformat timestamp: {}".format(sync.timestamp.isoformat(' ')))
-    print_("unix timestamp: {}".format(sync.unix_timestamp))
+    print_("client timestamp: {}".format(client_sync.timestamp.isoformat(' ')))
+    print_("server timestamp: {}".format(server_sync.timestamp.isoformat(' ')))
 
     print_("***************** END SYNC *******************************************")
     
