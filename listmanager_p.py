@@ -67,7 +67,6 @@ import markdown2 as markdown
 import config as c
 import lmglobals as g #moved from below on 12-21-2014
 
-#note synchronize2 is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
 
 from whoosh.index import create_in
@@ -464,8 +463,8 @@ class ListManager(QtWidgets.QMainWindow):
         add_actions(m_icon_color, (a_folder_icon_color, a_context_icon_color))
         toolmenu = self.menuBar().addMenu("&Tools")
 
-        a_synchronize_local = action("&Synchronize (local)", self.synchronize, 'Alt+S', icon='arrow_ns')
-        a_synchronize_remote = action("Synchronize (remote)", partial(self.synchronize, local=False))
+        a_synchronize = action("&Synchronize (with toodledo)", self.synchronize, 'Alt+S', icon='arrow_ns')
+        #a_synchronize_remote = action("Synchronize (remote)", partial(self.synchronize, local=False))
         a_showsync_log = action("Show Synchronize Log", self.showsync_log)
         a_showdeleted = action("Show Deleted", self.showdeleted)
         a_print_note_to_log = action("Print Note to Log", self.print_note_to_log)
@@ -484,7 +483,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+N')
 
-        add_actions(toolmenu, (a_synchronize_local, a_synchronize_remote, a_showsync_log, None, a_updatewhooshentry,
+        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
                                          a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb, a_edit_note_in_vim))
@@ -553,7 +552,7 @@ class ListManager(QtWidgets.QMainWindow):
         add_actions(displayToolbar, (a_refresh, None, a_showcompleted, a_toggle_collapsible, a_removesort, None, a_modifycolumns))
         toolsToolbar = self.addToolBar("Tools")
         toolsToolbar.setObjectName("Tools ToolBar")
-        toolsToolbar.addAction(a_synchronize_local)
+        toolsToolbar.addAction(a_synchronize)
         search_tb = QtWidgets.QToolButton()
         search_tb.setIcon(QtGui.QIcon('bitmaps/magnifier-left.png'))
         search_tb.setPopupMode(QtWidgets.QToolButton.InstantPopup)
@@ -758,8 +757,7 @@ class ListManager(QtWidgets.QMainWindow):
             print_("Unable to get toodledo key")
             return
         
-        #synchronize2.downloadtasksfromserver()
-        synchronize3.downloadtasksfromtoodledo(local=False)
+        synchronize_p.downloadtasksfromtoodledo(local=False)
         
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb()
@@ -2457,8 +2455,7 @@ class ListManager(QtWidgets.QMainWindow):
         #self.Properties['col_widths'][c] = w 
         
     @check_modified
-    def synchronize(self, checked, local=False):
-        
+    def synchronize(self, checked):
 
         if not g.internet_accessible():
             QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
@@ -2468,10 +2465,10 @@ class ListManager(QtWidgets.QMainWindow):
             print_("Unable to get toodledo key")
             return
         
-        self.sync_log, changes, tasklist, deletelist = synchronize3.synchronizetotoodledo(parent=self, 
+        self.sync_log, changes, tasklist, deletelist = synchronize_p.synchronizetotoodledo(parent=self, 
                                                                                 showlogdialog=True, 
                                                                                 OkCancel=True,
-                                                                                local=local)
+                                                                                local=False)
         print("changes={0}".format(changes))
         print("tasklist={0}".format([t.title for t in tasklist])) #this is a goofy print
         print("deletelist={0}".format(deletelist))
@@ -2488,39 +2485,8 @@ class ListManager(QtWidgets.QMainWindow):
         for id_ in deletelist: #these ids are local client task.ids and that is what whoosh uses
             self.deletefromwhooshdb(id_)
 
-        reply = QtWidgets.QMessageBox.question(self,
-                                          "Confirmation",
-                                          "Do you want to synchronize with the remote AWS db?",
-                                          QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+        self.refreshlistonly()
 
-        if reply == QtWidgets.QMessageBox.No:
-            print("You said no to synching with the remote AWS db")
-            return
-
-        try:
-            r = requests.get("http://54.173.234.69:5000/sync") #probably should add http auth  auth=(c.aws_id, c.aws_pw))
-        except:
-            QtWidgets.QMessageBox.warning(self,  'Alert', "Could not sync remote AWS db!")
-            return
-
-        n = 1
-        while n < 6:
-            try:
-                r = requests.get("http://54.173.234.69:5000/sync-log")
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(self,  'Alert', "Could not retrieve AWS db sync log!")
-                break
-            else:
-                log = r.text
-                if len(log) > 100:
-                    dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=self)
-                    dlg.exec_()
-                    break 
-                n+=1
-                sleep(1)
-
-        print("Number of attemps: {}".format(n))
-                
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
@@ -3526,7 +3492,7 @@ if __name__ == '__main__':
     # import is here so synchronize and toodledo are imported after ListManager instance is created since synchronize accesses pb and logger
     #and toodledo2 prints to logger
  
-    import synchronize3
+    import synchronize_p
     import toodledo2
     
     mainwin.show()

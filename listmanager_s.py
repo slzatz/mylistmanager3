@@ -66,7 +66,7 @@ import markdown2 as markdown
 import config as c
 import lmglobals as g #moved from below on 12-21-2014
 
-#note synchronize2 is imported in If __name__ == main to delay import until logger defined
+#note synchronize_s is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
 
 from whoosh.index import create_in
@@ -477,8 +477,7 @@ class ListManager(QtWidgets.QMainWindow):
         add_actions(m_icon_color, (a_folder_icon_color, a_context_icon_color))
         toolmenu = self.menuBar().addMenu("&Tools")
 
-        a_synchronize_local = action("&Synchronize (local)", self.synchronize, 'Alt+S', icon='arrow_ns')
-        a_synchronize_remote = action("Synchronize (remote)", partial(self.synchronize, local=False))
+        a_synchronize = action("&Synchronize (with postgresql)", self.synchronize, 'Alt+S', icon='arrow_ns')
         a_showsync_log = action("Show Synchronize Log", self.showsync_log)
         a_showdeleted = action("Show Deleted", self.showdeleted)
         a_print_note_to_log = action("Print Note to Log", self.print_note_to_log)
@@ -497,7 +496,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+N')
 
-        add_actions(toolmenu, (a_synchronize_local, a_synchronize_remote, a_showsync_log, None, a_updatewhooshentry,
+        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
                                          a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb, a_edit_note_in_vim))
@@ -566,7 +565,7 @@ class ListManager(QtWidgets.QMainWindow):
         add_actions(displayToolbar, (a_refresh, None, a_showcompleted, a_toggle_collapsible, a_removesort, None, a_modifycolumns))
         toolsToolbar = self.addToolBar("Tools")
         toolsToolbar.setObjectName("Tools ToolBar")
-        toolsToolbar.addAction(a_synchronize_local)
+        toolsToolbar.addAction(a_synchronize)
         search_tb = QtWidgets.QToolButton()
         search_tb.setIcon(QtGui.QIcon('bitmaps/magnifier-left.png'))
         search_tb.setPopupMode(QtWidgets.QToolButton.InstantPopup)
@@ -764,15 +763,11 @@ class ListManager(QtWidgets.QMainWindow):
 
     def downloadtasksfromserver(self):
         '''
-        sends all tasks on server down to client
+        sends all tasks on postgres server down to sqlite client
         '''
         print_("Got here in downloadtasksfromserver")
-        #if not toodledo2.keycheck():
-        #    print_("Unable to get toodledo key")
-        #    return
         
-        #synchronize2.downloadtasksfromserver()
-        synchronize3.downloadtasksfrompostgres(local=True)
+        synchronize_s.downloadtasksfrompostgres(local=True)
         
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb2()
@@ -787,7 +782,7 @@ class ListManager(QtWidgets.QMainWindow):
     def createfoldermenu(self):
         self.f_menu = QtWidgets.QMenu(self)
         
-        folders = session.query(Folder).filter(Folder.tid!=1).all()
+        folders = session.query(Folder).filter(Folder.tid!=1).all() # the no folder tid is 1 on postgresql
         folders.sort(key=lambda f:str.lower(f.title))
         no_folder = session.query(Folder).filter_by(tid=1).one()
         folders = [no_folder] + folders
@@ -795,8 +790,6 @@ class ListManager(QtWidgets.QMainWindow):
         iconGroup = QtWidgets.QActionGroup(self)
         
         for f in folders:
-            #icon = 'folder_icons/'+f.icon if f.icon else ''
-            #a = g.create_action(self, f.title, partial(self.updatefolder, title=f.title), icon=icon , checkable=True)
             a = g.create_action(self, f.title, partial(self.updatefolder, title=f.title), image=f.image , checkable=True)
             iconGroup.addAction(a)
             self.f_menu.addAction(a)
@@ -804,7 +797,7 @@ class ListManager(QtWidgets.QMainWindow):
     def createcontextmenu(self):
         self.c_menu = QtWidgets.QMenu(self)
         
-        contexts = session.query(Context).filter(Context.tid!=1).all()# was 0 with toodledo
+        contexts = session.query(Context).filter(Context.tid!=1).all() # the no context tid is 1 on postgresql
         contexts.sort(key=lambda c:str.lower(c.title))
         no_context = session.query(Context).filter_by(tid=1).one()
         contexts = [no_context] + contexts
@@ -2470,21 +2463,16 @@ class ListManager(QtWidgets.QMainWindow):
         #self.Properties['col_widths'][c] = w 
         
     @check_modified
-    def synchronize(self, checked, local=True):
+    def synchronize(self, checked): #should get rid of local = True and just do local=True below
         
-
         if not g.internet_accessible():
             QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
             return
             
-        if not toodledo2.keycheck():
-            print_("Unable to get toodledo key")
-            return
-        
-        self.sync_log, changes, tasklist, deletelist = synchronize3.synchronizetopostgres(parent=self, 
+        self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self, 
                                                                                 showlogdialog=True, 
                                                                                 OkCancel=True,
-                                                                                local=local)
+                                                                                local=True)
         print("changes={0}".format(changes))
         print("tasklist={0}".format([t.title for t in tasklist])) #this is a goofy print
         print("deletelist={0}".format(deletelist))
@@ -2501,39 +2489,8 @@ class ListManager(QtWidgets.QMainWindow):
         for id_ in deletelist: #these ids are local client task.ids and that is what whoosh uses
             self.deletefromwhooshdb(id_)
 
-        reply = QtWidgets.QMessageBox.question(self,
-                                          "Confirmation",
-                                          "Do you want to synchronize with the remote AWS db?",
-                                          QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+        self.refreshlistonly()
 
-        if reply == QtWidgets.QMessageBox.No:
-            print("You said no to synching with the remote AWS db")
-            return
-
-        try:
-            r = requests.get("http://54.173.234.69:5000/sync") #probably should add http auth  auth=(c.aws_id, c.aws_pw))
-        except:
-            QtWidgets.QMessageBox.warning(self,  'Alert', "Could not sync remote AWS db!")
-            return
-
-        n = 1
-        while n < 6:
-            try:
-                r = requests.get("http://54.173.234.69:5000/sync-log")
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(self,  'Alert', "Could not retrieve AWS db sync log!")
-                break
-            else:
-                log = r.text
-                if len(log) > 100:
-                    dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=self)
-                    dlg.exec_()
-                    break 
-                n+=1
-                sleep(1)
-
-        print("Number of attemps: {}".format(n))
-                
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
@@ -3537,8 +3494,8 @@ if __name__ == '__main__':
     # import is here so synchronize and toodledo are imported after ListManager instance is created since synchronize accesses pb and logger
     #and toodledo2 prints to logger
  
-    import synchronize3
-    import toodledo2
+    import synchronize_s
+    #import toodledo2
     
     mainwin.show()
     app.exec_() 
