@@ -13,10 +13,11 @@ from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
-from config import rds_uri
+from config import RDS_URI
+from lmglobals_p import REMOTE_DB, LOCAL_DB_FILE
 
-cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
-LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
+#cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
+#LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
 sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 
 __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'local_engine', 'remote_engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'local_session', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc']
@@ -195,7 +196,8 @@ local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False
 Local_Session = sessionmaker(bind=local_engine)
 local_session = Local_Session()
 
-remote_engine = create_engine(rds_uri, echo=True)
+#remote_engine = create_engine(rds_uri, echo=True)
+remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=True)
 Remote_Session = sessionmaker(bind=remote_engine)
 remote_session = Remote_Session()
 

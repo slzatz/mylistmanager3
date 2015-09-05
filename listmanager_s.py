@@ -65,6 +65,7 @@ from functools import partial
 import markdown2 as markdown
 import config as c
 import lmglobals as g #moved from below on 12-21-2014
+import lmglobals_s as gs
 
 #note synchronize_s is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
@@ -220,13 +221,13 @@ class ListManager(QtWidgets.QMainWindow):
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
         #if DB_EXISTS:
-        if os.path.exists("indexdir"):
-            self.ix = index.open_dir("indexdir")
+        if os.path.exists(gs.WHOOSH_DIR): #("indexdir"):
+            self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
             self.searcher = self.ix.searcher()
         else:
             self.searcher = None
 
-        self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
+        self.logger = g.logger = Logger(self, logfile=gs.LOG_FILE)
 
         a_transfer = action("Transfer to Editor", self.logger.transfer)
         a_save = action("Save to Log File", self.logger.save)
@@ -772,7 +773,7 @@ class ListManager(QtWidgets.QMainWindow):
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb2()
             
-            self.ix = index.open_dir("indexdir")
+            self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
             self.searcher = self.ix.searcher()
 
     def note_modified(self):
@@ -3102,7 +3103,7 @@ class ListManager(QtWidgets.QMainWindow):
         #Once the commit is finished, existing readers continue to see the previous version of the index 
         #(that is, they do not automatically see the newly committed changes). New readers will see the updated index.
         
-        self.ix = index.open_dir("indexdir")
+        self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
         self.searcher = self.ix.searcher()
         
      

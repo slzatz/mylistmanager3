@@ -65,7 +65,8 @@ from functools import partial
 
 import markdown2 as markdown
 import config as c
-import lmglobals as g #moved from below on 12-21-2014
+import lmglobals as g
+import lmglobals_p as gp
 
 import lminterpreter
 
@@ -81,7 +82,7 @@ if args.db_create:
     reply = input("Y/N:") 
     if reply.lower() == 'y':
         DB_EXISTS = False
-        print("DB_EXISTS=",DB_EXISTS," -- meaning we are about to create a new database")
+        print("We will create a new database from toodledo")
 
     else:
         sys.exit()
@@ -91,8 +92,8 @@ else:
         
 from lmdb_p import *
 
-#if args.db_create:
-#    engine.echo = True
+if args.db_create:
+    engine.echo = True
 
 session = remote_session
 engine = remote_engine
@@ -112,7 +113,7 @@ class ListManager(QtWidgets.QMainWindow):
         super(ListManager, self).__init__(parent)
         
         
-        self.setWindowTitle("My Listmanager")
+        self.setWindowTitle("My Listmanager -- PostgreSQL Edition")
 
         status = self.statusBar()
         status.setSizeGripEnabled(False)
@@ -134,9 +135,9 @@ class ListManager(QtWidgets.QMainWindow):
      
         if not DB_EXISTS:
             
-            context = Context(tid=0, title='No Context')
+            context = Context(tid=0, title='No Context') # these get an id = 1
             session.add(context)
-            folder = Folder(tid=0, title="No Folder")
+            folder = Folder(tid=0, title="No Folder") # these get an id = 1
             session.add(folder)
             session.commit()
             
@@ -164,8 +165,7 @@ class ListManager(QtWidgets.QMainWindow):
             
             session.commit()
             
-            sync = Sync('client')
-            #sync = session.query(Sync).get('client') #switching server to timestamp
+            sync = Sync('client') # in this case the postgres db is the client
             session.add(sync)
             sync.timestamp = datetime.datetime.fromordinal(1)
             sync.unix_timestamp = 1
@@ -206,13 +206,13 @@ class ListManager(QtWidgets.QMainWindow):
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
         #if DB_EXISTS:
-        if os.path.exists("indexdir"):
-            self.ix = index.open_dir("indexdir")
+        if os.path.exists(gp.WHOOSH_DIR): #("indexdir")
+            self.ix = index.open_dir(gp.WHOOSH_DIR)#("indexdir")
             self.searcher = self.ix.searcher()
         else:
             self.searcher = None
 
-        self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
+        self.logger = g.logger = Logger(self, logfile=gp.LOG_FILE)
 
         a_transfer = action("Transfer to Editor", self.logger.transfer)
         a_save = action("Save to Log File", self.logger.save)
@@ -762,7 +762,7 @@ class ListManager(QtWidgets.QMainWindow):
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb()
             
-            self.ix = index.open_dir("indexdir")
+            self.ix = index.open_dir(gp.WHOOSH_DIR)#("indexdir")
             self.searcher = self.ix.searcher()
 
     def note_modified(self):
@@ -3100,7 +3100,7 @@ class ListManager(QtWidgets.QMainWindow):
         #Once the commit is finished, existing readers continue to see the previous version of the index 
         #(that is, they do not automatically see the newly committed changes). New readers will see the updated index.
         
-        self.ix = index.open_dir("indexdir")
+        self.ix = index.open_dir(gp.WHOOSH_DIR) #("indexdir")
         self.searcher = self.ix.searcher()
         
      

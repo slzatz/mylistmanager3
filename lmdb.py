@@ -13,10 +13,11 @@ from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
-from config import rds_uri
+from config import RDS_URI
+from lmglobals import REMOTE_DB, LOCAL_DB_FILE
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
-LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
+#LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
 sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 
 __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'local_engine', 'remote_engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'local_session', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc']
@@ -29,10 +30,10 @@ task_table = Table('task',metadata,
               Column('priority', Integer, default=1),
               Column('title',String(255)),
               Column('tag',String(64)),
-              #Column('folder_tid', Integer, ForeignKey('folder.tid'), default=0), #use the toodledo id
-              Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #use the postgreSQL id
-              #Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
-              Column('context_tid', Integer, ForeignKey('context.id'), default=1), #use the postgrSQL id
+              Column('folder_tid', Integer, ForeignKey('folder.tid'), default=0), #use the toodledo id
+              #Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #use the postgreSQL id
+              Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
+              #Column('context_tid', Integer, ForeignKey('context.id'), default=1), #use the postgrSQL id
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
               Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and it's only a date
@@ -195,13 +196,13 @@ local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False
 Local_Session = sessionmaker(bind=local_engine)
 local_session = Local_Session()
 
-remote_engine = create_engine(rds_uri, echo=True)
+remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=True)
 Remote_Session = sessionmaker(bind=remote_engine)
 remote_session = Remote_Session()
 
-#metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
+metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
 #metadata.create_all(local_engine) # only creates if tables not present but not
 
-metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
-metadata.create_all(remote_engine) # only creates if tables not present but not
+#metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
+#metadata.create_all(remote_engine) # only creates if tables not present but not
 
