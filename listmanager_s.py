@@ -91,7 +91,7 @@ else:
     DB_EXISTS = True
         
 if not DB_EXISTS:
-    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
+    db_directory = os.path.split(gs.LOCAL_DB_FILE)[0]
     print("db_directory=",db_directory)
     try:
         os.mkdir(db_directory)
@@ -220,9 +220,9 @@ class ListManager(QtWidgets.QMainWindow):
 
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
-        #if DB_EXISTS:
-        if os.path.exists(gs.WHOOSH_DIR): #("indexdir"):
-            self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
+        #Check for Whoosh directory but doubt things work if not there
+        if os.path.exists(gs.WHOOSH_DIR): 
+            self.ix = index.open_dir(gs.WHOOSH_DIR) 
             self.searcher = self.ix.searcher()
         else:
             self.searcher = None
@@ -773,8 +773,8 @@ class ListManager(QtWidgets.QMainWindow):
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb2()
             
-            self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
-            self.searcher = self.ix.searcher()
+            #self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
+            #self.searcher = self.ix.searcher()
 
     def note_modified(self):
         which = self.sender().objectName()
@@ -2512,11 +2512,11 @@ class ListManager(QtWidgets.QMainWindow):
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         #schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
         schema = Schema(title=TEXT(my_analyzer, phrase=False), tag=KEYWORD(commas=True, lowercase=True, scorable=True), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        if not os.path.exists("indexdir"):
-            os.mkdir("indexdir")
+        if not os.path.exists(gs.WHOOSH_DIR):
+            os.mkdir(gs.WHOOSH_DIR)
         
         # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
-        ix = create_in("indexdir", schema)
+        ix = create_in(gs.WHOOSH_DIR, schema)
         writer = ix.writer()
 
         for n,task in enumerate(tasks):
@@ -2543,11 +2543,11 @@ class ListManager(QtWidgets.QMainWindow):
         
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         schema = Schema(content=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        if not os.path.exists("indexdir"):
-            os.mkdir("indexdir")
+        if not os.path.exists(gs.WHOOSH_DIR):
+            os.mkdir(gs.WHOOSH_DIR)
         
         # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
-        ix = create_in("indexdir", schema)
+        ix = create_in(gs.WHOOSH_DIR, schema)
         writer = ix.writer()
 
         for n,task in enumerate(tasks):
@@ -2565,6 +2565,9 @@ class ListManager(QtWidgets.QMainWindow):
         print_("Whoosh database indexing complete")
         
         self.pb.hide()
+
+        self.ix = index.open_dir(gs.WHOOSH_DIR)
+        self.searcher = self.ix.searcher()
 
     def file_changed_in_vim(self, path):
         print('File Changed: %s' % path)
@@ -3132,7 +3135,7 @@ class ListManager(QtWidgets.QMainWindow):
         python_version = sys.version.split()[0]
         sqla_version = sqlalchemy.__version__ 
 
-        whoosh_version = index.version(FileStorage("indexdir"))[0]
+        whoosh_version = index.version(FileStorage(gs.WHOOSH_DIR))[0]
         whoosh_version = '.'.join(str(x) for x in list(whoosh_version))
         
         values = (python_version, QtCore.PYQT_VERSION_STR, QtCore.QT_VERSION_STR, sip.SIP_VERSION_STR, sqla_version, whoosh_version)

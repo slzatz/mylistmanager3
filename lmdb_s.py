@@ -30,9 +30,9 @@ task_table = Table('task',metadata,
               Column('priority', Integer, default=1),
               Column('title',String(255)),
               Column('tag',String(64)),
-              Column('folder_tid', Integer, ForeignKey('folder.tid'), default=0), #use the toodledo id
+              Column('folder_tid', Integer, ForeignKey('folder.tid'), default=1), #use the toodledo id
               #Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #use the postgreSQL id
-              Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
+              Column('context_tid', Integer, ForeignKey('context.tid'), default=1), #use the toodledo id
               #Column('context_tid', Integer, ForeignKey('context.id'), default=1), #use the postgrSQL id
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
