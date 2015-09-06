@@ -992,7 +992,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.LBox = splitter.widget(0)
         self.table = splitter.widget(1)
 
-        self.setWindowTitle("Listmanager - type: %s; value: %s filtered by: %s"%(Properties['tab']['type'], Properties['tab']['value'],Properties['filter_by']['column']))
+        self.setWindowTitle("Listmanager " + engine.url.drivername + " " + os.path.relpath(engine.url.database) + " - type: %s; value: %s filtered by: %s"%(Properties['tab']['type'], Properties['tab']['value'],Properties['filter_by']['column']))
 
         self.itemselected()
 

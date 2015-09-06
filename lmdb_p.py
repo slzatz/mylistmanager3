@@ -69,7 +69,8 @@ task_table = Table('task',metadata,
 
 context_table = Table('context', metadata,
                  Column('id', Integer, primary_key=True),
-                 Column('tid', Integer, unique=True, nullable=False), #the toodledo id
+                 #Column('tid', Integer, unique=True, nullable=False), #the toodledo id
+                 Column('tid', Integer), #the toodledo id - can be null till we pick one up
                  Column('title', String(32), unique=True, nullable=False), 
                  Column('default', Boolean, default=False),
                  Column('created', DateTime, default=datetime.datetime.now), 
@@ -81,7 +82,8 @@ context_table = Table('context', metadata,
 
 folder_table = Table('folder', metadata,
                  Column('id', Integer, primary_key=True),
-                 Column('tid', Integer, unique=True, nullable=False), #the toodledo id
+                 #Column('tid', Integer, unique=True, nullable=False), #the toodledo id
+                 Column('tid', Integer), #the toodledo id - can be null till we pick one up
                  Column('title', String(32), nullable=False),#unique=True - toodledo can have same title
                  Column('private', Boolean, default=False),
                  Column('archived', Boolean, default=False),

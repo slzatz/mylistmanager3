@@ -92,11 +92,11 @@ else:
         
 from lmdb_p import *
 
-if args.db_create:
-    engine.echo = True
-
 session = remote_session
 engine = remote_engine
+
+#if args.db_create:
+    #engine.echo = True
 
 VERSION = '0.8'
 
@@ -113,7 +113,7 @@ class ListManager(QtWidgets.QMainWindow):
         super(ListManager, self).__init__(parent)
         
         
-        self.setWindowTitle("My Listmanager -- PostgreSQL Edition")
+        self.setWindowTitle("Listmanager " + engine.name)
 
         status = self.statusBar()
         status.setSizeGripEnabled(False)
@@ -983,7 +983,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.LBox = splitter.widget(0)
         self.table = splitter.widget(1)
 
-        self.setWindowTitle("Listmanager - type: %s; value: %s filtered by: %s"%(Properties['tab']['type'], Properties['tab']['value'],Properties['filter_by']['column']))
+        self.setWindowTitle("Listmanager " + engine.url.drivername + " " + engine.url.host + " " + engine.url.database + " - type: %s; value: %s filtered by: %s"%(Properties['tab']['type'], Properties['tab']['value'],Properties['filter_by']['column']))
 
         self.itemselected()
 
@@ -1256,12 +1256,13 @@ class ListManager(QtWidgets.QMainWindow):
                 print("You said no to creating a new folder")
                 return
             
-            temp_tid = Temp_tid(title=title, type_='folder')
-            session.add(temp_tid)
-            session.commit()
+            #temp_tid = Temp_tid(title=title, type_='folder')
+            #session.add(temp_tid)
+            #session.commit()
 
             # will need to change the tid when we upload the folder to the server
-            new_folder = Folder(title=title, tid=temp_tid.id)
+            #new_folder = Folder(title=title, tid=temp_tid.id)
+            new_folder = Folder(title=title)
             task.folder = new_folder 
             session.add(new_folder)
             
@@ -1294,12 +1295,13 @@ class ListManager(QtWidgets.QMainWindow):
                 print_("You said no to creating a new context")
                 return
 
-            temp_tid = Temp_tid(title=title, type_='context')
-            session.add(temp_tid)
-            session.commit()
+            #temp_tid = Temp_tid(title=title, type_='context')
+            #session.add(temp_tid)
+            #session.commit()
 
             # will need to change the tid when we upload the folder to the server
-            new_context = Context(title=title, tid=temp_tid.id)
+            #new_context = Context(title=title, tid=temp_tid.id)
+            new_context = Context(title=title)
             task.context = new_context 
             session.add(new_context)
             

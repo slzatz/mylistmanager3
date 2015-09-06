@@ -158,7 +158,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
     else:
         log+="There were no new client Contexts added since the last sync.\n"   
             
-    alternate_client_new_contexts = session.query(Temp_tid).filter_by(type_='context').all()
+    alternate_client_new_contexts = session.query(Context).filter_by(tid=None).all()
 
     if alternate_client_new_contexts:
         log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
@@ -173,7 +173,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
     else:
         log+="There were no new client Folders added since the last sync.\n"    
 
-    alternate_client_new_folders = session.query(Temp_tid).filter_by(type_='folder').all()
+    alternate_client_new_folders = session.query(Folder).filter_by(tid=None).all()
 
     if alternate_client_new_folders:
         log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
@@ -204,8 +204,8 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         log+="There were no edited client Tasks since the last sync.\n" 
 
     #deletes
-    client_deleted_tasks = session.query(Task).filter(Task.deleted==True).all()
-    #client_deleted_tasks = session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==True, Task.tid != None)).all()
+    #client_deleted_tasks = session.query(Task).filter(Task.deleted==True).all()
+    client_deleted_tasks = session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==True, Task.tid != None)).all()
     if client_deleted_tasks:
         nn+=len(client_deleted_tasks)
         log+="Deleted client Tasks since the last sync: {0}.\n".format(len(client_deleted_tasks))
@@ -261,7 +261,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
             pb.setValue(nnn)
 
     for c in client_new_contexts: # this is where we could check for simultaneous creation of folders by checking for title in server_folders
-        temp_tid = c.tid
+        #temp_tid = c.tid # with new approach, this should be null
 
         try:
             [server_context] = toodledo_call('contexts/add', name=c.title) #[{"id":"12345","name":"MyContext"}]
@@ -283,25 +283,26 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         #need to update all tasks that used the temp_tid
         log+= "\nClient tasks that were updated with context id (tid) obtained from server:\n"
         
-        tasks_with_temp_tid = session.query(Task).filter_by(context_tid=temp_tid) #tasks_with_temp_tid = c.tasks may be a better but would have to move higher
-        
-        # These changes on client do not get transmitted to the server because they are between old sync time and new sync time
-        for t in tasks_with_temp_tid:
-            t.context_tid = server_tid
-            session.commit()
-            
-            log+= "{title} is in context {context}".format(title=t.title[:30], context=t.context.title) 
+        #tasks_with_temp_tid = session.query(Task).filter_by(context_tid=temp_tid) #tasks_with_temp_tid = c.tasks may be a better but would have to move higher
+        #
+        ## These changes on client do not get transmitted to the server because they are between old sync time and new sync time
+        #for t in tasks_with_temp_tid:
+        #    t.context_tid = server_tid
+        #    session.commit()
+        #    
+        #    log+= "{title} is in context {context}".format(title=t.title[:30], context=t.context.title) 
 
         nnn+=1
     
         if pb:
             pb.setValue(nnn)
 
-    #note these are from class Temp_tid and not class Context
-    for c in alternate_client_new_contexts: 
-        log+="alternative method: new context: {0}".format(c.title)
-        session.delete(c)
-        session.commit()
+    ##note these are from class Temp_tid and not class Context
+    #for c in alternate_client_new_contexts: 
+    #    log+="alternative method: new context: {0}".format(c.title)
+    #    session.delete(c)
+    #    session.commit()
+
     #server_contexts = client.getContexts()
     if server_contexts:
         server_context_tids = set([sc.id for sc in server_contexts])
@@ -316,7 +317,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
             session.delete(cc)
             session.commit()
             #Note that the delete sets context_tid=None for all tasks in the context
-            #I wonder how you set to zero - this is done "manually" below
+            #I wonder how you set to zero [now 1] - this is done "manually" below
             log+= "Deleted client context tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
 
             #These tasks are marked as changed by server so don't need to do this
@@ -370,7 +371,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
             pb.setValue(nnn)
 
     for f in client_new_folders:
-        temp_tid = f.tid
+        #temp_tid = f.tid # with new approach, this should be null
 
         #[{"id":"12345","name":"MyFolder","private":"0","archived":"0","ord":"1"}]
         try:
@@ -396,24 +397,25 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
 
         tasks_with_temp_tid = session.query(Task).filter_by(folder_tid=temp_tid) #tasks_with_temp_tid = f.tasks may be a better way to go but would have to move higher
 
-        # These changes on client do not get transmitted to the server because they are between old sync time and new sync time
-        for t in tasks_with_temp_tid:
-            t.folder_tid = server_tid
-            session.commit() 
+        ## These changes on client do not get transmitted to the server because they are between old sync time and new sync time
+        #for t in tasks_with_temp_tid:
+        #    t.folder_tid = server_tid
+        #    session.commit() 
 
-            log+= "Task {title} in folder {folder} \n".format(title=t.title[:30], folder=t.folder.title)
+        #    log+= "Task {title} in folder {folder} \n".format(title=t.title[:30], folder=t.folder.title)
 
         nnn+=1
 
         if pb:
             pb.setValue(nnn)
 
-    #note these are from class Temp_tid and not class Folder
-    for f in alternate_client_new_folders:
-        log+="alternative method: new folder: {0}".format(f.title)
-        session.delete(f)
-        session.commit()
+    ##note these are from class Temp_tid and not class Folder
+    #for f in alternate_client_new_folders:
+    #    log+="alternative method: new folder: {0}".format(f.title)
+    #    session.delete(f)
+    #    session.commit()
 
+    # the code below is looking to delete those client folders that no longer exist on the server
     if server_folders:
         server_folder_tids = set([sf.id for sf in server_folders])
         client_folder_tids = set([cf.tid for cf in session.query(Folder).filter(Folder.tid!=0)])
@@ -428,9 +430,9 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
             session.commit()
             log+= "Deleted client folder tid: {tid}  - {title}".format(title=title, tid=tid) # new server folders
 
-            #These tasks are marked as changed by server so don't need to do this
-            #They temporarily pick of folder_tid of None after the folder is deleted on the client
-            #When tasks are updated later in sync they pick up correct folder_tid=0
+            #The tasks on the server that had their folder deleted should be marked as changed by server
+            #When you delete a folder that a task pointed to through folder_tid I do not know what the value of folder_tid is assigned to that task
+            #When tasks are updated later in sync they need to pick up correct folder_tid=1 - someday might want no folder to be folder_tid = None
 
             log+= "\nClient tasks that should be updated with folder tid = 0 because Folder was deleted from the server:\n"
             
@@ -548,6 +550,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
             try:
                             
                 z = {a:_typemap[a] (getattr(t, attr_map.get(a,a))) for a in _typemap}
+                # the below assigns the right tid to the server task
                 z['folder'] = str(t.folder.tid)
                 z['context'] = str(t.context.tid)
                 lst.append(z)
@@ -631,7 +634,8 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
                 session.delete(tk)
             session.commit()
         
-            session.delete(task)
+            #session.delete(task)
+            task.deleted = True
             session.commit() 
             
         else:
@@ -684,8 +688,9 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
                         session.delete(tk)
                     session.commit()
                     
-                    session.delete(c)
-                    session.commit()     
+                    # need deleted client tasks to hang around so they can be there to delete sqlite tasks
+                    #session.delete(c)
+                    #session.commit()     
                     
                     nnn+=1
 
@@ -694,9 +699,9 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
                 
             
         
-    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
+    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=3) # giving a little buffer if the db takes time to update on client or server
 
-    sync.unix_timestamp = int(time.time()+5) #time.time returns a float but we're constantly using int timestamps
+    sync.unix_timestamp = int(time.time()+20) #time.time returns a float but we're constantly using int timestamps
 
     session.commit()  
 
@@ -738,7 +743,7 @@ def downloadtasksfromtoodledo(local=True):
     while 1:
         # always returns id, title, modified, completed
         # also note that duetime and startdate were added 08302015
-        stats,tasks = toodledo_call('tasks/get', start=str(n), end=str(n+1000), fields='folder,star,priority,duedate,duetime,startdate, context,tag,added,note')
+        stats,tasks = toodledo_call('tasks/get', start=str(n), end=str(n+1000), fields='folder,star,priority,duedate,duetime,startdate,context,tag,added,note')
         server_tasks.extend(tasks)
         if stats['num'] < 1000:
             break
@@ -800,7 +805,8 @@ def downloadtasksfromtoodledo(local=True):
         session.add(task)
         task.tid = t.id 
                                   
-        # the commented out line immediately below is what was here previously and the two lines below that are for the postgreSQL server
+        # the commented out line immediately below is what was here previously and the lines below that are for the postgreSQL server
+        # the try shouldn't be necessary but there appears to be a server task with a null context
         #task.context_tid = t.context 
         context = session.query(Context).filter_by(tid = t.context).one()
         task.context_tid = context.id
@@ -861,8 +867,8 @@ def downloadtasksfromtoodledo(local=True):
     
     #Update synch timestamps
     sync = session.query(Sync).get('client')
-    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
-    sync.unix_timestamp = int(time.time()+2) #was 5, changed 01-24-2015
+    sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=3) # (was 5) giving a little buffer if the db takes time to update on client or server
+    sync.unix_timestamp = int(time.time()+20) #was 5, changed 01-24-2015
     session.commit()  
 
     print_("New Sync times")
