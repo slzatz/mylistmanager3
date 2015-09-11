@@ -95,10 +95,7 @@ from lmdb_p import *
 session = remote_session
 engine = remote_engine
 
-#if args.db_create:
-    #engine.echo = True
-
-VERSION = '0.8'
+VERSION = '0.9'
 
 TODAY = datetime.date.today()
 

@@ -101,10 +101,6 @@ if not DB_EXISTS:
 
 from lmdb_s import *
 
-#if args.db_create:
-#    engine.echo = True
-
-#g.DB_URI = g.sqlite_uri
 session = local_session
 engine = local_engine
 

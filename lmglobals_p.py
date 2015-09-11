@@ -10,7 +10,7 @@ CONFIG_FILE = os.path.join(cwd,'mylistmanager_p.ini')
 LOCAL_DB_FILE = os.path.join(cwd,'lmdb_s','mylistmanager_s.db')
 #sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 #DB_URI = None #####################right now need to change this manually in listmanager  
-REMOTE_DB = 'listmanager'
+REMOTE_DB = 'listmanager_p' ############### 09082015
 WHOOSH_DIR = os.path.join(cwd, 'whoosh_index_p')
 #IMAGES_DIR = os.path.join(cwd,'bitmaps')
 #PLUGIN_DIR = os.path.join(cwd,'plugins')
@@ -20,8 +20,10 @@ LOG_FILE = os.path.join(cwd,'logfile_p.txt')
 #VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
 del cwd
 
-#key = None
-#timestamp = None
+
+# these are for toodledo and I think they are necessary
+key = None
+timestamp = None
 
 config = configparser.RawConfigParser()
 config.read(CONFIG_FILE)

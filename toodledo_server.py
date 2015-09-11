@@ -18,21 +18,11 @@ import json
 import base64
 import re
 
-try:
-    import lmdialogs
-except ImportError:
-    lmdialogs = None
-
 # need a better way to deal with having lmglobals2 on server and lmglobals on client 09092015
-try:
-    import lmglobals as g
-except ImportError:
-    import lmglobals2 as g
-    print_ = print
-else:
-    print_ = g.logger.write
+import lmglobals2 as g
+print_ = print
 
-print_("Hello from the toodledo2 module")
+print_("Hello from the toodledo_server.py module")
 
 _SERVICE_URL = 'http://api.toodledo.com/2/'
 
@@ -211,18 +201,10 @@ def getnewkey():
         
     if cg.has_section('Toodledo2') and cg.has_option('Toodledo2', 'pw'):
         b64pw = cg.get('Toodledo2', 'pw').encode('utf-8') # type(b64pw)==bytes
-        #pw = base64.b64decode(b64pw).decode('utf-8') # you don't want to do str(...) before decoding it's bytes
         pw = base64.b64decode(b64pw) #b64decode wants to operate on bytes and returns bytes
-    else:
-        dlg = lmdialogs.Authenticate("Toodledo Authentication", parent=None)
-        if dlg.exec_(): # if cancel - dlg.exec_ is False
-            email, pw = dlg.getData()
-        else:
-            return False
         
     if userid is None:
         b = (email+'api4f7e15dc12cdf').encode('utf-8')
-        #m = md5(email+'api4f7e15dc12cdf')
         m = md5(b)
         sig = m.hexdigest()
         url = _SERVICE_URL + 'account/lookup.php'
@@ -232,7 +214,6 @@ def getnewkey():
         userid = post(url, bdata)['userid']
     
     b = (userid+'api4f7e15dc12cdf').encode('utf-8')
-    #m = md5(userid+'api4f7e15dc12cdf')
     m = md5(b)
     sig = m.hexdigest()
     url = _SERVICE_URL + 'account/token.php'

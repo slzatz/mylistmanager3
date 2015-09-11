@@ -14,12 +14,12 @@ import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
 from flask import Flask, request, Response, render_template, url_for #, Markup
 from twitter import *
-from lmdb import *
+from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import boto.ses
 import markdown2 as markdown
-import toodledo2
-import synchronize2
+import toodledo_server
+import synchronize_server
 
 ses_conn = boto.ses.connect_to_region(
                                       "us-east-1",
@@ -59,12 +59,12 @@ def sync():
     global sync_in_progress
     sync_in_progress = True
 
-    if not toodledo2.keycheck():
+    if not toodledo_server.keycheck():
         print("Could not get a good toodledo key")
         res = ses_conn.send_email(sender, "Failure to obtain toodledo key", "", recipients) 
         return
         
-    log, changes, tasklist, deletelist = synchronize2.synchronize(showlogdialog=False, OkCancel=False, local=False) 
+    log, changes, tasklist, deletelist = synchronize_server.synchronizetoodledo(showlogdialog=False, OkCancel=False, local=False) 
 
     with open("sync_log", 'w') as f:
         f.write(log)

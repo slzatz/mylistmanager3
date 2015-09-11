@@ -15,22 +15,15 @@ import json
 import urllib.request, urllib.parse, urllib.error
 import base64
 from functools import partial
-import toodledo2
+import toodledo_server
 from lmdb_p import * 
 
-try:
-    import lmglobals as g
-    import lmdialogs
-except ImportError:
-    print_ = print
-    pb = None
-else:
-    print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
-    pb = g.pb
+print_ = print
+pb = None
 
-print_("Hello from the synchronize_p module")
+print_("Hello from the synchronize_server module")
 
-def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local=False): # if running outside gui, the showdialog=False, OKCancel=False
+def synchronizetoodledo(parent=None, showlogdialog=True, OkCancel=False, local=False): # if running outside gui, the showdialog=False, OKCancel=False
 
     #{"id":"265413904","title":"FW: U.S. panel likely to back arthritis drug of Abbott rival
     #(Pfz\/tofacitinib)","modified":1336240586,"completed":0,"folder":"0","priority":"0","context":"0","tag":"","note":"From: maryellen [
@@ -70,7 +63,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
 
     session = local_session if local else remote_session
     print(session.get_bind())
-    toodledo_call = toodledo2.toodledo_call
+    toodledo_call = toodledo_server.toodledo_call
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         
@@ -266,7 +259,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         try:
             [server_context] = toodledo_call('contexts/add', name=c.title) #[{"id":"12345","name":"MyContext"}]
 
-        except toodledo2.ToodledoError as e:
+        except toodledo_server.ToodledoError as e:
             print_(repr(e))
             print_("There was a problem adding new client context {} to the server".format(c.title))
 
@@ -377,7 +370,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         try:
             [server_folder] = toodledo_call('folders/add', name=c.title) 
                  
-        except toodledo2.ToodledoError as e:
+        except toodledo_server.ToodledoError as e:
             print_(repr(e))
             print_("There was a problem adding new client folder {} to the server".format(f.title))
 
@@ -671,7 +664,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         try:
             server_tasks = toodledo_call('tasks/delete', tasks=json.dumps(tids_to_delete, separators=(',',':')))
             #[{"id":"1234"},{"id":"1235"}]
-        except toodledo2.ToodledoError as e:
+        except toodledo_server.ToodledoError as e:
             print_(repr(e))
             print_("There was a problem deleting deleted client tasks from the server")
               
@@ -728,7 +721,7 @@ def downloadtasksfromtoodledo(local=True):
     '''
 
     session = local_session if local else remote_session
-    toodledo_call = toodledo2.toodledo_call
+    toodledo_call = toodledo_server.toodledo_call
     
     # I should make it possible to select only certain contexts
     print_("Starting the process of downloading tasks from server")

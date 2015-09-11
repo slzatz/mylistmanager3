@@ -40,8 +40,10 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     tasklist= [] #server changed tasks
     deletelist = [] #server deleted tasks
 
-    #session = local_session if local else remote_session
-    #print(session.get_bind())
+    # Seems necessary to create the remote session when needed since it appears to close if unused
+    #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False) #unicode logger errors when true
+    #Remote_Session = sessionmaker(bind=remote_engine)
+    remote_session = Remote_Session()
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         
@@ -511,7 +513,8 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
 
             remote_session.commit()
             
-        tasklist.append(task)
+        # probably need two tasklists - server and client for whoosh updating
+        #tasklist.append(task) #really need to look at this 09092015
         
         nnn+=1
 

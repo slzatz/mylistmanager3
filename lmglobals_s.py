@@ -19,8 +19,9 @@ LOG_FILE = os.path.join(cwd,'logfile_s.txt')
 VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
 del cwd
 
-#key = None
-#timestamp = None
+# these are for toodledo and I think they are necessary
+key = None
+timestamp = None
 
 config = configparser.RawConfigParser()
 config.read(CONFIG_FILE)

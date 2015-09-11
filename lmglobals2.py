@@ -3,20 +3,22 @@ import os
 import urllib.request, urllib.error, urllib.parse
 import configparser as configparser
 
-from config import rds_uri
+#from config import rds_uri
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 CONFIG_FILE = os.path.join(cwd,'mylistmanager.ini')
-LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
-sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
-DB_URI = None #####################right now need to change this manually in listmanager  
-IMAGES_DIR = os.path.join(cwd,'bitmaps')
-PLUGIN_DIR = os.path.join(cwd,'plugins')
-USER_ICONS = 'folder_icons'
-CORE_ICONS = ''
+#LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
+#sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
+REMOTE_DB = 'listmanager_p' ############### 09082015
+#DB_URI = None #####################right now need to change this manually in listmanager  
+#IMAGES_DIR = os.path.join(cwd,'bitmaps')
+#PLUGIN_DIR = os.path.join(cwd,'plugins')
+#USER_ICONS = 'folder_icons'
+#CORE_ICONS = ''
 LOG_FILE = os.path.join(cwd,'logfile.txt')
 del cwd
 
+# these are for toodledo 
 key = None
 timestamp = None
 
