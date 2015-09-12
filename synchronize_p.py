@@ -1,32 +1,27 @@
 '''
 module to sync remote sql-based server (currently postgreSQL) database with a local (currently sqlite) database
-But confusingly the downloadtasksfromserver is about downloading from toodledo to sql-based server with
+Note that downloadtasksfromserver is about downloading tasks/items from toodledo to sql-based server with
 the additional factor that you want to run the sql-based server in front of the local database such that the
 local server cannot synch directly with toodledo only the remote server can.
 '''
 
-import os
+#import os
 import time
-import sys
+#import sys
 import datetime
 import calendar
-import platform
+#import platform
 import json
-import urllib.request, urllib.parse, urllib.error
-import base64
-from functools import partial
+#import urllib.request, urllib.parse, urllib.error
+#import base64
+#from functools import partial
 import toodledo2
 from lmdb_p import * 
+import lmdialogs
+import lmglobals_p as g
 
-try:
-    import lmglobals as g
-    import lmdialogs
-except ImportError:
-    print_ = print
-    pb = None
-else:
-    print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
-    pb = g.pb
+print_ = g.logger.write
+pb = g.pb
 
 print_("Hello from the synchronize_p module")
 

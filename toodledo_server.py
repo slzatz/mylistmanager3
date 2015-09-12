@@ -1,14 +1,14 @@
 '''
 shamelessly stolen with a few mods from felix riedel's poodledo
 '''
-import os
-import sys
-import urllib.request, urllib.error, urllib.parse
-import urllib.request, urllib.parse, urllib.error
-import io
-import shutil
+#import os
+#import sys
+#import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse
+#import io
+#import shutil
 
-import time
+#import time
 import datetime
 #import calendar
 #import pytz

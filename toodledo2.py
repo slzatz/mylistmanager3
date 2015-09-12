@@ -1,14 +1,17 @@
 '''
 shamelessly stolen with a few mods from felix riedel's poodledo
+Only difference between toodledo2 and toodledo_server appears
+to be presence of lmdialogs in toodledo2 but lmdialogs.Authenticate
+doesn't work since doesn't appear to be in lmdialogs
 '''
-import os
-import sys
-import urllib.request, urllib.error, urllib.parse
-import urllib.request, urllib.parse, urllib.error
-import io
-import shutil
+#import os
+#import sys
+#import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse
+#import io
+#import shutil
 
-import time
+#import time
 import datetime
 #import calendar
 #import pytz

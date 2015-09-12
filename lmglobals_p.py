@@ -7,7 +7,7 @@ import configparser as configparser
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 CONFIG_FILE = os.path.join(cwd,'mylistmanager_p.ini')
-LOCAL_DB_FILE = os.path.join(cwd,'lmdb_s','mylistmanager_s.db')
+#LOCAL_DB_FILE = os.path.join(cwd,'lmdb_s','mylistmanager_s.db')
 #sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 #DB_URI = None #####################right now need to change this manually in listmanager  
 REMOTE_DB = 'listmanager_p' ############### 09082015
