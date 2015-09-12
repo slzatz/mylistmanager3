@@ -18,8 +18,8 @@ import json
 import base64
 import re
 
-# need a better way to deal with having lmglobals2 on server and lmglobals on client 09092015
-import lmglobals2 as g
+import lmglobals_p as g
+
 print_ = print
 
 print_("Hello from the toodledo_server.py module")

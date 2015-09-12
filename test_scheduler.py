@@ -33,6 +33,7 @@ parser.add_argument( '--aws', action='store_true', help="Use postgres db located
 parser.add_argument( '--html', action='store_true', help="Send both a plain and HTML email")
 args = parser.parse_args()
 
+# since test_scheduler is intended to be run against postgres could probably just set session = remote_session
 session = remote_session if args.aws else local_session
 
 # twitter

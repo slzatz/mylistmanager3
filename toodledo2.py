@@ -18,20 +18,11 @@ import json
 import base64
 import re
 
-try:
-    import lmdialogs
-except ImportError:
-    lmdialogs = None
+import lmdialogs
 
-# need a better way to deal with having lmglobals2 on server and lmglobals on client 09092015
-try:
-    import lmglobals as g
-except ImportError:
-    import lmglobals2 as g
-    print_ = print
-else:
-    print_ = g.logger.write
+import lmglobals_p as g
 
+print_ = print
 print_("Hello from the toodledo2 module")
 
 _SERVICE_URL = 'http://api.toodledo.com/2/'

@@ -65,8 +65,7 @@ from functools import partial
 
 import markdown2 as markdown
 import config as c
-import lmglobals as g
-import lmglobals_p as gp
+import lmglobals_p as g
 
 import lminterpreter
 
@@ -97,13 +96,146 @@ engine = remote_engine
 
 VERSION = '0.9'
 
+IMAGES_DIR = g.IMAGES_DIR
+
 TODAY = datetime.date.today()
 
 #decorators
-check_modified = g.check_modified
-check_task_selected = g.check_task_selected
-update_whooshdb = g.update_whooshdb
-update_row = g.update_row
+def check_modified(f):
+    ''' A decorator that checks if there have been any field changes'''
+    
+    def fn(lm, *args, **kwargs):
+        if lm.modified:
+            print("self.modified dict is not empty and so savenote was called")
+            print("self.modified={0}".format(repr(lm.modified)))
+            print("The method that triggered savenote was {0}".format(f.__name__))
+
+            lm.savenote()
+        return f(lm, *args, **kwargs)
+    return fn
+    
+def check_task_selected(f):
+    '''A decorator that checks to see if a task was selected before an action'''
+    
+    def fn(lm, *args, **kwargs):
+        if not lm.task or lm.index==-1:
+            QtWidgets.QMessageBox.information(lm,  'Note', "No row is selected")
+            return
+        else:
+            return f(lm, *args, **kwargs)
+    return fn
+
+def update_whooshdb(f):
+    ''' A decorator that updates the whoosh db because of a task change'''
+    
+    def fn(lm, *args, **kwargs):
+        z = f(lm, *args, **kwargs)
+        lm.updatewhooshentry(False, task=lm.task)
+        return z
+    return fn
+   
+def update_row(f):
+    ''' A decorator that updates the changed row in the table'''
+
+    def fn(lm, *args, **kwargs):
+        z = f(lm, *args, **kwargs)
+        
+        #qtablewidgetitem = QtGui.QTableWidgetItem
+        qcolor = QtGui.QColor
+        #qicon = QtGui.QIcon
+        display = lm.display #dict that just holds display lambda's
+            
+        type_ = 'folder' if lm.Properties['tab']['type'] == 'context' else 'context'
+
+        table = lm.table
+        col_order = lm.col_order
+
+        #deleteditemfont = lm.deleteditemfont
+        #itemfont = lm.itemfont
+
+        
+        task = lm.task
+        n= lm.index
+     
+        if task.completed:
+            table.item(n,0).setIcon(lm.idx0)
+            for c,col in enumerate(col_order[1:],start=1):
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
+                item.setForeground(qcolor('gray'))
+                item.setFont(lm.itemfont[task.priority])
+                table.setItem(n, c, item)
+
+        elif task.deleted:
+            for c,col in enumerate(col_order[1:],start=1):
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
+                item.setForeground(qcolor('gray'))
+                item.setFont(lm.deleteditemfont[task.priority])
+                table.setItem(n, c, item)
+                
+        elif getattr(task, type_).textcolor:
+            for c,col in enumerate(col_order[1:],start=1):
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
+                item.setForeground(qcolor(getattr(task, type_).textcolor))
+                item.setFont(lm.itemfont[task.priority])
+                table.setItem(n, c, item)
+        else:
+            for c,col in enumerate(col_order[1:],start=1):
+                item = QtWidgets.QTableWidgetItem(*display[col](task))
+                item.setFont(lm.itemfont[task.priority])
+                table.setItem(n, c, item)
+                    
+                
+        return z
+    return fn
+
+#check_modified = g.check_modified
+#check_task_selected = g.check_task_selected
+#update_whooshdb = g.update_whooshdb
+#update_row = g.update_row
+
+######################################################################################################################################################
+
+def create_action(parent, text, slot=None, shortcut=None, icon=None, icon_res=None, image=None, tip=None, checkable=False):
+
+    action = QtWidgets.QAction(parent)
+    action.setText(text)
+    
+    if icon:
+        action.setIcon(QtGui.QIcon(os.path.join(IMAGES_DIR, icon))) #works without extension but finds bmp before png
+    elif icon_res:
+        action.setIcon(QtGui.QIcon(icon_res)) # uses resource.py
+    elif image:
+        pxmap = QtGui.QPixmap()
+        pxmap.loadFromData(image, 'PNG')
+        action.setIcon(QtGui.QIcon(pxmap))
+        
+    if shortcut:
+        action.setShortcut(shortcut)
+
+    tip = tip if tip else text.lstrip('&')
+    action.setToolTip(tip)
+    action.setStatusTip(tip)
+
+    #note: default overload is triggered(bool checked=False) meaning that slots would have to have two arguments, self and checked
+    #the below gets you the non-default triggered() overload
+    if slot:
+        #action.triggered[()].connect(slot)
+        action.triggered.connect(slot) #12-17-2014
+        #action.connect(slot)
+        
+    if checkable:
+        action.setCheckable(True)
+
+    return action
+
+def add_actions(target, actions):
+    for action in actions:
+        if action is None:
+            target.addSeparator()
+        else:
+            target.addAction(action)
+
+######################################################################################################################################################
 
 class ListManager(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
@@ -183,9 +315,13 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.sync_log = ''
         self.vim_files = {} #dictionary to hold files being edited in VIM
-        action =partial(g.create_action, self)
-        add_actions = g.add_actions
-        IMAGES_DIR = g.IMAGES_DIR
+
+
+        #action = partial(g.create_action, self)
+        action = partial(create_action, self)
+        #add_actions = g.add_actions
+        #add_actions = add_actions
+        #IMAGES_DIR = g.IMAGES_DIR
         im_file = partial(os.path.join, IMAGES_DIR)
 
         self.arrows = ('bitmaps/down_arrow.png','bitmaps/up_arrow.png')
@@ -203,13 +339,13 @@ class ListManager(QtWidgets.QMainWindow):
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
         #Check for Whoosh directory but doubt things work if not there
-        if os.path.exists(gp.WHOOSH_DIR): 
-            self.ix = index.open_dir(gp.WHOOSH_DIR)
+        if os.path.exists(g.WHOOSH_DIR): 
+            self.ix = index.open_dir(g.WHOOSH_DIR)
             self.searcher = self.ix.searcher()
         else:
             self.searcher = None
 
-        self.logger = g.logger = Logger(self, logfile=gp.LOG_FILE)
+        self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
 
         a_transfer = action("Transfer to Editor", self.logger.transfer)
         a_save = action("Save to Log File", self.logger.save)
@@ -759,7 +895,7 @@ class ListManager(QtWidgets.QMainWindow):
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb2()
             
-            #self.ix = index.open_dir(gp.WHOOSH_DIR)
+            #self.ix = index.open_dir(g.WHOOSH_DIR)
             #self.searcher = self.ix.searcher()
 
     def note_modified(self):
@@ -779,7 +915,7 @@ class ListManager(QtWidgets.QMainWindow):
         for f in folders:
             #icon = 'folder_icons/'+f.icon if f.icon else ''
             #a = g.create_action(self, f.title, partial(self.updatefolder, title=f.title), icon=icon , checkable=True)
-            a = g.create_action(self, f.title, partial(self.updatefolder, title=f.title), image=f.image , checkable=True)
+            a = create_action(self, f.title, partial(self.updatefolder, title=f.title), image=f.image , checkable=True)
             iconGroup.addAction(a)
             self.f_menu.addAction(a)
 
@@ -794,7 +930,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.contextGroup = QtWidgets.QActionGroup(self)
         
         for c in contexts:
-            a = g.create_action(self, c.title, partial(self.updatecontext, title=c.title), image=c.image, checkable=True)
+            a = create_action(self, c.title, partial(self.updatecontext, title=c.title), image=c.image, checkable=True)
             self.contextGroup.addAction(a)
             self.c_menu.addAction(a)
             
@@ -944,7 +1080,7 @@ class ListManager(QtWidgets.QMainWindow):
             Properties['col_widths'] = [table.columnWidth(n) for n in range(table.columnCount())]  # might want len(col_order)
 
         table.setContextMenuPolicy(Qt.ActionsContextMenu)
-        g.add_actions(table, (self.p_action, self.a_selectcontext, self.a_selectfolder, self.a_select_tags))
+        add_actions(table, (self.p_action, self.a_selectcontext, self.a_selectfolder, self.a_select_tags))
 
         return table
 
@@ -1263,7 +1399,7 @@ class ListManager(QtWidgets.QMainWindow):
             task.folder = new_folder 
             session.add(new_folder)
             
-            a_newfolder = g.create_action(self, new_folder.title, partial(self.updatefolder, new_folder.title), checkable=True)
+            a_newfolder = create_action(self, new_folder.title, partial(self.updatefolder, new_folder.title), checkable=True)
             self.iconGroup.addAction(a_newcontext)
             self.f_menu.addAction(a_newfolder)   
             
@@ -1302,7 +1438,7 @@ class ListManager(QtWidgets.QMainWindow):
             task.context = new_context 
             session.add(new_context)
             
-            a_newcontext = g.create_action(self, new_context.title, partial(self.updatecontext, new_context.title), checkable=True)
+            a_newcontext = create_action(self, new_context.title, partial(self.updatecontext, new_context.title), checkable=True)
             self.contextGroup.addAction(a_newcontext)
             self.c_menu.addAction(a_newcontext)   
 
@@ -1515,7 +1651,7 @@ class ListManager(QtWidgets.QMainWindow):
             session.add(new_context)
             session.commit()
 
-            a = g.create_action(self, new_context_title, partial(self.updatecontext, new_context_title), checkable=True)
+            a = create_action(self, new_context_title, partial(self.updatecontext, new_context_title), checkable=True)
             self.contextGroup.addAction(a)
             self.c_menu.addAction(a)
 
@@ -2506,11 +2642,11 @@ class ListManager(QtWidgets.QMainWindow):
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         #schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
         schema = Schema(title=TEXT(my_analyzer, phrase=False), tag=KEYWORD(commas=True, lowercase=True, scorable=True), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        if not os.path.exists(gp.WHOOSH_DIR):
-            os.mkdir(gp.WHOOSH_DIR)
+        if not os.path.exists(g.WHOOSH_DIR):
+            os.mkdir(g.WHOOSH_DIR)
         
         # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
-        ix = create_in(gp.WHOOSH_DIR, schema)
+        ix = create_in(g.WHOOSH_DIR, schema)
         writer = ix.writer()
 
         for n,task in enumerate(tasks):
@@ -2537,11 +2673,11 @@ class ListManager(QtWidgets.QMainWindow):
         
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         schema = Schema(content=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        if not os.path.exists(gp.WHOOSH_DIR):
-            os.mkdir(gp.WHOOSH_DIR)
+        if not os.path.exists(g.WHOOSH_DIR):
+            os.mkdir(g.WHOOSH_DIR)
         
         # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
-        ix = create_in(gp.WHOOSH_DIR, schema)
+        ix = create_in(g.WHOOSH_DIR, schema)
         writer = ix.writer()
 
         for n,task in enumerate(tasks):
@@ -2560,7 +2696,7 @@ class ListManager(QtWidgets.QMainWindow):
         
         self.pb.hide()
 
-        self.ix = index.open_dir(gp.WHOOSH_DIR)
+        self.ix = index.open_dir(g.WHOOSH_DIR)
         self.searcher = self.ix.searcher()
 
     def file_changed_in_vim(self, path):
@@ -3102,7 +3238,7 @@ class ListManager(QtWidgets.QMainWindow):
         #Once the commit is finished, existing readers continue to see the previous version of the index 
         #(that is, they do not automatically see the newly committed changes). New readers will see the updated index.
         
-        self.ix = index.open_dir(gp.WHOOSH_DIR) #("indexdir")
+        self.ix = index.open_dir(g.WHOOSH_DIR) #("indexdir")
         self.searcher = self.ix.searcher()
         
      
@@ -3131,7 +3267,7 @@ class ListManager(QtWidgets.QMainWindow):
         python_version = sys.version.split()[0]
         sqla_version = sqlalchemy.__version__ 
 
-        whoosh_version = index.version(FileStorage(gp.WHOOSH_DIR))[0]
+        whoosh_version = index.version(FileStorage(g.WHOOSH_DIR))[0]
         whoosh_version = '.'.join(str(x) for x in list(whoosh_version))
         
         values = (python_version, QtCore.PYQT_VERSION_STR, QtCore.QT_VERSION_STR, sip.SIP_VERSION_STR, sqla_version, whoosh_version)
@@ -3339,7 +3475,7 @@ class NoteManager(QtWidgets.QMainWindow):
 
         #self.highlighter = notetextedit.MyHighlighter(self.note) #put it in NoteTextEdit
 
-        action = partial(g.create_action, self)
+        action = partial(create_action, self)
 
         self.setStyleSheet("QTextEdit { background-color: #FFFFCC;}") # I think you can only set the background of a QAbstractScrollArea-derived object
 
@@ -3357,7 +3493,7 @@ class NoteManager(QtWidgets.QMainWindow):
         filePrintNote = action("Print Note", self.OnPrintNote, icon='document-print')
         filePageSetup = action("Page Setup", self.OnPageSetup, icon='document-print-preview')
 
-        g.add_actions(fileMenu, (fileSaveNote, filePageSetup, filePrintNote))
+        add_actions(fileMenu, (fileSaveNote, filePageSetup, filePrintNote))
 
         editMenu = self.menuBar().addMenu("&Edit")
 
@@ -3368,7 +3504,7 @@ class NoteManager(QtWidgets.QMainWindow):
         editPasteAction = action("&Paste", self.note.paste, QtGui.QKeySequence.Paste, "paste",
                     "Paste in the clipboard's text")
 
-        g.add_actions(editMenu, (editCopyAction, editCutAction, editPasteAction))
+        add_actions(editMenu, (editCopyAction, editCutAction, editPasteAction))
 
         formatMenu = self.menuBar().addMenu("&Format")
         bold = action("&Bold", self.note.toggleBold, 'Ctrl+B', icon='format-text-bold')
@@ -3386,15 +3522,15 @@ class NoteManager(QtWidgets.QMainWindow):
         h1 = action("H&1", partial(self.note.make_heading,1))
         h2 = action("H&2", partial(self.note.make_heading,2))
         h3 = action("H&3", partial(self.note.make_heading,3))
-        g.add_actions(headerMenu, (h1, h2, h3))
+        add_actions(headerMenu, (h1, h2, h3))
         headerMenuAction.setMenu(headerMenu)
         #################################################################
 
-        g.add_actions(formatMenu, (bold, italic, mono, None, anchor, preformat, None, num_list, bullet_list, None, headerMenuAction, None, remove_formatting))
+        add_actions(formatMenu, (bold, italic, mono, None, anchor, preformat, None, num_list, bullet_list, None, headerMenuAction, None, remove_formatting))
 
         formatToolbar = self.addToolBar("Format")
         formatToolbar.setObjectName("NoteToolBar")
-        g.add_actions(formatToolbar, (filePrintNote, None, bold,italic, preformat, mono, None, preformat, anchor, None, headerMenuAction, num_list, bullet_list, remove_formatting))
+        add_actions(formatToolbar, (filePrintNote, None, bold,italic, preformat, mono, None, preformat, anchor, None, headerMenuAction, num_list, bullet_list, remove_formatting))
 
         self.format_toolbar = formatToolbar
         #noteToolbar.setIconSize(QSize(24,16))
