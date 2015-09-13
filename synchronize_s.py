@@ -5,30 +5,16 @@ the additional factor that you want to run the sql-based server in front of the 
 local server cannot synch directly with toodledo only the remote server can.
 '''
 
-import os
-import time
-import sys
 import datetime
-import calendar
-import platform
-import json
-import urllib.request, urllib.parse, urllib.error
-import base64
-from functools import partial
-#import toodledo2
-from lmdb_s import * ###################################################################################################################################################
+from lmdb_s import * 
+import lmdb_p as p
+import lmglobals_s as g
+import lmdialogs
 
-try:
-    import lmglobals as g
-    import lmdialogs
-except ImportError:
-    print_ = print
-    pb = None
-else:
-    print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
-    pb = g.pb
+print_ = g.logger.write #this is not created until after listmanager is instantiated although it probably could be
+pb = g.pb
 
-print_("Hello from the synchronize3 module")
+print_("Hello from the synchronize_s module")
 
 def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=True): # if running outside gui, the showdialog=False, OKCancel=False
     '''
@@ -43,7 +29,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     # Seems necessary to create the remote session when needed since it appears to close if unused
     #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False) #unicode logger errors when true
     #Remote_Session = sessionmaker(bind=remote_engine)
-    remote_session = Remote_Session()
+    remote_session = p.Remote_Session()
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         
@@ -63,7 +49,8 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     #log+= "Unix timestamp (client clock) for last sync is {0} ---> {1}\n".format(last_server_sync, datetime.datetime.fromtimestamp(last_server_sync).isoformat(' ')[:19])
 
     #get new server contexts
-    server_new_contexts = remote_session.query(Context).filter(Context.created > last_server_sync).all()
+    server_new_contexts = remote_session.query(p.Context).filter(p.Context.created > last_server_sync).all()
+
     if server_new_contexts:
         nn+=len(server_new_contexts)
         log+= "New server Contexts added since the last sync: {0}.\n".format(len(server_new_contexts))
@@ -71,7 +58,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+="There were no new server Contexts added since the last sync.\n"   
             
     #get new server folders
-    server_new_folders = remote_session.query(Folder).filter(Folder.created > last_server_sync).all() 
+    server_new_folders = remote_session.query(p.Folder).filter(p.Folder.created > last_server_sync).all() 
     if server_new_folders:
         nn+=len(server_new_folders) 
         log+= "New server Folders added since the last sync: {0}.\n".format(len(server_new_folders))
@@ -79,7 +66,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+="There were no new server Folders added since the last sync.\n"    
 
     #get server updated tasks
-    server_updated_tasks = remote_session.query(Task).filter(and_(Task.modified > last_server_sync, Task.deleted==False)).all()
+    server_updated_tasks = remote_session.query(p.Task).filter(and_(p.Task.modified > last_server_sync, p.Task.deleted==False)).all()
 
     if server_updated_tasks:
         nn+=len(server_updated_tasks)
@@ -88,7 +75,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+="There were no updated (new and modified) server Tasks since the last sync.\n" 
 
     #get server deleted tasks
-    server_deleted_tasks = remote_session.query(Task).filter(Task.deleted==True).all()
+    server_deleted_tasks = remote_session.query(p.Task).filter(p.Task.deleted==True).all()
     if server_deleted_tasks:
         nn+=len(server_deleted_tasks)
         log+="Deleted server Tasks since the last sync: {0}.\n".format(len(server_deleted_tasks))
@@ -96,8 +83,9 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+="There were no server Tasks deleted since the last sync.\n" 
 
     log+="\nThe total number of changes is {0}.\n".format(nn)
+
     ####################################################################################################################################################
-    #####################################################################################################################################################################
+
     #get new local  contexts
     client_new_contexts = local_session.query(Context).filter(Context.created > last_client_sync).all()
     if client_new_contexts:
@@ -106,13 +94,13 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     else:
         log+="There were no new client Contexts added since the last sync.\n"   
             
+    #alternate_client_new_contexts = local_session.query(Temp_tid).filter_by(type_='context').all()
 
-    alternate_client_new_contexts = local_session.query(Temp_tid).filter_by(type_='context').all()
+    #if alternate_client_new_contexts:
+    #    log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
+    #else:
+    #    log+="Alternate method: There were no new client Contexts added since the last sync.\n\n"        
 
-    if alternate_client_new_contexts:
-        log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
-    else:
-        log+="Alternate method: There were no new client Contexts added since the last sync.\n\n"        
     #get new local folders
     client_new_folders = local_session.query(Folder).filter(Folder.created > last_client_sync).all() 
     if client_new_folders:
@@ -121,16 +109,15 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     else:
         log+="There were no new client Folders added since the last sync.\n"    
 
+    #alternate_client_new_folders = local_session.query(Temp_tid).filter_by(type_='folder').all()
 
-    alternate_client_new_folders = local_session.query(Temp_tid).filter_by(type_='folder').all()
+    #if alternate_client_new_folders:
+    #    log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
+    #else:
+    #    log+="Alternate method: There were no new client Folders added since the last sync.\n\n"        
 
-    if alternate_client_new_folders:
-        log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
-    else:
-        log+="Alternate method: There were no new client Folders added since the last sync.\n\n"        
     #get new local tasks
     client_updated_tasks = local_session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==False)).all()
-
     if client_updated_tasks:
         nn+=len(client_updated_tasks)
         log+="Updated (new and modified) client Tasks since the last sync: {0}.\n".format(len(client_updated_tasks))
@@ -145,7 +132,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+="Deleted client Tasks since the last sync: {0}.\n".format(len(client_deleted_tasks))
     else:
         log+="There were no client Tasks deleted since the last sync.\n" 
-
 
     log+="\nThe total number of changes is {0}.\n".format(nn)
 
@@ -206,15 +192,15 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         # note that there could be a context with this title (created by another client) since last sync with current client
 
         try:
-            server_context = remote_session.query(Context).filter_by(title=c.title).one()
+            server_context = remote_session.query(p.Context).filter_by(title=c.title).one()
 
         except sqla_orm_exc.NoResultFound:
 
-            context = Context(title=c.title)
+            context = p.Context(title=c.title)
             remote_session.add(context)
             remote_session.commit()
             
-            server_context = remote_session.query(Context).filter_by(title=c.title).one()
+            server_context = remote_session.query(p.Context).filter_by(title=c.title).one()
 
             log += "{title} is a new context received from the server\n".format(title=sc.title)
             print_("There was a problem adding new client context {} to the server".format(c.title))
@@ -242,13 +228,13 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
             pb.setValue(nnn)
 
     #note these are from class Temp_tid and not class Context
-    for c in alternate_client_new_contexts: 
-        log+="alternative method: new context: {0}".format(c.title)
-        local_session.delete(c)
-        local_session.commit()
+    #for c in alternate_client_new_contexts: 
+    #    log+="alternative method: new context: {0}".format(c.title)
+    #    local_session.delete(c)
+    #    local_session.commit()
 
     # the following is intended to catch contexts deleted on the server
-    server_context_tids = set([sc.id for sc in remote_session.query(Context)])
+    server_context_tids = set([sc.id for sc in remote_session.query(p.Context)])
     client_context_tids = set([cc.tid for cc in local_session.query(Context)])
 
     client_not_server = client_context_tids - server_context_tids
@@ -325,11 +311,11 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         #[{"id":"12345","name":"MyFolder","private":"0","archived":"0","ord":"1"}]
         try:
             #[server_folder] = toodledo_call('folders/add', name=c.title) 
-            server_folder = remote_session.query(Folder).filter_by(title=f.title).one()
+            server_folder = remote_session.query(p.Folder).filter_by(title=f.title).one()
                  
         #except toodledo2.ToodledoError as e:
         except Exception as e:
-            folder = Folder(title=f.title)
+            folder = p.Folder(title=f.title)
             remote_session.add(folder)
             remote_session.commit()
             print_(repr(e))
@@ -359,13 +345,13 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         if pb:
             pb.setValue(nnn)
     #note these are from class Temp_tid and not class Folder
-    for f in alternate_client_new_folders:
-        log+="alternative method: new folder: {0}".format(f.title)
-        local_session.delete(f)
-        local_session.commit()
+    #for f in alternate_client_new_folders:
+    #    log+="alternative method: new folder: {0}".format(f.title)
+    #    local_session.delete(f)
+    #    local_session.commit()
 
     # deleting from client, folders deleted on server
-    server_folder_tids = set([sf.id for sf in remote_session.query(Folder)])
+    server_folder_tids = set([sf.id for sf in remote_session.query(p.Folder)])
     client_folder_tids = set([cf.tid for cf in local_session.query(Folder)])
 
     client_not_server = client_folder_tids - server_folder_tids
@@ -464,11 +450,11 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         
         # to find the postgres task that corresponds to the updated client task you need to match the sqlite task.tid with the 
         # postgres task.id
-        task = remote_session.query(Task).filter_by(id=ct.tid).first() # could also do task.get(ct.tid)
+        task = remote_session.query(p.Task).filter_by(id=ct.tid).first() # could also do task.get(ct.tid)
         
         if not task:
             action = "created"
-            task = Task()
+            task = p.Task()
             remote_session.add(task)
             remote_session.commit()
             ct.tid = task.id
@@ -503,12 +489,12 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
             remote_session.commit()
 
             for kwn in task.tag.split(','):
-                keyword = remote_session.query(Keyword).filter_by(name=kwn).first()
+                keyword = remote_session.query(p.Keyword).filter_by(name=kwn).first()
                 if keyword is None:
-                    keyword = Keyword(kwn)
+                    keyword = p.Keyword(kwn)
                     remote_session.add(keyword)
                     remote_session.commit()
-                tk = TaskKeyword(task,keyword)
+                tk = p.TaskKeyword(task,keyword)
                 remote_session.add(tk)
 
             remote_session.commit()
@@ -555,7 +541,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         # it will be removed from client but can't send anything to server
         if t.tid:
             try:
-                task = remote_session.query(Task).get(tid)
+                task = remote_session.query(p.Task).get(tid)
             except Exception as e:
                 print(e)
             else:
@@ -574,7 +560,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
          
     client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # giving a little buffer if the db takes time to update on client or server
 
-    connection = remote_engine.connect()
+    connection = p.remote_engine.connect()
     result = connection.execute("select extract(epoch from now())")
     server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=2)
 
@@ -606,13 +592,13 @@ def downloadtasksfrompostgres(local=True):
     
     print_("Starting the process of downloading tasks from server")
     
-    remote_tasks = remote_session.query(Task)
-    remote_contexts = remote_session.query(Context)
-    remote_folders = remote_session.query(Folder)
+    remote_tasks = remote_session.query(p.Task)
+    remote_contexts = remote_session.query(p.Context)
+    remote_folders = remote_session.query(p.Folder)
     
-    len_contexts = remote_session.query(Context).count()
-    len_folders = remote_session.query(Folder).count()
-    len_tasks = remote_session.query(Task).count()
+    len_contexts = remote_session.query(p.Context).count()
+    len_folders = remote_session.query(p.Folder).count()
+    len_tasks = remote_session.query(p.Task).count()
 
     print_("{} server tasks were downloaded".format(len_tasks))
     print_("{} server contexts were downloaded".format(len_contexts))

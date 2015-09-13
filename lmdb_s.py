@@ -1,7 +1,11 @@
+'''
+Creates the sqlalchemy objects necessary for the remote postgreSQL database
+'''
+
 import sys
 import os
 import datetime
-import platform
+#import platform
 
 #Need to put sqlalchemy on the sys.path
 home = os.path.split(os.getcwd())[0]
@@ -13,14 +17,15 @@ from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
-from config import RDS_URI
-from lmglobals_p import REMOTE_DB, LOCAL_DB_FILE
+#from config import RDS_URI
+#from lmglobals_s import REMOTE_DB, LOCAL_DB_FILE
+from lmglobals_s import LOCAL_DB_FILE
 
 #cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 #LOCAL_DB_FILE = os.path.join(cwd,'lmdb_s','mylistmanager_s.db')
 sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 
-__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'local_engine', 'remote_engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'local_session', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc', 'Remote_Session'] #'RDS_URI', 'REMOTE_DB']
+__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'local_engine', 'sqla_exc', 'sqla_orm_exc', 'local_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc'] #'RDS_URI', 'REMOTE_DB''remote_session', 'remote_engine', 'Remote_Session' - these all removed because lmdb_s.py should only provide local sqlite objects; also removed metadata, Temp_tid
 
 metadata = MetaData()
 task_table = Table('task',metadata,
@@ -30,10 +35,10 @@ task_table = Table('task',metadata,
               Column('priority', Integer, default=1),
               Column('title',String(255)),
               Column('tag',String(64)),
-              Column('folder_tid', Integer, ForeignKey('folder.tid'), default=1), #use the toodledo id
-              #Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #use the postgreSQL id
-              Column('context_tid', Integer, ForeignKey('context.tid'), default=1), #use the toodledo id
-              #Column('context_tid', Integer, ForeignKey('context.id'), default=1), #use the postgrSQL id
+              Column('folder_tid', Integer, ForeignKey('folder.tid'), default=1), #uses the postgreSQL-supplied folder.id in the column folder.tid
+              #Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #for the postgreSQL db this makes the foreign key the postgreSQL folder.id
+              Column('context_tid', Integer, ForeignKey('context.tid'), default=1), #uses the postgreSQL-supplied context.id in the column context.tid
+              #Column('context_tid', Integer, ForeignKey('context.id'), default=1), #for the postgreSQL db this makes the foreign key the postgreSQL context.id
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
               Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and it's only a date
@@ -69,7 +74,7 @@ task_table = Table('task',metadata,
 
 context_table = Table('context', metadata,
                  Column('id', Integer, primary_key=True),
-                 Column('tid', Integer, unique=True, nullable=False), #the toodledo id
+                 Column('tid', Integer, unique=True, nullable=False), #the postgreSQL context.id is placed here
                  Column('title', String(32), unique=True, nullable=False), 
                  Column('default', Boolean, default=False),
                  Column('created', DateTime, default=datetime.datetime.now), 
@@ -81,7 +86,7 @@ context_table = Table('context', metadata,
 
 folder_table = Table('folder', metadata,
                  Column('id', Integer, primary_key=True),
-                 Column('tid', Integer, unique=True, nullable=False), #the toodledo id
+                 Column('tid', Integer, unique=True, nullable=False), #the postgreSQL folder.id is placed here
                  Column('title', String(32), nullable=False),#unique=True - toodledo can have same title
                  Column('private', Boolean, default=False),
                  Column('archived', Boolean, default=False),
@@ -93,12 +98,12 @@ folder_table = Table('folder', metadata,
                  Column('image', LargeBinary)
 )
 
-temp_tid_table = Table('temp_tid', metadata,
-                 Column('id', Integer, primary_key=True),
-                 Column('title', String(32)),
-                 Column('type_', String(32)),
-                 Column('created', DateTime, default=datetime.datetime.now), 
-)
+#temp_tid_table = Table('temp_tid', metadata,
+#                 Column('id', Integer, primary_key=True),
+#                 Column('title', String(32)),
+#                 Column('type_', String(32)),
+#                 Column('created', DateTime, default=datetime.datetime.now), 
+#)
 
 
 keyword_table = Table('keyword', metadata,
@@ -159,10 +164,10 @@ class Sync(object):
         self.timestamp = timestamp
         self.unix_timestamp = unix_timestamp
 
-class Temp_tid(object):
-    def __init__(self, title=None, type_=None):
-        self.title = title
-        self.type_ = type_
+#class Temp_tid(object):
+#    def __init__(self, title=None, type_=None):
+#        self.title = title
+#        self.type_ = type_
 
 mapper(Context, context_table, properties = {'folders':relation(Folder,
 primaryjoin=and_(context_table.c.tid==task_table.c.context_tid,folder_table.c.tid==task_table.c.folder_tid),
@@ -189,7 +194,7 @@ mapper(TaskKeyword, taskkeyword_table, properties= {
 
 mapper(Sync, sync_table)
 
-mapper(Temp_tid, temp_tid_table)
+#mapper(Temp_tid, temp_tid_table)
 
 # note that even if databases don't exist these won't fail
 local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False}, echo=False)
@@ -197,9 +202,9 @@ Local_Session = sessionmaker(bind=local_engine)
 local_session = Local_Session()
 
 #remote_engine = create_engine(rds_uri, echo=True)
-remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False) #note seeing unicode logger errors when true
-Remote_Session = sessionmaker(bind=remote_engine)
-remote_session = Remote_Session()
+#remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False) #note seeing unicode logger errors when true
+#Remote_Session = sessionmaker(bind=remote_engine)
+#remote_session = Remote_Session()
 
 metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
 metadata.create_all(local_engine) # only creates if tables not present but not

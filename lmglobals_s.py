@@ -1,9 +1,8 @@
 import os
-import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.error
 import configparser as configparser
 
 from PyQt5 import QtGui,QtWidgets
-#from config import rds_uri
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 CONFIG_FILE = os.path.join(cwd,'mylistmanager_s.ini')
@@ -11,17 +10,17 @@ LOCAL_DB_FILE = os.path.join(cwd,'lmdb_s','mylistmanager_s.db')
 #sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 REMOTE_DB = 'listmanager'
 WHOOSH_DIR = os.path.join(cwd, 'whoosh_index_s')
-#IMAGES_DIR = os.path.join(cwd,'bitmaps')
-#PLUGIN_DIR = os.path.join(cwd,'plugins')
-#USER_ICONS = 'folder_icons'
+IMAGES_DIR = os.path.join(cwd,'bitmaps')
+PLUGIN_DIR = os.path.join(cwd,'plugins')
+USER_ICONS = 'folder_icons'
 #CORE_ICONS = ''
 LOG_FILE = os.path.join(cwd,'logfile_s.txt')
 VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
 del cwd
 
-# these are for toodledo and I think they are necessary
-key = None
-timestamp = None
+# these are for toodledo and are not necessary for _s which is sqlite - postgresql
+#key = None
+#timestamp = None
 
 config = configparser.RawConfigParser()
 config.read(CONFIG_FILE)

@@ -1,7 +1,11 @@
+'''
+Creates the sqlalchemy objects necessary for the remote postgreSQL database
+'''
+
 import sys
 import os
 import datetime
-import platform
+#import platform
 
 #Need to put sqlalchemy on the sys.path
 home = os.path.split(os.getcwd())[0]

@@ -17,9 +17,10 @@ from time import asctime, sleep
 import sys
 import datetime
 import platform
+import uuid # now used for temp ids
 import configparser as configparser
 import json
-import urllib.request, urllib.parse, urllib.error
+#import urllib.request, urllib.parse, urllib.error
 import re
 import textwrap
 import base64
@@ -64,8 +65,8 @@ from functools import partial
 
 import markdown2 as markdown
 import config as c
-import lmglobals as g #moved from below on 12-21-2014
-import lmglobals_s as gs
+#import lmglobals_s as g #moved from below on 12-21-2014
+import lmglobals_s as g
 
 #note synchronize_s is imported in If __name__ == main to delay import until logger defined
 import lminterpreter
@@ -91,7 +92,7 @@ else:
     DB_EXISTS = True
         
 if not DB_EXISTS:
-    db_directory = os.path.split(gs.LOCAL_DB_FILE)[0]
+    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
     print("db_directory=",db_directory)
     try:
         os.mkdir(db_directory)
@@ -217,13 +218,13 @@ class ListManager(QtWidgets.QMainWindow):
         alarm_clock_disable = QtGui.QIcon(':/bitmaps/alarm-clock-disable.png')
 
         #Check for Whoosh directory but doubt things work if not there
-        if os.path.exists(gs.WHOOSH_DIR): 
-            self.ix = index.open_dir(gs.WHOOSH_DIR) 
+        if os.path.exists(g.WHOOSH_DIR): 
+            self.ix = index.open_dir(g.WHOOSH_DIR) 
             self.searcher = self.ix.searcher()
         else:
             self.searcher = None
 
-        self.logger = g.logger = Logger(self, logfile=gs.LOG_FILE)
+        self.logger = g.logger = Logger(self, logfile=g.LOG_FILE)
 
         a_transfer = action("Transfer to Editor", self.logger.transfer)
         a_save = action("Save to Log File", self.logger.save)
@@ -769,7 +770,7 @@ class ListManager(QtWidgets.QMainWindow):
         if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
             self.create_whooshdb2()
             
-            #self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
+            #self.ix = index.open_dir(g.WHOOSH_DIR) #("indexdir")
             #self.searcher = self.ix.searcher()
 
     def note_modified(self):
@@ -1261,12 +1262,17 @@ class ListManager(QtWidgets.QMainWindow):
                 print("You said no to creating a new folder")
                 return
             
-            temp_tid = Temp_tid(title=title, type_='folder')
-            session.add(temp_tid)
-            session.commit()
+            # note that this doesn't work because it would actually be likely that the temp_tid.id would collide with an existing folder.tid -- better to use numeric uuid
+            # z = uuid.uuid4(); new_folder = Folder(title=title, tid=z.time_low) 
+            # then would not need Temp_tid class or table
+            #temp_tid = Temp_tid(title=title, type_='folder')
+            #session.add(temp_tid)
+            #session.commit()
 
             # will need to change the tid when we upload the folder to the server
-            new_folder = Folder(title=title, tid=temp_tid.id)
+            z = uuid.uuid4()
+            #new_folder = Folder(title=title, tid=temp_tid.id)
+            new_folder = Folder(title=title, tid=z.time_low)
             task.folder = new_folder 
             session.add(new_folder)
             
@@ -1299,12 +1305,17 @@ class ListManager(QtWidgets.QMainWindow):
                 print_("You said no to creating a new context")
                 return
 
-            temp_tid = Temp_tid(title=title, type_='context')
-            session.add(temp_tid)
-            session.commit()
+            # note that this doesn't work because it would actually be likely that the temp_tid.id would collide with an existing context.tid -- better to use numeric uuid
+            # z = uuid.uuid4(); new_context = Context(title=title, tid=z.time_low) 
+            # then would not need Temp_tid class or table
+            #temp_tid = Temp_tid(title=title, type_='context')
+            #session.add(temp_tid)
+            #session.commit()
 
             # will need to change the tid when we upload the folder to the server
-            new_context = Context(title=title, tid=temp_tid.id)
+            z = uuid.uuid4()
+            new_context = Context(title=title, tid=z.time_low)
+            #new_context = Context(title=title, tid=temp_tid.id)
             task.context = new_context 
             session.add(new_context)
             
@@ -1514,10 +1525,16 @@ class ListManager(QtWidgets.QMainWindow):
                                 QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
 
         if reply == QtGui.QMessageBox.Yes:
-            temp_tid = Temp_tid(title=new_context_title, type_='context') 
-            session.add(temp_tid)
-            session.commit()
-            new_context = Context(tid=temp_tid.id, title=new_context_title) 
+            # note that this doesn't work because it would actually be likely that the temp_tid.id would collide with an existing context.tid -- better to use numeric uuid
+            # z = uuid.uuid4(); new_context = Context(title=title, tid=z.time_low) 
+            # then would not need Temp_tid class or table
+            #temp_tid = Temp_tid(title=new_context_title, type_='context') 
+            #session.add(temp_tid)
+            #session.commit()
+            
+            z = uuid.uuid4()
+            new_context = Context(title=new_context_title, tid=z.time_low)
+            #new_context = Context(tid=temp_tid.id, title=new_context_title) 
             session.add(new_context)
             session.commit()
 
@@ -2466,6 +2483,9 @@ class ListManager(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
             return
             
+        if synchronize_s is None:
+            import synchronize_s
+
         self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self, 
                                                                                 showlogdialog=True, 
                                                                                 OkCancel=True,
@@ -2508,11 +2528,11 @@ class ListManager(QtWidgets.QMainWindow):
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         #schema = Schema(title=TEXT(my_analyzer, phrase=False), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
         schema = Schema(title=TEXT(my_analyzer, phrase=False), tag=KEYWORD(commas=True, lowercase=True, scorable=True), note=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        if not os.path.exists(gs.WHOOSH_DIR):
-            os.mkdir(gs.WHOOSH_DIR)
+        if not os.path.exists(g.WHOOSH_DIR):
+            os.mkdir(g.WHOOSH_DIR)
         
         # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
-        ix = create_in(gs.WHOOSH_DIR, schema)
+        ix = create_in(g.WHOOSH_DIR, schema)
         writer = ix.writer()
 
         for n,task in enumerate(tasks):
@@ -2539,11 +2559,11 @@ class ListManager(QtWidgets.QMainWindow):
         
         my_analyzer =analysis.RegexTokenizer() | analysis.LowercaseFilter() | analysis.StopFilter() | analysis.NgramFilter(3,7,at='start')
         schema = Schema(content=TEXT(my_analyzer, phrase=False), task_id=NUMERIC(numtype=int, bits=64, unique=True, stored=True))
-        if not os.path.exists(gs.WHOOSH_DIR):
-            os.mkdir(gs.WHOOSH_DIR)
+        if not os.path.exists(g.WHOOSH_DIR):
+            os.mkdir(g.WHOOSH_DIR)
         
         # Calling index.create_in on a directory with an existing index will clear the current contents of the index.
-        ix = create_in(gs.WHOOSH_DIR, schema)
+        ix = create_in(g.WHOOSH_DIR, schema)
         writer = ix.writer()
 
         for n,task in enumerate(tasks):
@@ -2562,7 +2582,7 @@ class ListManager(QtWidgets.QMainWindow):
         
         self.pb.hide()
 
-        self.ix = index.open_dir(gs.WHOOSH_DIR)
+        self.ix = index.open_dir(g.WHOOSH_DIR)
         self.searcher = self.ix.searcher()
 
     def file_changed_in_vim(self, path):
@@ -3102,7 +3122,7 @@ class ListManager(QtWidgets.QMainWindow):
         #Once the commit is finished, existing readers continue to see the previous version of the index 
         #(that is, they do not automatically see the newly committed changes). New readers will see the updated index.
         
-        self.ix = index.open_dir(gs.WHOOSH_DIR) #("indexdir")
+        self.ix = index.open_dir(g.WHOOSH_DIR) #("indexdir")
         self.searcher = self.ix.searcher()
         
      
@@ -3131,7 +3151,7 @@ class ListManager(QtWidgets.QMainWindow):
         python_version = sys.version.split()[0]
         sqla_version = sqlalchemy.__version__ 
 
-        whoosh_version = index.version(FileStorage(gs.WHOOSH_DIR))[0]
+        whoosh_version = index.version(FileStorage(g.WHOOSH_DIR))[0]
         whoosh_version = '.'.join(str(x) for x in list(whoosh_version))
         
         values = (python_version, QtCore.PYQT_VERSION_STR, QtCore.QT_VERSION_STR, sip.SIP_VERSION_STR, sqla_version, whoosh_version)
@@ -3494,9 +3514,11 @@ if __name__ == '__main__':
     # import is here so synchronize and toodledo are imported after ListManager instance is created since synchronize accesses pb and logger
     #and toodledo2 prints to logger
  
-    import synchronize_s
-    #import toodledo2
-    
+    if g.internet_accessible():
+        import synchronize_s
+    else:
+        synchronize_s = None
+
     mainwin.show()
     app.exec_() 
 
