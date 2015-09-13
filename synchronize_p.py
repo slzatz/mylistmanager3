@@ -156,7 +156,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
     alternate_client_new_contexts = session.query(Context).filter_by(tid=None).all()
 
     if alternate_client_new_contexts:
-        log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
+        log+= "Alternate method (tid==None): New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
     else:
         log+="Alternate method: There were no new client Contexts added since the last sync.\n\n"        
 
@@ -171,7 +171,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
     alternate_client_new_folders = session.query(Folder).filter_by(tid=None).all()
 
     if alternate_client_new_folders:
-        log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
+        log+= "Alternate method (tid==None): New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
     else:
         log+="Alternate method: There were no new client Folders added since the last sync.\n\n"        
 
@@ -179,13 +179,13 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
     client_new_tasks = session.query(Task).filter(and_(Task.tid==None, Task.deleted==False)).all()
     if client_new_tasks:
         nn+=len(client_new_tasks)
-        log+="New client Tasks added since the last sync: {0}.\n".format(len(client_new_tasks))
+        log+="New client Tasks added (tid==None) since the last sync: {0}.\n".format(len(client_new_tasks))
     else:
         log+="There were no new client Tasks added since the last sync.\n" 
         
     alternate_client_new_tasks = session.query(Task).filter(and_(Task.created > last_client_sync, Task.deleted==False)).all() 
     if alternate_client_new_tasks:
-        log+= "Alternate method: New client Tasks added since the last sync: {0}.\n".format(len(alternate_client_new_tasks))
+        log+= "Alternate method (created>last_sync): New client Tasks added since the last sync: {0}.\n".format(len(alternate_client_new_tasks))
     else:
         log+="Alternate method: There were no new client Tasks added since the last sync.\n\n"        
         
@@ -275,28 +275,13 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         session.commit()
         log+= "Context {title} was added to server and received tid: {tid}\n".format(title=server_context.name, tid=server_tid)
         
-        #need to update all tasks that used the temp_tid
+        #No need to update tasks since they are using own foreign key and not toodledo's
         log+= "\nClient tasks that were updated with context id (tid) obtained from server:\n"
         
-        #tasks_with_temp_tid = session.query(Task).filter_by(context_tid=temp_tid) #tasks_with_temp_tid = c.tasks may be a better but would have to move higher
-        #
-        ## These changes on client do not get transmitted to the server because they are between old sync time and new sync time
-        #for t in tasks_with_temp_tid:
-        #    t.context_tid = server_tid
-        #    session.commit()
-        #    
-        #    log+= "{title} is in context {context}".format(title=t.title[:30], context=t.context.title) 
-
         nnn+=1
     
         if pb:
             pb.setValue(nnn)
-
-    ##note these are from class Temp_tid and not class Context
-    #for c in alternate_client_new_contexts: 
-    #    log+="alternative method: new context: {0}".format(c.title)
-    #    session.delete(c)
-    #    session.commit()
 
     #server_contexts = client.getContexts()
     if server_contexts:
@@ -403,12 +388,6 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
 
         if pb:
             pb.setValue(nnn)
-
-    ##note these are from class Temp_tid and not class Folder
-    #for f in alternate_client_new_folders:
-    #    log+="alternative method: new folder: {0}".format(f.title)
-    #    session.delete(f)
-    #    session.commit()
 
     # the code below is looking to delete those client folders that no longer exist on the server
     if server_folders:
@@ -702,7 +681,7 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
 
     log+= "\nNew Sync times:\n"
     log+= "isoformat: {0}\n".format(sync.timestamp.isoformat(' '))
-    log+= "   unix ts: {0}\n".format(sync.unix_timestamp)
+    log+= "Unix ts: {0}\n".format(sync.unix_timestamp)
     log+= "Time is {0}\n\n".format(datetime.datetime.now())
 
     print_("***************** END SYNC *******************************************")

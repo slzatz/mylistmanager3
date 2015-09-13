@@ -1389,13 +1389,8 @@ class ListManager(QtWidgets.QMainWindow):
                 print("You said no to creating a new folder")
                 return
             
-            #temp_tid = Temp_tid(title=title, type_='folder')
-            #session.add(temp_tid)
-            #session.commit()
-
-            # will need to change the tid when we upload the folder to the server
-            #new_folder = Folder(title=title, tid=temp_tid.id)
-            new_folder = Folder(title=title)
+            # Need to set the folder.tid to the server value next synch but doesn't affect foreign key
+            new_folder = Folder(title=title) #new_folder.tid==None
             task.folder = new_folder 
             session.add(new_folder)
             
@@ -1428,13 +1423,8 @@ class ListManager(QtWidgets.QMainWindow):
                 print_("You said no to creating a new context")
                 return
 
-            #temp_tid = Temp_tid(title=title, type_='context')
-            #session.add(temp_tid)
-            #session.commit()
-
-            # will need to change the tid when we upload the folder to the server
-            #new_context = Context(title=title, tid=temp_tid.id)
-            new_context = Context(title=title)
+            # Need to set the context.tid to the server value next synch but doesn't affect foreign key
+            new_context = Context(title=title) #new_context.tid==None
             task.context = new_context 
             session.add(new_context)
             
@@ -1644,10 +1634,7 @@ class ListManager(QtWidgets.QMainWindow):
                                 QtGui.QMessageBox.Yes|QtGui.QMessageBox.No)
 
         if reply == QtGui.QMessageBox.Yes:
-            temp_tid = Temp_tid(title=new_context_title, type_='context') 
-            session.add(temp_tid)
-            session.commit()
-            new_context = Context(tid=temp_tid.id, title=new_context_title) 
+            new_context = Context(title=new_context_title)#new_context.tid==None 
             session.add(new_context)
             session.commit()
 

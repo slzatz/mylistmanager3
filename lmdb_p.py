@@ -24,7 +24,7 @@ from lmglobals_p import REMOTE_DB #, LOCAL_DB_FILE
 #LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
 #sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
 
-__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'Temp_tid', 'remote_engine', 'metadata', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc'] #'local_engine', 'local_session'
+__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc'] #'local_engine', 'local_session', 'Temp_tid'. 'metadata'
 
 metadata = MetaData()
 task_table = Table('task',metadata,
@@ -99,12 +99,12 @@ folder_table = Table('folder', metadata,
                  Column('image', LargeBinary)
 )
 
-temp_tid_table = Table('temp_tid', metadata,
-                 Column('id', Integer, primary_key=True),
-                 Column('title', String(32)),
-                 Column('type_', String(32)),
-                 Column('created', DateTime, default=datetime.datetime.now), 
-)
+#temp_tid_table = Table('temp_tid', metadata,
+#                 Column('id', Integer, primary_key=True),
+#                 Column('title', String(32)),
+#                 Column('type_', String(32)),
+#                 Column('created', DateTime, default=datetime.datetime.now), 
+#)
 
 
 keyword_table = Table('keyword', metadata,
@@ -165,10 +165,10 @@ class Sync(object):
         self.timestamp = timestamp
         self.unix_timestamp = unix_timestamp
 
-class Temp_tid(object):
-    def __init__(self, title=None, type_=None):
-        self.title = title
-        self.type_ = type_
+#class Temp_tid(object):
+#    def __init__(self, title=None, type_=None):
+#        self.title = title
+#        self.type_ = type_
 
 mapper(Context, context_table, properties = {'folders':relation(Folder,
 primaryjoin=and_(context_table.c.id==task_table.c.context_tid, folder_table.c.id==task_table.c.folder_tid),
@@ -195,7 +195,7 @@ mapper(TaskKeyword, taskkeyword_table, properties= {
 
 mapper(Sync, sync_table)
 
-mapper(Temp_tid, temp_tid_table)
+#mapper(Temp_tid, temp_tid_table)
 
 # note that even if databases don't exist these won't fail
 #local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False}, echo=False)
