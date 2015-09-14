@@ -2483,8 +2483,7 @@ class ListManager(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self,  'Alert', "Internet not accessible right now.")
             return
             
-        if synchronize_s is None:
-            import synchronize_s
+        import synchronize_s #should have already been imported unless internet wasn't available on startup
 
         self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self, 
                                                                                 showlogdialog=True, 
@@ -3516,8 +3515,6 @@ if __name__ == '__main__':
  
     if g.internet_accessible():
         import synchronize_s
-    else:
-        synchronize_s = None
 
     mainwin.show()
     app.exec_() 
