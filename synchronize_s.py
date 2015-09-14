@@ -82,7 +82,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     else:
         log+="There were no server Tasks deleted since the last sync.\n" 
 
-    log+="\nThe total number of changes is {0}.\n".format(nn)
+    log+="\nThe total number of server postgresql changes is {0}.\n\n".format(nn)
 
     ####################################################################################################################################################
 
@@ -94,13 +94,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     else:
         log+="There were no new client Contexts added since the last sync.\n"   
             
-    #alternate_client_new_contexts = local_session.query(Temp_tid).filter_by(type_='context').all()
-
-    #if alternate_client_new_contexts:
-    #    log+= "Alternate method: New client Contexts added since the last sync: {0}.\n".format(len(alternate_client_new_contexts))
-    #else:
-    #    log+="Alternate method: There were no new client Contexts added since the last sync.\n\n"        
-
     #get new local folders
     client_new_folders = local_session.query(Folder).filter(Folder.created > last_client_sync).all() 
     if client_new_folders:
@@ -108,13 +101,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+= "New client Folders added since the last sync: {0}.\n".format(len(client_new_folders))
     else:
         log+="There were no new client Folders added since the last sync.\n"    
-
-    #alternate_client_new_folders = local_session.query(Temp_tid).filter_by(type_='folder').all()
-
-    #if alternate_client_new_folders:
-    #    log+= "Alternate method: New client Folders added since the last sync: {0}.\n".format(len(alternate_client_new_folders))
-    #else:
-    #    log+="Alternate method: There were no new client Folders added since the last sync.\n\n"        
 
     #get new local tasks
     client_updated_tasks = local_session.query(Task).filter(and_(Task.modified > last_client_sync, Task.deleted==False)).all()
@@ -133,7 +119,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     else:
         log+="There were no client Tasks deleted since the last sync.\n" 
 
-    log+="\nThe total number of changes is {0}.\n".format(nn)
+    log+="\nThe total number of server and client changes is {0}.\n".format(nn)
 
     if showlogdialog and OkCancel:
 
@@ -226,12 +212,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
 
         if pb:
             pb.setValue(nnn)
-
-    #note these are from class Temp_tid and not class Context
-    #for c in alternate_client_new_contexts: 
-    #    log+="alternative method: new context: {0}".format(c.title)
-    #    local_session.delete(c)
-    #    local_session.commit()
 
     # the following is intended to catch contexts deleted on the server
     server_context_tids = set([sc.id for sc in remote_session.query(p.Context)])
@@ -344,11 +324,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
 
         if pb:
             pb.setValue(nnn)
-    #note these are from class Temp_tid and not class Folder
-    #for f in alternate_client_new_folders:
-    #    log+="alternative method: new folder: {0}".format(f.title)
-    #    local_session.delete(f)
-    #    local_session.commit()
 
     # deleting from client, folders deleted on server
     server_folder_tids = set([sf.id for sf in remote_session.query(p.Folder)])
@@ -380,7 +355,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
             pb.setValue(nnn)
         
     #no code for client deleted folders yet
-
 
 
     if server_updated_tasks:
