@@ -5,16 +5,10 @@ the additional factor that you want to run the sql-based server in front of the 
 local server cannot synch directly with toodledo only the remote server can.
 '''
 
-#import os
 import time
-#import sys
 import datetime
 import calendar
-#import platform
 import json
-#import urllib.request, urllib.parse, urllib.error
-#import base64
-#from functools import partial
 import toodledo2
 from lmdb_p import * 
 import lmdialogs
@@ -65,6 +59,15 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
 
     session = local_session if local else remote_session
     print(session.get_bind())
+
+    try:
+        session.execute("SELECT 1")
+    except sqla_exc.OperationalError as e: 
+        session = p.Remote_Session()
+        print("Connection to AWS RDS was probably lost:",e)
+    else:
+        print("Connection to AWS RDS works")
+
     toodledo_call = toodledo2.toodledo_call
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
@@ -75,7 +78,9 @@ def synchronizetotoodledo(parent=None, showlogdialog=True, OkCancel=False, local
         sync = session.query(Sync).get('client') 
     except sqla_exc.OperationalError as e:
         print("Connection to AWS RDS was probably lost:",e)
-        return
+        #return
+        session = g.Remote_Session()
+        sync = session.query(Sync).get('client') 
 
     last_client_sync = sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with toodledo
     last_server_sync = sync.unix_timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues

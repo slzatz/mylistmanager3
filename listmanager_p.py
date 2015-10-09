@@ -905,9 +905,9 @@ class ListManager(QtWidgets.QMainWindow):
     def createfoldermenu(self):
         self.f_menu = QtWidgets.QMenu(self)
         
-        folders = session.query(Folder).filter(Folder.tid!=0).all()
+        folders = session.query(Folder).filter(Folder.id!=1).all()
         folders.sort(key=lambda f:str.lower(f.title))
-        no_folder = session.query(Folder).filter_by(tid=0).one()
+        no_folder = session.query(Folder).filter_by(id=1).one()
         folders = [no_folder] + folders
         
         iconGroup = QtWidgets.QActionGroup(self)
@@ -922,9 +922,9 @@ class ListManager(QtWidgets.QMainWindow):
     def createcontextmenu(self):
         self.c_menu = QtWidgets.QMenu(self)
         
-        contexts = session.query(Context).filter(Context.tid!=0).all()
+        contexts = session.query(Context).filter(Context.id!=1).all()
         contexts.sort(key=lambda c:str.lower(c.title))
-        no_context = session.query(Context).filter_by(tid=0).one()
+        no_context = session.query(Context).filter_by(id=1).one()
         contexts = [no_context] + contexts
         
         self.contextGroup = QtWidgets.QActionGroup(self)
@@ -2140,13 +2140,13 @@ class ListManager(QtWidgets.QMainWindow):
             i = p_list.index(self.task.priority)
             self.p_menu.actions()[i].setChecked(True)
 
-            folders = session.query(Folder).filter(Folder.tid!=0).all()
+            folders = session.query(Folder).filter(Folder.id!=1).all()
             folders.sort(key=lambda f:str.lower(f.title))            
             f_list = ['No Folder'] + [f.title for f in folders]
             i = f_list.index(self.task.folder.title)
             self.f_menu.actions()[i].setChecked(True)
 
-            contexts = session.query(Context).filter(Context.tid!=0).all()
+            contexts = session.query(Context).filter(Context.id!=1).all()
             contexts.sort(key=lambda c:str.lower(c.title))
             c_list = ['No Context'] + [c.title for c in contexts]
             i = c_list.index(self.task.context.title)
@@ -2258,18 +2258,18 @@ class ListManager(QtWidgets.QMainWindow):
         if Properties['filter_by']['column'] == 'context':
             if tab_type == 'folder':
                 contexts = session.query(Context).join(Task,Folder).filter(Folder.title==tab_value)
-                LB_items = ['*ALL','No Context'] + sorted([c.title for c in contexts if c.tid!=0], key=str.lower)
+                LB_items = ['*ALL','No Context'] + sorted([c.title for c in contexts if c.id!=1], key=str.lower)
             else:    
-                LB_items = ['*ALL','No Context'] + sorted([c.title for c in session.query(Context).filter(Context.tid!=0)], key=str.lower)
+                LB_items = ['*ALL','No Context'] + sorted([c.title for c in session.query(Context).filter(Context.id!=1)], key=str.lower)
 
         elif Properties['filter_by']['column'] == 'folder':
             if tab_type == 'context':
                 #context = session.query(Context).filter_by(title=tab_value).one()
                 folders = session.query(Folder).join(Task,Context).filter(Context.title==tab_value)
                 #LB_items = ['*ALL','No Folder'] + sorted([f.title for f in context.folders if f.tid!=0], key=unicode.lower)
-                LB_items = ['*ALL','No Folder'] + sorted([f.title for f in folders if f.tid!=0], key=str.lower)
+                LB_items = ['*ALL','No Folder'] + sorted([f.title for f in folders if f.id!=1], key=str.lower)
             else:
-                LB_items = ['*ALL','No Folder'] + sorted([f.title for f in session.query(Folder).filter(Folder.tid!=0)], key=str.lower)
+                LB_items = ['*ALL','No Folder'] + sorted([f.title for f in session.query(Folder).filter(Folder.id!=1)], key=str.lower)
 
         elif Properties['filter_by']['column'] == 'priority':
             LB_items = ['*ALL'] + ['3','2','1','0','-1']
@@ -2982,7 +2982,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         if search == 'context':
             print('search context')
-            titles = sorted([c.title for c in session.query(Context).filter(Context.tid!=0)], key=str.lower)
+            titles = sorted([c.title for c in session.query(Context).filter(Context.id!=1)], key=str.lower)
             titles = ['No Context'] + titles
             dlg = lmdialogs.ChoiceDlg("Select", titles, parent=self)
             if dlg.exec_():
@@ -3216,7 +3216,7 @@ class ListManager(QtWidgets.QMainWindow):
         note = task.note if task.note else '' 
         text = ' '.join(k.name for k in task.keywords) + ' ' + task.title + ' ' + note
 
-        writer.add_document(content = text, 
+        writer.update_document(content = text, 
                             task_id = task.id) #str(task.id) if using ID(unique=True, stored=True)) 
         writer.commit()
         

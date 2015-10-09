@@ -27,9 +27,17 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     deletelist = [] #server deleted tasks
 
     # Seems necessary to create the remote session when needed since it appears to close if unused
-    #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False) #unicode logger errors when true
-    #Remote_Session = sessionmaker(bind=remote_engine)
-    remote_session = p.Remote_Session()
+    # Have now added pool_recycle to create_engine so remote_session = p.remote_session may be OK
+    #remote_session = p.Remote_Session()
+    remote_session = p.remote_session
+    try:
+        #p.remote_engine.execute("Select 1")
+        remote_session.execute("SELECT 1")
+    except sqla_exc.OperationalError as e: 
+        remote_session = p.Remote_Session()
+        print("Connection to AWS RDS was probably lost:",e)
+    else:
+        print("Connection to AWS RDS works")
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         

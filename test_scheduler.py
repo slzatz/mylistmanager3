@@ -73,23 +73,26 @@ def sync():
     sync_in_progress = False
 
     for task in tasklist:
+        print("tasklist=",tasklist)
         if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
+            print("this task will be a reminder",task)
             adjusted_dt = task.duetime + timedelta(hours=5)
-            j = scheduler.add_job(alarm, 'date', id=str(task.tid), run_date=adjusted_dt, name=task.title[:50], args=[task.tid], replace_existing=True)
+            j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=adjusted_dt, name=task.title[:50], args=[task.id], replace_existing=True)
     
     subject = "sync log"
     res = ses_conn.send_email(sender, "Sync Log", log, recipients)
 
     print("res=",res)
 
-def alarm(task_tid):
+def alarm(task_id):
 
     try:
-        task = session.query(Task).filter(Task.tid==task_tid).one()
+        #task = session.query(Task).filter(Task.tid==task_tid).one()
+        task = session.query(Task).get(task_id)
     except Exception as e:
-        print("Could not find task tid:",task_tid)
+        print("Could not find task id:",task_id)
         print("Exception: ",e)
-        res = ses_conn.send_email(sender, "Exception trying to find task_tid: {}".format(task_tid), "The exception was: {}".format(e), recipients)
+        res = ses_conn.send_email(sender, "Exception trying to find task_id: {}".format(task_id), "The exception was: {}".format(e), recipients)
         return
     
     subject = task.title
@@ -97,7 +100,7 @@ def alarm(task_tid):
     hints = "| priority: !! or zero or 0; alarm: off; star: star or * or nostar; remind: off"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
     body = header+hints+"\n==================================================================================\n"+body
-    print('Alarm! id:{}; subject:{}'.format(task_tid, subject))
+    print('Alarm! id:{}; subject:{}'.format(task_id, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
@@ -113,9 +116,9 @@ def alarm(task_tid):
     if task.star:
         task.duedate = task.duetime = task.duetime + timedelta(days=1)
         session.commit()
-        j = scheduler.add_job(alarm, 'date', id=str(task.tid), run_date=task.duetime, name=task.title[:15], args=[task.tid], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
+        j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
         print("Starred task was scheduled again")
-        print('Task tid:{}; star: {}; title:{}'.format(task.tid, task.star, task.title))
+        print('Task id:{}; star: {}; title:{}'.format(task.id, task.star, task.title))
         print("Alarm scheduled: {}".format(repr(j)))
 
 scheduler = BackgroundScheduler()
@@ -126,8 +129,8 @@ scheduler.add_jobstore('sqlalchemy', url=url)
 tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
 print("On restart, there are {} tasks that are being scheduled".format(tasks.count()))
 for t in tasks:
-    j = scheduler.add_job(alarm, 'date', id=str(t.tid), run_date=t.duetime, name=t.title[:50], args=[t.tid], replace_existing=True) 
-    print('Task tid:{}; star: {}; title:{}'.format(t.tid, t.star, t.title))
+    j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+    print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
     print("Alarm scheduled: {}".format(repr(j)))
 
 scheduler.start()
@@ -171,11 +174,11 @@ def add(delay, msg):
     j = scheduler.add_job(alarmxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, 'date', run_date=alarm_time, name=msg[:15], args=[msg])
     return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p'))
 
-@app.route('/add_task/<int:task_tid>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
+@app.route('/add_task/<int:task_id>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
 @requires_auth
-def add_task(task_tid, days, minutes, msg):
+def add_task(task_id, days, minutes, msg):
     alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
-    j = scheduler.add_job(alarm, 'date', id=str(task_tid), run_date=alarm_time, name=msg[:50], args=[task_tid], replace_existing=True)
+    j = scheduler.add_job(alarm, 'date', id=str(task_id), run_date=alarm_time, name=msg[:50], args=[task_id], replace_existing=True)
     z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
     return json.dumps(z)
 
@@ -207,7 +210,7 @@ def recent():
     tasks2 = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.completed == None)).order_by(desc(Task.modified))
 
     z = list(j.id for j in scheduler.get_jobs())
-    tasks3 = session.query(Task).filter(Task.tid.in_(z))
+    tasks3 = session.query(Task).filter(Task.id.in_(z))
 
     return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
     

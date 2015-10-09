@@ -74,7 +74,7 @@ def add_actions(target, actions):
 def internet_accessible():
     try:
         response=urllib.request.urlopen('http://www.google.com',timeout=1)
-    except urllib.error.URLError:
+    except:
         return False
     else:
         return True

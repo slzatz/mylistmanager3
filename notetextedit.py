@@ -303,9 +303,11 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         # I am stripping the http
         print("Paste")
         text = source.text()  #str(source.text())
-        if len(text.split())==1 and (text.startswith('http://') or 'www' in text or '.com' in text or '.html' in text):
+        if len(text.split())==1 and (text.startswith('http://') or text.startswith('https://') or 'www' in text or '.com' in text or '.html' in text):
             if text.startswith('http://'):
                 text = '<a href="{0}">{1}</a> '.format(text, text[7:])
+            elif text.startswith('https://'):
+                text = '<a href="{0}">{1}</a> '.format(text, text[8:])
             else:
                 text = '<a href="http://{0}">{0}</a> '.format(text)
             self.insertHtml(text)
