@@ -213,6 +213,7 @@ def update_alarms():
         j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
         print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
         print("Alarm scheduled: {}".format(repr(j)))
+        return "OK"
 
 @app.route("/recent")
 def recent():
