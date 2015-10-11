@@ -22,6 +22,9 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     '''
     nn = 0
 
+    # may want to return a dictionary that identifies what might need further processing
+    # "server_tasks", "client_tasks", "changes", "server_deleted", "client_deleted"
+    # although solved the aws postgres alarm issue but re-scanning whole db after synchs for alarms
     changes = [] #server changed context and folder
     tasklist= [] #server changed tasks
     deletelist = [] #server deleted tasks

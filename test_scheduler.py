@@ -72,6 +72,7 @@ def sync():
 
     sync_in_progress = False
 
+    # the only tasks that will get updated are those that were changed/added by the toodledo site/app
     for task in tasklist:
         print("tasklist=",tasklist)
         if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
@@ -203,6 +204,15 @@ def sync_log():
 def index():
     z = list({'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')} for j in scheduler.get_jobs())
     return json.dumps(z)
+
+@app.route("/update_alarms")
+def update_alarms():
+    tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
+    print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
+    for t in tasks:
+        j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+        print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
+        print("Alarm scheduled: {}".format(repr(j)))
 
 @app.route("/recent")
 def recent():

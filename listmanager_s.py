@@ -44,20 +44,18 @@ parser.add_argument('--db_create', action='store_true', help="Create new databas
 args = parser.parse_args()
 
 # age is cython-created function more to check cython out than that it was absolutely necessary
-try:
-    #from age_c import age
-    #import age_mod
-    #age = lambda x:age_mod.age(x).decode('utf8')
-    from age_mod3 import age # c library using agelib.c that I created in C - note that there are age_mod.pyd, age_mod2.pyd and age_mod3.pyd (the latter tries to free the memory)
-except ImportError:
-    print("Unable to import age c funtion")
-    def age(z):
-        if z > 1:
-            return "{} days".format(z)
-        elif z == 1:
-            return "yesterday"
-        else:
-            return "today"
+# seems to be causing an error on exit so it's commented out
+#try:
+#    from age_mod3 import age #3 c library using agelib.c that I created in C - note that there are age_mod.pyd, age_mod2.pyd and age_mod3.pyd (the latter tries to free the memory)
+#except ImportError:
+#    print("Unable to import age c funtion")
+#    def age(z):
+#        if z > 1:
+#            return "{} days".format(z)
+#        elif z == 1:
+#            return "yesterday"
+#        else:
+#            return "today"
 
 import base64
 from optparse import OptionParser
@@ -77,6 +75,14 @@ import whoosh.index as index
 from whoosh.query import Term, Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 from whoosh import analysis
+
+def age(z):
+    if z > 1:
+        return "{} days".format(z)
+    elif z == 1:
+        return "yesterday"
+    else:
+        return "today"
 
 if args.db_create:
     print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
@@ -410,9 +416,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_saveconfiguration = action("Save Configuration", self.saveconfiguration)
         a_loadconfiguration = action("Load Configuration", self.loadconfiguration)
         a_savetab = action("Save Tab", self.savetab)
-
         a_quit = action("&Quit", self.close, "Ctrl+Q", "filequit", "Close the application")
-
 
         add_actions(filemenu, (None, a_newcontext, None, a_savenote, None, a_closetab, a_close_all, None, a_saveconfiguration, a_loadconfiguration, 
                                         None,  a_savetab))
@@ -1694,6 +1698,7 @@ class ListManager(QtWidgets.QMainWindow):
     @check_modified
     def closeEvent(self, event=None): #event is necessary
 
+        #g.config is a configparser instance ->g.config = configparser.RawConfigParser()
         cg = g.config
         
         #if args.qsettings: #removed "if" on 10.27.2012
@@ -2507,6 +2512,11 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.refreshlistonly()
 
+        try:
+            r = requests.get("http://54.173.234.69:5000/update_alarms")
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
+                
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
