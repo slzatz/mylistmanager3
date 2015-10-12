@@ -2516,6 +2516,9 @@ class ListManager(QtWidgets.QMainWindow):
             r = requests.get("http://54.173.234.69:5000/update_alarms")
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
+        else:
+            dlg = lmdialogs.SynchResults("Alarms", r.text, parent=self)
+            dlg.exec_()
                 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
