@@ -49,15 +49,15 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     client_sync = local_session.query(Sync).get('client') 
     server_sync = local_session.query(Sync).get('server') 
 
-    last_client_sync = client_sync.timestamp #these both measure the same thing - the last time the Listmanager db (note it could be local or in the cloud) synched with postgreSQL
-    last_server_sync = server_sync.timestamp #this is the same time as above expressed as a timestamp - could obviously just convert between them and not store both; avoids timezone issues
+    last_client_sync = client_sync.timestamp 
+    last_server_sync = server_sync.timestamp 
 
     log+= "LISTMANAGER SYNCRONIZATION\n"
     log+="Local\n" if local else "Remote\n"
     log+= "Local Time is {0}\n\n".format(datetime.datetime.now())
     delta = datetime.datetime.now() - last_client_sync
-    log+= "The last time client & server were synced (based on client clock) was {0}, which was {1} days and {2} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
-    #log+= "Unix timestamp (client clock) for last sync is {0} ---> {1}\n".format(last_server_sync, datetime.datetime.fromtimestamp(last_server_sync).isoformat(' ')[:19])
+    log+= "The last time client was synced (based on client clock) was {}, which was {} days and {} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
+    log+= "The last time server was synced (based on server clock) was {}, which was {} days and {} minutes ago.\n".format(last_server_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
 
     #get new server contexts
     server_new_contexts = remote_session.query(p.Context).filter(p.Context.created > last_server_sync).all()
