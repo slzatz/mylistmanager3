@@ -44,20 +44,25 @@ parser.add_argument('--db_create', action='store_true', help="Create new databas
 args = parser.parse_args()
 
 # age is cython-created function more to check cython out than that it was absolutely necessary
-try:
-    #from age_c import age
-    #import age_mod
-    #age = lambda x:age_mod.age(x).decode('utf8')
-    from age_mod3 import age # c library using agelib.c that I created in C - note that there are age_mod.pyd, age_mod2.pyd and age_mod3.pyd (the latter tries to free the memory)
-except ImportError:
-    print("Unable to import age c funtion")
-    def age(z):
-        if z > 1:
-            return "{} days".format(z)
-        elif z == 1:
-            return "yesterday"
-        else:
-            return "today"
+#try:
+#    from age_mod3 import age # c library using agelib.c that I created in C - note that there are age_mod.pyd, age_mod2.pyd and age_mod3.pyd (the latter tries to free the memory)
+#except ImportError:
+#    print("Unable to import age c funtion")
+#    def age(z):
+#        if z > 1:
+#            return "{} days".format(z)
+#        elif z == 1:
+#            return "yesterday"
+#        else:
+#            return "today"
+
+def age(z):
+    if z > 1:
+        return "{} days".format(z)
+    elif z == 1:
+        return "yesterday"
+    else:
+        return "today"
 
 import base64
 from optparse import OptionParser
