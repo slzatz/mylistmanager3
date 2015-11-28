@@ -496,7 +496,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_resetinterp = action("Reset Console", self.resetinterp)
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
-        a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+N')
+        a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+V') #changed 10282015
 
         add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
