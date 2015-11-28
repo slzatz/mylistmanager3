@@ -207,6 +207,8 @@ def index():
 
 @app.route("/update_alarms")
 def update_alarms():
+    for j in scheduler.get_jobs():
+        j.remove()
     tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
     for t in tasks:
@@ -285,24 +287,6 @@ def incoming():
 
     else:
         return 'It was not a post method'
-
-@app.route('/echo/<artist>/<source>') #0.0.0.0:5000/2145/0/10/how%20are%20you
-def echo(artist, source):
-    print(artist)
-    print(source)
-    sonos_companion['artist'] = artist
-    sonos_companion['source'] = source
-    sonos_companion['updated'] = True
-    return json.dumps(sonos_companion)
-
-@app.route('/sonos_companion_check') #0.0.0.0:5000/2145/0/10/how%20are%20you
-def sonos_companion_check():
-    if sonos_companion['updated']:
-        temp = dict(sonos_companion)
-        sonos_companion['updated'] = False
-        return json.dumps(temp)
-    else:
-        return json.dumps(sonos_companion)
 
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
