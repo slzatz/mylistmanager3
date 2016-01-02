@@ -254,6 +254,7 @@ def incoming():
         else:
             print("No task matched so assuming this is a new task: {}".format(title))
             task = Task(title=title)
+            task.startdate = datetime.today().date() 
             session.add(task)
             session.commit()
             update = False
