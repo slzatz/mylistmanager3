@@ -254,6 +254,8 @@ def incoming():
         else:
             print("No task matched so assuming this is a new task: {}".format(title))
             task = Task(title=title)
+            session.add(task)
+            session.commit()
             update = False
 
         body = request.form.get('plain')
