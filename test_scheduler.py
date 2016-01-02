@@ -44,7 +44,7 @@ CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
 
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
 
-#using cloudmailin makes it possible to respond
+#using cloudmailin as sender makes it possible for recipient to respond
 sender = 'mylistmanager <6697b86bca34dcd126cb@cloudmailin.net>'
 recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
 
@@ -234,56 +234,55 @@ def incoming():
     if request.method == 'POST':
         subject = request.form.get('headers[Subject]')
         if subject.lower().startswith('re:'):
-            pos = subject.find('|')
-            if pos != -1:
-                title = subject[3:pos].strip()
-                mods = subject[pos+1:].strip().split()
-            else:
-                title = subject[3:].strip()
-                mods = []
-            task = session.query(Task).filter(Task.title==title).all()
-            if len(task) > 1:
-                print("More than one task had the title: {}".format(subject))
-                return "More than one task had the title: {}".format(subject)
-            elif len(task) == 0:
-                print("No task matched: {}".format(subject))
-                return "No task matched: {}".format(subject)
+            subject = subject[3:].strip()
 
-            print("There is only one task with the title: {}".format(subject))
-
-            body = request.form.get('plain')
-            pattern = "================="
-            pos = body.rfind(pattern)
-            note = body[1+pos+len(pattern):] if pos!=-1 else body
-            #print(body) 
-            task = task[0]
-            task.note = note
-
-            if mods:
-                for m in mods:
-                    if '!' in m:
-                        task.priority = len(m) if len(m) < 4 else 3
-                    if m in ('0', 'zero'):
-                        task.priority = 0
-                    if m == 'nostar':
-                        task.star = False
-                    if m in ('*', 'star'):
-                        task.star = True
-                    if m == 'off':
-                        task.remind = None
-
-            session.commit()
-
-            #at one point it was automatically syncing and that may actually be a good idea
-            #j = scheduler.add_job(sync, name="sync")
-
-            return "Updated task with new body"
-
-        elif subject.lower().strip() == 'sync': #startswith('sync'):
-            j = scheduler.add_job(sync, name="sync")
-            return "Initiated sync"
+        pos = subject.find('|')
+        if pos != -1:
+            title = subject[:pos].strip()
+            mods = subject[pos+1:].strip().split()
         else:
-            return "Email subject did not start with 're:' or sync"
+            title = subject[3:].strip()
+            mods = []
+        tasks = session.query(Task).filter(Task.title==title).all()
+        if len(tasks) > 1:
+            print("More than one task had the title: {}".format(title))
+            return "More than one task had the title: {}".format(title)
+        elif len(tasks) == 1:
+            print("There was a match - only one task had the title: {}".format(title))
+            task = tasks[0]
+        else:
+            print("No task matched so assuming this is a new task: {}".format(title))
+            task = Task(title=title)
+
+        body = request.form.get('plain')
+        pattern = "================="
+        pos = body.rfind(pattern)
+        note = body[1+pos+len(pattern):] if pos!=-1 else body
+        #print(body) 
+        task.note = note
+
+        if mods:
+            for m in mods:
+                if '!' in m:
+                    task.priority = len(m) if len(m) < 4 else 3
+                if m in ('0', 'zero'):
+                    task.priority = 0
+                if m == 'nostar':
+                    task.star = False
+                if m in ('*', 'star'):
+                    task.star = True
+                if m == 'off':
+                    task.remind = None
+
+        session.commit()
+
+        #at one point it was automatically syncing and that may actually be a good idea
+        #j = scheduler.add_job(sync, name="sync")
+
+        # is this actually used??????
+        #elif subject.lower().strip() == 'sync': #startswith('sync'):
+        #    j = scheduler.add_job(sync, name="sync")
+        #    return "Initiated sync"
 
     else:
         return 'It was not a post method'
