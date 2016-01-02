@@ -246,13 +246,15 @@ def incoming():
         tasks = session.query(Task).filter(Task.title==title).all()
         if len(tasks) > 1:
             print("More than one task had the title: {}".format(title))
-            return "More than one task had the title: {}".format(title)
+            return Response("More than one task had the title: {}".format(title), mimetype='text/plain')
         elif len(tasks) == 1:
             print("There was a match - only one task had the title: {}".format(title))
             task = tasks[0]
+            update = True
         else:
             print("No task matched so assuming this is a new task: {}".format(title))
             task = Task(title=title)
+            update = False
 
         body = request.form.get('plain')
         pattern = "================="
@@ -283,6 +285,8 @@ def incoming():
         #elif subject.lower().strip() == 'sync': #startswith('sync'):
         #    j = scheduler.add_job(sync, name="sync")
         #    return "Initiated sync"
+        text = "Updated task" if update else "Created new task"
+        return Response("{} with title: {}".format(text,title), mimetype='text/plain')
 
     else:
         return 'It was not a post method'
