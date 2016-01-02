@@ -265,28 +265,28 @@ def incoming():
         #print(body) 
         task.note = note
 
-        if mods:
-            for m in mods:
-                if '!' in m:
-                    task.priority = len(m) if len(m) < 4 else 3
-                if m in ('0', 'zero'):
-                    task.priority = 0
-                if m == 'nostar':
-                    task.star = False
-                if m in ('*', 'star'):
-                    task.star = True
-                if m == 'off':
-                    task.remind = None
+        for m in mods:
+            if '!' in m:
+                task.priority = len(m) if len(m) < 4 else 3
+            if m in ('0', 'zero'):
+                task.priority = 0
+            if m == 'nostar':
+                task.star = False
+            if m in ('*', 'star'):
+                task.star = True
+            if m == 'off':
+                task.remind = None
+            if m.startswith('@'):
+                context_title = m[1:]
+                context = session.query(Context).filter_by(title=m[1:]).first()
+                if context:
+                    task.context = context
 
         session.commit()
 
-        #at one point it was automatically syncing and that may actually be a good idea
+        #at one point it was automatically syncing and that doesn't work in a world where toodledo doesn't matter
         #j = scheduler.add_job(sync, name="sync")
 
-        # is this actually used??????
-        #elif subject.lower().strip() == 'sync': #startswith('sync'):
-        #    j = scheduler.add_job(sync, name="sync")
-        #    return "Initiated sync"
         text = "Updated task" if update else "Created new task"
         return Response("{} with title: {}".format(text,title), mimetype='text/plain')
 
