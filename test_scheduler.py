@@ -294,5 +294,31 @@ def incoming():
     else:
         return 'It was not a post method'
 
+@app.route("/incoming_from_echo", methods=['GET', 'POST'])
+def incoming_from_echo():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        context_title = request.form.get('context')
+        note = request.form.get('note')
+
+        task = Task(title=title, priority=3, star=True)
+        task.startdate = datetime.today().date() 
+        task.note = note
+        session.add(task)
+        session.commit()
+
+        context = session.query(Context).filter_by(title=context_title]).first()
+        if context:
+            task.context = context
+
+        session.commit()
+
+        #at one point it was automatically syncing and that doesn't work in a world where toodledo doesn't matter
+        #j = scheduler.add_job(sync, name="sync")
+
+        return Response("Created new task with title: {} and context:{}".format(text,context_title), mimetype='text/plain')
+
+    else:
+        return 'It was not a post method'
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
