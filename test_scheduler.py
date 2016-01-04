@@ -307,7 +307,7 @@ def incoming_from_echo():
         session.add(task)
         session.commit()
 
-        context = session.query(Context).filter_by(title=context_title]).first()
+        context = session.query(Context).filter_by(title=context_title).first()
         if context:
             task.context = context
 
@@ -316,7 +316,7 @@ def incoming_from_echo():
         #at one point it was automatically syncing and that doesn't work in a world where toodledo doesn't matter
         #j = scheduler.add_job(sync, name="sync")
 
-        return Response("Created new task with title: {} and context:{}".format(text,context_title), mimetype='text/plain')
+        return Response("Created new task with title: {} and context:{}".format(title,context_title), mimetype='text/plain')
 
     else:
         return 'It was not a post method'
