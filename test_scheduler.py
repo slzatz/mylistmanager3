@@ -297,11 +297,15 @@ def incoming():
 @app.route("/incoming_from_echo", methods=['GET', 'POST'])
 def incoming_from_echo():
     if request.method == 'POST':
+        jdata = request.get_json()
+        print(jdata)
+        #data = json.loads(data)
         title = request.form.get('title')
         context_title = request.form.get('context')
         note = request.form.get('note')
-
-        task = Task(title=title, priority=3, star=True)
+        z = request.form.get('star')
+        star = True if z=='true' else False
+        task = Task(title=title, priority=3, star=star)
         task.startdate = datetime.today().date() 
         task.note = note
         session.add(task)
