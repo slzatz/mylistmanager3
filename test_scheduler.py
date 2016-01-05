@@ -321,8 +321,8 @@ def incoming_from_echo():
         #    session.commit()
         #    j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
 
-        print("Created new task with title: {}".format(title))
-        return Response("Created new task with title: {}".format(title), mimetype='text/plain')
+        print("Created new task with title: {}".format(task.title))
+        return Response("Created new task with title: {}".format(task.title), mimetype='text/plain')
 
     else:
         return 'It was not a post method'
