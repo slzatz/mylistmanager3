@@ -302,7 +302,7 @@ def incoming_from_echo():
         #title = request.form.get('title')
         #context_title = request.form.get('context')
         #note = request.form.get('note')
-        task = Task(title=data.get('title', 'No title'), priority=data.get('priority', 3), star=data.get'star', False)
+        task = Task(title=data.get('title', 'No title'), priority=data.get('priority', 3), star=data.get('star', False))
         task.startdate = datetime.today().date() 
         task.note = data.get('note', "Created from Echo on {}".format(task.startdate))
         session.add(task)
