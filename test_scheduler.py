@@ -297,30 +297,32 @@ def incoming():
 @app.route("/incoming_from_echo", methods=['GET', 'POST'])
 def incoming_from_echo():
     if request.method == 'POST':
-        jdata = request.get_json()
-        print(jdata)
-        #data = json.loads(data)
-        title = request.form.get('title')
-        context_title = request.form.get('context')
-        note = request.form.get('note')
-        z = request.form.get('star')
-        star = True if z=='true' else False
-        task = Task(title=title, priority=3, star=star)
+        data = request.get_json() #this is a python dictionary
+        print(data)
+        #title = request.form.get('title')
+        #context_title = request.form.get('context')
+        #note = request.form.get('note')
+        task = Task(title=data.get('title', 'No title'), priority=data.get('priority', 3), star=data.get'star', False)
         task.startdate = datetime.today().date() 
-        task.note = note
+        task.note = data.get('note', "Created from Echo on {}".format(task.startdate))
         session.add(task)
         session.commit()
 
-        context = session.query(Context).filter_by(title=context_title).first()
+        context = session.query(Context).filter_by(title=data.get('context', '')).first()
         if context:
             task.context = context
 
         session.commit()
 
-        #at one point it was automatically syncing and that doesn't work in a world where toodledo doesn't matter
-        #j = scheduler.add_job(sync, name="sync")
+        #if task.star:
+        #    task.remind = 1
+        #    task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
+        #    task.duedate = task.duetime = task.duetime + timedelta(days=1)
+        #    session.commit()
+        #    j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
 
-        return Response("Created new task with title: {} and context:{}".format(title,context_title), mimetype='text/plain')
+        print("Created new task with title: {}".format(title))
+        return Response("Created new task with title: {}".format(title), mimetype='text/plain')
 
     else:
         return 'It was not a post method'
