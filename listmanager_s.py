@@ -1248,7 +1248,7 @@ class ListManager(QtWidgets.QMainWindow):
     @update_row
     @update_whooshdb
     @check_task_selected
-    def updatefolder(self, title=None):
+    def updatefolder(self, checked=None, title=None):
 
         task = self.task
 
