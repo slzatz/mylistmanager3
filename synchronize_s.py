@@ -86,7 +86,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         log+="There were no updated (new and modified) server Tasks since the last sync.\n" 
 
     #get server deleted tasks
-    server_deleted_tasks = remote_session.query(p.Task).filter(p.Task.deleted==True).all()
+    server_deleted_tasks = remote_session.query(p.Task).filter(and_(p.Task.modified > last_server_sync, p.Task.deleted==True)).all()
     if server_deleted_tasks:
         nn+=len(server_deleted_tasks)
         log+="Deleted server Tasks since the last sync: {0}.\n".format(len(server_deleted_tasks))
