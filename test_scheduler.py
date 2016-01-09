@@ -299,12 +299,11 @@ def incoming_from_echo():
     if request.method == 'POST':
         data = request.get_json() #this is a python dictionary
         print(data)
-        #title = request.form.get('title')
-        #context_title = request.form.get('context')
-        #note = request.form.get('note')
+
         task = Task(title=data.get('title', 'No title'), priority=data.get('priority', 3), star=data.get('star', False))
         task.startdate = datetime.today().date() 
         task.note = data.get('note', "Created from Echo on {}".format(task.startdate))
+
         session.add(task)
         session.commit()
 
@@ -312,16 +311,18 @@ def incoming_from_echo():
         if context:
             task.context = context
 
+        echo_folder = session.query(Folder).filter_by(title='echo').one()
+        task.folder = echo_folder
+
         session.commit()
 
-        #if task.star:
-        #    task.remind = 1
-        #    task.duedate=task.duetime = datetime.datetime.now() + datetime.timedelta(days=1)
-        #    task.duedate = task.duetime = task.duetime + timedelta(days=1)
-        #    session.commit()
-        #    j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
+        if task.star:
+            task.remind = 1
+            task.duedate = task.duetime = datetime.now() + timedelta(days=1)
+            session.commit()
+            j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) 
 
-        print("Created new task with title: {}".format(task.title))
+        print("Created new task with title: {}, star: {}, context: {}, folder: {}, remind: {}".format(task.title, "yes" if task.star else "no", task.context.title, task.folder.title, "yes" if task.remind else "no"))
         return Response("Created new task with title: {}".format(task.title), mimetype='text/plain')
 
     else:
