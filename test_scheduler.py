@@ -278,8 +278,9 @@ def incoming():
             if m == 'off':
                 task.remind = None
             if m.startswith('@'):
-                context_title = m[1:]
-                context = session.query(Context).filter_by(title=m[1:]).first()
+                context_title = m[1:].replace('_', ' ') # allows you to 'not work' as 'not_work'
+                context = session.query(Context).filter_by(title=m[1:]).one()
+                #context = session.query(Context).filter(Context.title.startswith(m[1:])).one() # a kluge to handle 'not work'  -- won't work if more than one 'not ...'
                 if context:
                     task.context = context
 
