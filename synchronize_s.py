@@ -526,7 +526,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         # it will be removed from client but can't send anything to server
         if t.tid:
             try:
-                task = remote_session.query(p.Task).get(tid)
+                task = remote_session.query(p.Task).get(t.tid)
             except Exception as e:
                 print(e)
             else:
