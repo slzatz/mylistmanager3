@@ -283,7 +283,7 @@ def incoming():
                 if context:
                     task.context = context
             if m.startswith('*') and len(m) > 1:
-                folder_title = m[1;].replace('_', ' ')
+                folder_title = m[1:].replace('_', ' ')
                 folder = session.query(Folder).filter_by(title=folder_title).first()
                 if folder:
                     task.folder = folder
