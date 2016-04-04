@@ -57,7 +57,7 @@ if not isfile('sync_log'):
 
 #global
 sync_in_progress = False
-sonos_companion = {'artist':None, 'source':None, 'updated':False}
+sonos_track = {'artist':'No artist', 'title':'No title', 'updated':False}
 
 def sync():
     global sync_in_progress
@@ -336,28 +336,35 @@ def incoming_from_echo():
     else:
         return 'It was not a post method'
 
-@app.route("/scrobble")
+@app.route("/scrobble", methods=['POST'])
 def scrobble():
-    #s3 = boto3.client('s3')
-    #response = s3.get_object(Bucket='sonos-scrobble', Key='location')
-    #body = response['Body']
-    #location = body.read()
-    #dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-    #table = dynamodb.Table('scrobble_new')
-    #result = table.query(KeyConditionExpression=Key('location').eq(location), ScanIndexForward=False, Limit=1) #by default the sort order is ascending
+    data = request.get_json() #this is a python dictionary
+    print(data)
 
-    #if result['Count']:
-    #    track = result['Items'][0]
-    #    if track['ts'] > Decimal(time.time())-300:
-    #        #output_speech = "The song is {}. The artist is {} and the album is {}.".format(track.get('title','No title'), track.get('artist', 'No artist'), track.get('album', 'No album'))
-    #        return Response(track.get('title', 'No title'), mimetype='text/plain')
-    #    else:
-    #        return Response("Nothing playing", mimetype='text/plain')
-    #else:
-    #    #output_speech = "It appears that nothing has ever been scrobbled"
-    #    return Response("Nothing scrobbled", mimetype='text/plain')
-    return Response("Nothing scrobbled", mimetype='text/plain')
+    sonos_track['artist'] = data.get('artist', '')
+    sonos_track['title'] = data.get('title', '')
+    sonos_track['updated'] = True
+
+    return Response("OK", mimetype='text/plain')
     
+#@app.route('/echo/<artist>/<source>') #0.0.0.0:5000/2145/0/10/how%20are%20you
+#def echo(artist, source):
+#    print(artist)
+#    print(source)
+#    sonos_companion['artist'] = artist
+#    sonos_companion['source'] = source
+#    sonos_companion['updated'] = True
+#    return json.dumps(sonos_companion)
+
+@app.route('/sonos_check') #0.0.0.0:5000/2145/0/10/how%20are%20you
+def sonos_check():
+    if sonos_track['updated']:
+        temp = dict(sonos_track)
+        sonos_track['updated'] = False
+        return json.dumps(temp)
+    else:
+        #return "No Change"
+        return json.dumps(sonos_track)
 
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
