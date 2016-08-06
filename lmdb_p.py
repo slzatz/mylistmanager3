@@ -16,7 +16,7 @@ from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
 
-from config import RDS_URI
+from config import RDS_URI ### should change to PG_URI
 from lmglobals_p import REMOTE_DB, internet_accessible #, LOCAL_DB_FILE
 
 #cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
@@ -213,7 +213,8 @@ if internet_accessible():
 
         metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
         metadata.create_all(remote_engine) # only creates if tables not present but not
-    except:
+    except Exception as e:
+        print(e)
         remote_session = None
 else:
     remote_session = None
