@@ -5,10 +5,10 @@ This script reloaded and reindexed listmanger data in solr using the data in RDS
 from SolrClient import SolrClient
 import requests
 import json
-from config import ec_uri
+from config import SOLR_URI
 from lmdb_p import *
 
-solr = SolrClient(ec_uri+':8983/solr/')
+solr = SolrClient(SOLR_URI + '/solr/')
 collection = 'listmanager'
 
 tasks = remote_session.query(Task)
@@ -40,7 +40,7 @@ for n in range(100, max, 100):
     #response = solr.commit(collection, waitSearcher=False) # doesn't actually seem to work
 
     # Since solr.commit didn't seem to work, substituted the below, which works
-    url = ec_uri+":8983/solr/"+collection+"/update"
+    url = SOLR_URI + '/solr/' + collection + '/update'
     r = requests.post(url, data={"commit":"true"})
     print(r.text)
 
