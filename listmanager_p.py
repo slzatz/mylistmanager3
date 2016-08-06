@@ -31,6 +31,23 @@ import tempfile
 from subprocess import Popen
 import resources
 import requests
+import base64
+from optparse import OptionParser
+from functools import partial
+
+import markdown2 as markdown
+import config as c
+import lmglobals_p as g
+
+import lminterpreter
+
+from whoosh.index import create_in
+from whoosh.fields import Schema, TEXT, KEYWORD, NUMERIC
+import whoosh.index as index
+from whoosh.query import Term, Or, Prefix
+from whoosh.filedb.filestore import FileStorage
+from whoosh import analysis
+from lmdb_p import *
 
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
@@ -38,8 +55,6 @@ parser = argparse.ArgumentParser(description='Command line options mainly for de
 parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use QSettings during startup (will *not* save to QSettings on closing")
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
-#parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
-parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
 
 args = parser.parse_args()
 
@@ -63,38 +78,6 @@ def age(z):
         return "yesterday"
     else:
         return "today"
-
-import base64
-from optparse import OptionParser
-from functools import partial
-
-import markdown2 as markdown
-import config as c
-import lmglobals_p as g
-
-import lminterpreter
-
-from whoosh.index import create_in
-from whoosh.fields import Schema, TEXT, KEYWORD, NUMERIC
-import whoosh.index as index
-from whoosh.query import Term, Or, Prefix
-from whoosh.filedb.filestore import FileStorage
-from whoosh import analysis
-
-if args.db_create:
-    print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
-    reply = input("Y/N:") 
-    if reply.lower() == 'y':
-        DB_EXISTS = False
-        print("We will create a new database from toodledo")
-
-    else:
-        sys.exit()
-        
-else:
-    DB_EXISTS = True
-        
-from lmdb_p import *
 
 session = remote_session
 engine = remote_engine
@@ -266,45 +249,6 @@ class ListManager(QtWidgets.QMainWindow):
                 self.restoreGeometry(settings.value('MainWindow/Geometry'))
                 self.restoreState(settings.value('MainWindow/State')) 
 
-     
-        if not DB_EXISTS:
-            
-            context = Context(tid=0, title='No Context') # these get an id = 1
-            session.add(context)
-            folder = Folder(tid=0, title="No Folder") # these get an id = 1
-            session.add(folder)
-            session.commit()
-            
-            # eliminate tasks with ids < 4 because I SetItemData based on primary task id but if that data is < 4, I know it's a collapse bar
-            # so I don't want a real task to have an id < 4
-            # it appears that neither postgresql nor sqlite reclaim the ids of deleted items
-            # and that numbering of ids starts at 1
-            
-            # this creates the tasks and then deletes them to consume the 0 through 3 ids; don't need/can't delete -1
-            
-            for p in range(3): 
-                task = Task('p')
-                session.add(task)
-            
-            session.commit()
-            
-            task = Task("My very first task written from " + platform.uname()[1]) # need one item to remain or will reuse starting at zero
-            session.add(task)
-            session.commit()
-            
-            for p in range(1,4):
-                task = session.query(Task).get(p)
-                if task: # shouldn't need this 
-                    session.delete(task)
-            
-            session.commit()
-            
-            sync = Sync('client') # in this case the postgres db is the client
-            session.add(sync)
-            sync.timestamp = datetime.datetime.fromordinal(1)
-            sync.unix_timestamp = 1
-            session.commit()
-
         # self.PageProperties is the dictionary of dictionaries that carry the various properties for each notebook page
         # the key is the splitter for that page which is the widget managed by the tabmanager
         # self.PageProperties[splitter] = ...
@@ -320,7 +264,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.sync_log = ''
         self.vim_files = {} #dictionary to hold files being edited in VIM
-
 
         #action = partial(g.create_action, self)
         action = partial(create_action, self)
@@ -849,13 +792,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.fs_watcher = QtCore.QFileSystemWatcher()
         self.fs_watcher.fileChanged.connect(self.file_changed_in_vim)
         
-        if DB_EXISTS:
-            if args.ini:
-                QtCore.QTimer.singleShot(0, self.loadtabs)
-        else:
-            if self.confirm("Do you want to perform an initial synchonization with Toodledo?"):
-                QtCore.QTimer.singleShot(0, self.downloadtasksfromserver)
-                print("hello")
+        if args.ini:
+            QtCore.QTimer.singleShot(0, self.loadtabs)
 
     def loadtabs(self):
         # open the tabs that were last open when the application was closed
