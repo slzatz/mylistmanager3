@@ -20,7 +20,6 @@ import platform
 import uuid # now used for temp ids
 import configparser as configparser
 import json
-#import urllib.request, urllib.parse, urllib.error
 import re
 import textwrap
 import base64
@@ -31,6 +30,25 @@ import tempfile
 from subprocess import Popen
 import resources
 import requests
+import base64
+from optparse import OptionParser
+from functools import partial
+
+import markdown2 as markdown
+#import config as c
+from config import SCHEDULER_URI
+import lmglobals_s as g
+
+#note synchronize_s is imported in If __name__ == main to delay import until logger defined
+import lminterpreter
+
+from whoosh.index import create_in
+from whoosh.fields import Schema, TEXT, KEYWORD, NUMERIC
+import whoosh.index as index
+from whoosh.query import Term, Or, Prefix
+from whoosh.filedb.filestore import FileStorage
+from whoosh import analysis
+from lmdb_s import *
 
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
@@ -39,7 +57,7 @@ parser.add_argument('-q', '--qsettings', action='store_false', help="Don't use Q
 parser.add_argument('-c', '--console', action='store_false', help="Disable the use of the console so it doesn't swallow errors during __init__")
 parser.add_argument('-i', '--ini', action='store_false', help="Don't load the tabs on startup that are stored in the ini file (will save to ini file on closing)")
 #parser.add_argument('-s', '--sqlite', action='store_true', help="Use (or create if --db_create is active) a local sqlite database")
-parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
+#parser.add_argument('--db_create', action='store_true', help="Create new database - use -s to indicate you want a local sqlite db")
 
 args = parser.parse_args()
 
@@ -57,25 +75,6 @@ args = parser.parse_args()
 #        else:
 #            return "today"
 
-import base64
-from optparse import OptionParser
-from functools import partial
-
-import markdown2 as markdown
-import config as c
-#import lmglobals_s as g #moved from below on 12-21-2014
-import lmglobals_s as g
-
-#note synchronize_s is imported in If __name__ == main to delay import until logger defined
-import lminterpreter
-
-from whoosh.index import create_in
-from whoosh.fields import Schema, TEXT, KEYWORD, NUMERIC
-import whoosh.index as index
-from whoosh.query import Term, Or, Prefix
-from whoosh.filedb.filestore import FileStorage
-from whoosh import analysis
-
 def age(z):
     if z > 1:
         return "{} days".format(z)
@@ -83,30 +82,6 @@ def age(z):
         return "yesterday"
     else:
         return "today"
-
-if args.db_create:
-    print("\n\nDo you want to create a new database and do a synchonization with Toodledo(Y/N)?")
-    reply = input("Y/N:") 
-    if reply.lower() == 'y':
-        DB_EXISTS = False
-        print("DB_EXISTS=",DB_EXISTS," -- meaning we are about to create a new database")
-
-    else:
-        sys.exit()
-        
-else:
-    DB_EXISTS = True
-        
-if not DB_EXISTS:
-    db_directory = os.path.split(g.LOCAL_DB_FILE)[0]
-    print("db_directory=",db_directory)
-    try:
-        os.mkdir(db_directory)
-    except OSError as e:
-        print(e)
-        sys.exit("Could not create directory for sqlite database")
-
-from lmdb_s import *
 
 session = local_session
 engine = local_engine
@@ -124,7 +99,6 @@ update_row = g.update_row
 class ListManager(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(ListManager, self).__init__(parent)
-        
         
         self.setWindowTitle("My Listmanager")
 
@@ -144,50 +118,6 @@ class ListManager(QtWidgets.QMainWindow):
             if settings.contains("MainWindow/Geometry"):
                 self.restoreGeometry(settings.value('MainWindow/Geometry'))
                 self.restoreState(settings.value('MainWindow/State')) 
-
-     
-        if not DB_EXISTS:
-            
-            context = Context(tid=1, title='No Context')# were 0 when using toodledo as server
-            session.add(context)
-
-            folder = Folder(tid=1, title="No Folder") # were 0 when using toodledo as server
-            session.add(folder)
-
-            session.commit()
-            
-            # eliminate tasks with ids < 4 because I SetItemData based on sqlite id but if that data is < 4, I know it's a collapse bar
-            # so I don't want a real task to have an id < 4
-            # fortunately right now sqlite doesn't reclaim the ids of deleted items
-            # sqlite starts numbering ids at 1
-            
-            # this creates the tasks and then deletes them to consume the 0 through 3 ids; don't need/can't delete -1
-            
-            for p in range(3): 
-                task = Task('p')
-                session.add(task)
-            
-            session.commit()
-            
-            task = Task("My very first task written from " + platform.uname()[1]) # need one item to remain or will reuse starting at zero
-            session.add(task)
-            session.commit()
-            
-            for p in range(1,4):
-                task = session.query(Task).get(p)
-                if task: # shouldn't need this 
-                    session.delete(task)
-            
-            session.commit()
-            
-            client_sync = Sync('client')
-            #sync = session.query(Sync).get('client') #switching server to timestamp
-            session.add(client_sync)
-            #sync.timestamp = datetime.datetime.fromordinal(1)
-            #sync.unix_timestamp = 1
-            server_sync = Sync('server')
-            session.add(server_sync)
-            session.commit()
 
         # self.PageProperties is the dictionary of dictionaries that carry the various properties for each notebook page
         # the key is the splitter for that page which is the widget managed by the tabmanager
@@ -674,44 +604,12 @@ class ListManager(QtWidgets.QMainWindow):
         self.itemfont = {-1:normal, 0:normal, 1:normal, 2:normal, 3:bold}         
         self.deleteditemfont = {-1:strikeout, 0:strikeout, 1:strikeout, 2:strikeout, 3:boldstrikeout}
         
-        self.folder_icons = {c.title:(QtGui.QIcon("bitmaps/folder_icons/{}.png".format(c.title)), '') for c in session.query(Folder)}
+        self.folder_icons = {fol.title:(QtGui.QIcon("bitmaps/folder_icons/{}.png".format(fol.title)), '') for fol in session.query(Folder)}
 
-        #self.folder_icons = {}
-        #for f in session.query(Folder):
-        #    if f.image:
-        #        pxmap = QtGui.QPixmap()
-        #        pxmap.loadFromData(f.image, 'PNG')
-        #        icon = (QtGui.QIcon(pxmap), '') 
-        #    else:
-        #        icon = ('',)
-        #    self.folder_icons[f.title] = icon
-
-        self.context_icons = {c.title:(QtGui.QIcon("bitmaps/folder_icons/{}.png".format(c.title)), '') for c in session.query(Context)}
-        #self.context_icons = {}
-        #for c in session.query(Context):
-        #    if c.image:
-        #        pxmap = QtGui.QPixmap()
-        #        pxmap.loadFromData(c.image, 'PNG')
-        #        icon = (QtGui.QIcon(pxmap), '') 
-        #    else:
-        #        icon = ('',)
-        #    self.context_icons[c.title] = icon
-            
-        #{'context': self.context_icons, 'folder' self.folder_icons, 'app':{'star':fjdsl,'alarm':jfkdjfdk, 'search':lkfdldskf}, 'recent', {}, 'tag': {}}
+        self.context_icons = {con.title:(QtGui.QIcon("bitmaps/folder_icons/{}.png".format(con.title)), '') for con in session.query(Context)}
 
         self.icons = {'context': self.context_icons, 'folder':self.folder_icons, 'app':{'star':(QtGui.QIcon(':/bitmaps/star.png'),''),'alarm':(QtGui.QIcon(':/bitmaps/alarm-clock.png'),'')}}
          
-        # the below work
-        #self.context_icons = {c.title:(QtGui.QIcon("bitmaps/context_icons/{}".format(c.icon)), '') if c.icon else ('',) for c in session.query(Context)}
-        #self.folder_icons = {f.title:(QtGui.QIcon("bitmaps/folder_icons/{}".format(f.icon)), '') if f.icon else ('',) for f in session.query(Folder)}
-
-        # new user location
-        # self.folder_icons = {f.title:(QtGui.QIcon("bitmaps/user/{}".format(f.icon)), '') if f.icon else ('',) for f in session.query(Folder)}
-        # self.context_icons = {c.title:(QtGui.QIcon("bitmaps/user/{}".format(c.icon)), '') if c.icon else ('',) for c in session.query(Context)}
-
-        #user_icon = partial(os.path.join,'bitmaps','user')
-        #user_icon(f.icon)
-
         self.myevent = MyEvent()
 
         try:
@@ -726,13 +624,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.fs_watcher = QtCore.QFileSystemWatcher()
         self.fs_watcher.fileChanged.connect(self.file_changed_in_vim)
         
-        if DB_EXISTS:
-            if args.ini:
-                QtCore.QTimer.singleShot(0, self.loadtabs)
-        else:
-            if self.confirm("Do you want to perform an initial synchonization with Toodledo?"):
-                QtCore.QTimer.singleShot(0, self.downloadtasksfromserver)
-                print("hello")
+        if args.ini:
+            QtCore.QTimer.singleShot(0, self.loadtabs)
 
     def loadtabs(self):
         # open the tabs that were last open when the application was closed
@@ -762,20 +655,6 @@ class ListManager(QtWidgets.QMainWindow):
                         self.onpagechange(current) 
         
             self.setUpdatesEnabled(True)
-
-    def downloadtasksfromserver(self):
-        '''
-        sends all tasks on postgres server down to sqlite client
-        '''
-        print_("Got here in downloadtasksfromserver")
-        
-        synchronize_s.downloadtasksfrompostgres(local=True)
-        
-        if self.confirm("Would you like to enable full-text search (uses Whoosh)?"):
-            self.create_whooshdb2()
-            
-            #self.ix = index.open_dir(g.WHOOSH_DIR) #("indexdir")
-            #self.searcher = self.ix.searcher()
 
     def note_modified(self):
         which = self.sender().objectName()
@@ -2490,10 +2369,8 @@ class ListManager(QtWidgets.QMainWindow):
             
         import synchronize_s #should have already been imported unless internet wasn't available on startup
 
-        self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self, 
-                                                                                showlogdialog=True, 
-                                                                                OkCancel=True,
-                                                                                local=True)
+        self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self, showlogdialog=True) # this is the money shot
+
         print("changes={0}".format(changes))
         print("tasklist={0}".format([t.title for t in tasklist])) #this is a goofy print
         print("deletelist={0}".format(deletelist))
@@ -2512,13 +2389,16 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.refreshlistonly()
 
-        try:
-            r = requests.get("http://54.173.234.69:5000/update_alarms")
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
-        else:
-            dlg = lmdialogs.SynchResults("Alarms", r.text, parent=self)
-            dlg.exec_()
+        # if there were no changes, then don't update alarms
+        if changes + tasklist + deletelist:
+            try:
+                #r = requests.get("http://54.173.234.69:5000/update_alarms")
+                r = requests.get(SCHEDULER_URI + '/update_alarms')
+            except Exception as e:
+                QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
+            else:
+                dlg = lmdialogs.SynchResults("Alarms", r.text, parent=self)
+                dlg.exec_()
                 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)

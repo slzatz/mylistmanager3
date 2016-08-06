@@ -16,7 +16,7 @@ pb = g.pb
 
 print_("Hello from the synchronize_s module")
 
-def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=True): # if running outside gui, the showdialog=False, OKCancel=False
+def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside gui, the showdialog=False - doubt it works at command line
     '''
     This synch is designed to be between postgreSQL and sqlite.  It is not the synch between toodledo and postgreSQL
     '''
@@ -53,7 +53,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
     last_server_sync = server_sync.timestamp 
 
     log+= "LISTMANAGER SYNCRONIZATION\n"
-    log+="Local\n" if local else "Remote\n"
     log+= "Local Time is {0}\n\n".format(datetime.datetime.now())
     delta = datetime.datetime.now() - last_client_sync
     log+= "The last time client was synced (based on client clock) was {}, which was {} days and {} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
@@ -132,10 +131,8 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
 
     log+="\nThe total number of server and client changes is {0}.\n".format(nn)
 
-    if showlogdialog and OkCancel:
-
+    if showlogdialog:
         dlg = lmdialogs.SynchResults("Synchronization Results", log, parent=parent, OkCancel=True)
-
         if not dlg.exec_():
             return "Canceled sync", [], [], []
 
@@ -566,151 +563,4 @@ def synchronizetopostgres(parent=None, showlogdialog=True, OkCancel=True, local=
         dlg.exec_()
         
     return log,changes,tasklist,deletelist 
-
-def downloadtasksfrompostgres(local=True):
-    '''
-    this version downloads tasks from toodledo to a database that can be postgreSQL or sqlite and located anywhere
-    This does replace the toodledo tid used in task.folder_tid and task.context_tid to use the postgres folder and context ids
-    '''
-
-    session = local_session if local else remote_session
-    
-    print_("Starting the process of downloading tasks from server")
-    
-    remote_tasks = remote_session.query(p.Task)
-    remote_contexts = remote_session.query(p.Context)
-    remote_folders = remote_session.query(p.Folder)
-    
-    len_contexts = remote_session.query(p.Context).count()
-    len_folders = remote_session.query(p.Folder).count()
-    len_tasks = remote_session.query(p.Task).count()
-
-    print_("{} server tasks were downloaded".format(len_tasks))
-    print_("{} server contexts were downloaded".format(len_contexts))
-    print_("{} server folders were downloaded".format(len_folders))
-
-    if pb: 
-        pb.setRange(0, len_contexts+len_folders+len_tasks)
-        pb.setValue(0)
-        pb.show()
-    
-    #server contexts --> client contexts       
-    n=0 
-    for rc in remote_contexts:
-        if rc.tid == 0:
-            continue
-        context = Context()
-        n+=1
-        # the sqlite context.tid gets set to the postgres context.id
-        # note the the postgres context.tid holds the toodledo context id
-        context.tid = rc.id
-        context.title = rc.title
-        local_session.add(context)
-        local_session.commit()
-        
-        if pb:
-            pb.setValue(n)
-
-    #server folders --> client folders    
-    for rf in remote_folders:
-        if rf.tid == 0:
-            continue
-        folder = Folder()
-        n+=1
-        # the sqlite folder.tid gets set to the postgres folder.id
-        # note the the postgres folder.tid holds the toodledo folder id
-        folder.tid = rf.id
-        folder.title = rf.title
-        folder.archived = rf.archived
-        folder.private = rf.private
-        folder.order= rf.order
-        local_session.add(folder)
-        local_session.commit()
-        
-        if pb:
-            pb.setValue(n)
-
-    #server tasks -> client tasks
-    for rt in remote_tasks:
-        n+=1
-        #if t.context_id != 1633429:     #if you only want to download one context
-            #continue                            # might also not want to pick up folders and contexts
-        
-        task = Task()
-        session.add(task)
-        
-         # the sqlite task.tid gets set to the postgres task.id
-        # note the the postgres task.tid holds the toodledo task id
-        task.tid = rt.id 
-        
-        task.context_tid = rt.context_tid #local sqlite task.context_tid is the same as server task.context_tid but foreign key is different (c.id v. c.tid)        
-        task.duedate = rt.duedate          
-        task.folder_tid = rt.folder_tid
-        task.title = rt.title
-        task.added = rt.added                
-        task.star = rt.star
-        task.priority = rt.priority
-        task.tag = rt.tag
-        task.completed = rt.completed    
-        task.note = rt.note
-        task.remind = rt.remind
-        
-        # the two lines below were missing and not being pulled off toodledo - not sure why and I added them
-        task.duetime = rt.duetime if rt.duetime else None
-        task.startdate = rt.startdate if rt.startdate else rt.added 
-
-#        try:
-#            task.parent_tid = t.parent #only in pro accounts
-#        except:
-#            pass
-#
-        try:
-            local_session.commit()
-        except sqla_exc.IntegrityError as e:
-            local_session.rollback()
-            print_(repr(e))
-            print_(task.title)
-        else:
-            if task.tag:
-
-                for kwn in task.tag.split(','):
-                    keyword = local_session.query(Keyword).filter_by(name=kwn).first()
-                    if keyword is None:
-                        keyword = Keyword(kwn[:25])
-                        local_session.add(keyword)
-                        local_session.commit()
-                    tk = TaskKeyword(task,keyword)
-                    local_session.add(tk)
-
-                #session.commit()
-                try:
-                    local_session.commit()
-                except sqla_exc.IntegrityError as e:
-                    local_session.rollback()
-                    print_(repr(e))
-                    print_(task.title)
-    
-        if pb:
-            pb.setValue(n)
-    
-    #Update synch timestamps
-    client_sync = local_session.query(Sync).get('client')
-    client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
-
-    #sync.unix_timestamp = int(time.time()+2) #was 5, changed 01-24-2015
-    server_sync = local_session.query(Sync).get('server')
-    connection = remote_engine.connect()
-    result = connection.execute("select extract(epoch from now())")
-    server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=2)
-    #server_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # (was 5) giving a little buffer if the db takes time to update on client or server
-    local_session.commit()  
-
-    print_("New Sync times")
-    print_("client timestamp: {}".format(client_sync.timestamp.isoformat(' ')))
-    print_("server timestamp: {}".format(server_sync.timestamp.isoformat(' ')))
-
-    print_("***************** END SYNC *******************************************")
-    
-    if pb:
-        pb.hide() 
 
