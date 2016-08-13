@@ -17,7 +17,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import sendgrid
 
 # Sendgrid stuff below
-sg = sendgrid.SendGridAPIClient(apikey=SENDGRID_API_KEY)
+sg = sendgrid.SendGridAPIClient(apikey=c.SENDGRID_API_KEY)
 mail_data = {
             "personalizations": [{"to":[{"email": "slzatz@gmail.com"}, {"email":"szatz@webmd.net"}], "subject":""}],
             "from": {"email": c.CLOUDMAILIN},
