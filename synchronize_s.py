@@ -24,7 +24,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
 
     # may want to return a dictionary that identifies what might need further processing
     # "server_tasks", "client_tasks", "changes", "server_deleted", "client_deleted"
-    # although solved the aws postgres alarm issue but re-scanning whole db after synchs for alarms
+    # although solved the alarm issue by re-scanning whole db after synchs for alarms
     changes = [] #server changed context and folder
     tasklist= [] #server changed tasks
     deletelist = [] #server deleted tasks
@@ -38,9 +38,9 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
         remote_session.execute("SELECT 1")
     except sqla_exc.OperationalError as e: 
         remote_session = p.Remote_Session()
-        print("Connection to AWS RDS was probably lost:",e)
+        print("Connection to raspberry pi postgresql was probably lost:",e)
     else:
-        print("Connection to AWS RDS works")
+        print("Connection to raspberry pi postgresql works")
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         
