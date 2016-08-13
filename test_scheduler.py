@@ -10,12 +10,11 @@ from functools import wraps
 home = expanduser('~')
 import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
-from flask import Flask, request, Response, render_template, url_for #, Markup
+from flask import Flask, request, Response, render_template
 from twitter import *
 from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
-import markdown2 as markdown
-import synchronize_server
+import sendgrid
 
 # Sendgrid stuff below
 sg = sendgrid.SendGridAPIClient(apikey=SENDGRID_API_KEY)
@@ -178,7 +177,7 @@ def recent():
     z = list(j.id for j in scheduler.get_jobs())
     tasks3 = session.query(Task).filter(Task.id.in_(z))
 
-    return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) #, Markup=Markup) # not sure why you have to pass Markup and not url_for
+    return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) 
     
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
