@@ -1,13 +1,11 @@
 '''
-version using simpler AWS SES to send email
-using twitter to send direct messages as well
+This version uses Sendgrid to send email and uses twitter to send direct messages
 '''
 from datetime import datetime, timedelta
 import sys
 import os
-import argparse
 import json
-from os.path import expanduser, isfile
+from os.path import expanduser
 from functools import wraps
 home = expanduser('~')
 import config as c
@@ -16,87 +14,40 @@ from flask import Flask, request, Response, render_template, url_for #, Markup
 from twitter import *
 from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
-import boto.ses
 import markdown2 as markdown
 import toodledo_server
 import synchronize_server
-#import boto3 ##################
-#from boto3.dynamodb.conditions import Key ########################
-import time
 
-ses_conn = boto.ses.connect_to_region(
-                                      "us-east-1",
-                                      aws_access_key_id=c.aws_access_key_id,
-                                      aws_secret_access_key=c.aws_secret_access_key)
-    
-parser = argparse.ArgumentParser(description='Command line options for determining which db; sending html email.')
+# Sendgrid stuff below
+sg = sendgrid.SendGridAPIClient(apikey=SENDGRID_API_KEY)
+mail_data = {
+            "personalizations": [{"to":[{"email": "slzatz@gmail.com"}, {"email":"szatz@webmd.net"}], "subject":""}],
+            "from": {"email": c.CLOUDMAILIN},
+            "content":[{"type":"text/plain", "value":""}]
+            }
+# Note that using cloudmailin as sender makes it possible for recipient to respond
 
-# for all of the following: if the command line option is not present then the value is the opposite of below
-parser.add_argument( '--aws', action='store_true', help="Use postgres db located in AWS RDS")
-parser.add_argument( '--html', action='store_true', help="Send both a plain and HTML email")
-args = parser.parse_args()
-
-# since test_scheduler is intended to be run against postgres could probably just set session = remote_session
-session = remote_session if args.aws else local_session
+session = remote_session
 
 # twitter
 oauth_token = c.twitter_oauth_token 
 oauth_token_secret = c.twitter_oauth_token_secret
 CONSUMER_KEY = c.twitter_CONSUMER_KEY
 CONSUMER_SECRET = c.twitter_CONSUMER_SECRET
-
 tw = Twitter(auth=OAuth(oauth_token, oauth_token_secret, CONSUMER_KEY, CONSUMER_SECRET))
-
-#using cloudmailin as sender makes it possible for recipient to respond
-sender = 'mylistmanager <6697b86bca34dcd126cb@cloudmailin.net>'
-recipients = ['slzatz@gmail.com', 'szatz@webmd.net']
-
-if not isfile('sync_log'):
-    with open("sync_log", 'w') as f:
-        f.write("There is currently no sync file present")
-
-#global
-sync_in_progress = False
-sonos_track = {'artist':'No artist', 'title':'No title', 'updated':False}
-
-def sync():
-    global sync_in_progress
-    sync_in_progress = True
-
-    if not toodledo_server.keycheck():
-        print("Could not get a good toodledo key")
-        res = ses_conn.send_email(sender, "Failure to obtain toodledo key", "", recipients) 
-        return
-        
-    log, changes, tasklist, deletelist = synchronize_server.synchronizetoodledo(showlogdialog=False, OkCancel=False, local=False) 
-
-    with open("sync_log", 'w') as f:
-        f.write(log)
-
-    sync_in_progress = False
-
-    # the only tasks that will get updated are those that were changed/added by the toodledo site/app
-    for task in tasklist:
-        print("tasklist=",tasklist)
-        if task.remind == 1 and task.duetime > (datetime.now() - timedelta(hours=5)): # need server offset
-            print("this task will be a reminder",task)
-            adjusted_dt = task.duetime + timedelta(hours=5)
-            j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=adjusted_dt, name=task.title[:50], args=[task.id], replace_existing=True)
-    
-    subject = "sync log"
-    res = ses_conn.send_email(sender, "Sync Log", log, recipients)
-
-    print("res=",res)
 
 def alarm(task_id):
 
     try:
-        #task = session.query(Task).filter(Task.tid==task_tid).one()
         task = session.query(Task).get(task_id)
     except Exception as e:
         print("Could not find task id:",task_id)
         print("Exception: ",e)
-        res = ses_conn.send_email(sender, "Exception trying to find task_id: {}".format(task_id), "The exception was: {}".format(e), recipients)
+        mail_data["personalizations"][0]["subject"] = "Exception trying to find task_id: {}".format(task_id) #subject of the email
+        mail_data["content"][0]["value"] = "The exception was: {}".format(e) #body of the email
+        response = sg.client.mail.send.post(request_body=mail_data)
+        print('mail status code = ',response.status_code)
+        #print(response.body)
         return
     
     subject = task.title
@@ -108,19 +59,17 @@ def alarm(task_id):
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
-    res = ses_conn.send_email(sender, subject, body, recipients)
-    print("res=",res)
-
-    if args.html and body:
-        html_body = markdown.markdown(body)
-        res = ses_conn.send_email(sender, subject, body, recipients, html_body=html_body)
-        print("res=",res)
+    mail_data["personalizations"][0]["subject"] = subject #subject of the email
+    mail_data["content"][0]["value"] = body #body of the email
+    response = sg.client.mail.send.post(request_body=mail_data)
+    print(response.status_code)
+    #print(response.body)
 
     #starred tasks automatically repeat their alarm every 24h
     if task.star:
         task.duedate = task.duetime = task.duetime + timedelta(days=1)
         session.commit()
-        j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing but doesn't hurt and who knows ...
+        j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
         print("Starred task was scheduled again")
         print('Task id:{}; star: {}; title:{}'.format(task.id, task.star, task.title))
         print("Alarm scheduled: {}".format(repr(j)))
@@ -153,7 +102,7 @@ def check_auth(username, password):
     """This function is called to check if a username /
     password combination is valid.
     """
-    return username ==  c.aws_id and password == c.aws_pw
+    return username ==  c.id and password == c.pw
 
 def authenticate():
     """Sends a 401 response that enables basic auth"""
@@ -186,22 +135,22 @@ def add_task(task_id, days, minutes, msg):
     z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
     return json.dumps(z)
 
-@app.route("/sync")
-def do_immediate_sync():
-    if sync_in_progress:
-        return Response("There appears to be a sync already going on", mimetype='text/plain')
-    else:
-        j = scheduler.add_job(sync, name="sync")
-        return Response("Initiated sync - check /sync-log to see what happened", mimetype='text/plain')
+#@app.route("/sync")
+#def do_immediate_sync():
+#    if sync_in_progress:
+#        return Response("There appears to be a sync already going on", mimetype='text/plain')
+#    else:
+#        j = scheduler.add_job(sync, name="sync")
+#        return Response("Initiated sync - check /sync-log to see what happened", mimetype='text/plain')
    
-@app.route("/sync-log")
-def sync_log():
-    if sync_in_progress:
-        return Response("Sync currently underway", mimetype='text/plain')
-    else:
-        with open("sync_log", 'r') as f:
-            z = f.read()
-        return Response(z, mimetype='text/plain')
+#@app.route("/sync-log")
+#def sync_log():
+#    if sync_in_progress:
+#        return Response("Sync currently underway", mimetype='text/plain')
+#    else:
+#        with open("sync_log", 'r') as f:
+#            z = f.read()
+#        return Response(z, mimetype='text/plain')
 
 @app.route("/")
 def index():
