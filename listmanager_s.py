@@ -2390,7 +2390,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.refreshlistonly()
 
         # if there were no changes, then don't update alarms
-        if changes + tasklist + deletelist:
+        if self.sync_log != 'Canceled sync':
             try:
                 #r = requests.get("http://54.173.234.69:5000/update_alarms")
                 r = requests.get(SCHEDULER_URI + '/update_alarms')
