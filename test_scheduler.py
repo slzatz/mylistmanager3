@@ -15,7 +15,6 @@ from twitter import *
 from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import markdown2 as markdown
-import toodledo_server
 import synchronize_server
 
 # Sendgrid stuff below
@@ -241,9 +240,6 @@ def incoming():
                     task.folder = folder
 
         session.commit()
-
-        #at one point it was automatically syncing and that doesn't work in a world where toodledo doesn't matter
-        #j = scheduler.add_job(sync, name="sync")
 
         text = "Updated task" if update else "Created new task"
         return Response("{} with title: {}".format(text,title), mimetype='text/plain')
