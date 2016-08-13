@@ -19,24 +19,17 @@ import sqlalchemy.exc as sqla_exc
 from config import RDS_URI ### should change to PG_URI
 from lmglobals_p import REMOTE_DB, internet_accessible #, LOCAL_DB_FILE
 
-#cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
-#LOCAL_DB_FILE = os.path.join(cwd,'lmdb','mylistmanager.db')
-#sqlite_uri = 'sqlite:///' + LOCAL_DB_FILE
-
-__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc'] #'local_engine', 'local_session', 'Temp_tid'. 'metadata'
+__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc'] 
 
 metadata = MetaData()
 task_table = Table('task',metadata,
               Column('id', Integer, primary_key=True),
-              Column('tid', Integer), #, unique=True, nullable=False), #the toodledo id ... unique=True, nullable=False), needs to be non-unique because we get the tids on sync
-              #Column('parent_tid', Integer, ForeignKey('task.tid'), default=0), # if this column is going to refer to tid, then postgres wanted tid to be unique and not nullable
+              Column('tid', Integer), #, unique=True, nullable=False), #the toodledo id ... unique=True, nullable=False), needs to be non-unique because we get the tids on sync not needed if stop toodledo
               Column('priority', Integer, default=1),
               Column('title',String(255)),
               Column('tag',String(64)),
-              #Column('folder_tid', Integer, ForeignKey('folder.tid'), default=0), #use the toodledo id
-              Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), #use the postgreSQL id
-              #Column('context_tid', Integer, ForeignKey('context.tid'), default=0), #use the toodledo id
-              Column('context_tid', Integer, ForeignKey('context.id'), default=1), #use the postgrSQL id
+              Column('folder_tid', Integer, ForeignKey('folder.id'), default=1), 
+              Column('context_tid', Integer, ForeignKey('context.id'), default=1), 
               Column('duetime', DateTime),
               Column('star', Boolean, default=False),
               Column('added', Date), # this is the date that it was added to the server (may not be exact for items created on client but should be close) and it's only a date
@@ -48,7 +41,6 @@ task_table = Table('task',metadata,
               Column('created', DateTime, default=datetime.datetime.now), 
               Column('modified', DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now),
               Column('startdate', Date),
-              #Column('starttime', Time),
               Column('remind', Integer)
 )
 
@@ -73,7 +65,7 @@ task_table = Table('task',metadata,
 context_table = Table('context', metadata,
                  Column('id', Integer, primary_key=True),
                  #Column('tid', Integer, unique=True, nullable=False), #the toodledo id
-                 Column('tid', Integer), #the toodledo id - can be null till we pick one up
+                 Column('tid', Integer), #the toodledo id - can be null till we pick one up - not needed if we stop synching with toodledo
                  Column('title', String(32), unique=True, nullable=False), 
                  Column('default', Boolean, default=False),
                  Column('created', DateTime, default=datetime.datetime.now), 
@@ -86,7 +78,7 @@ context_table = Table('context', metadata,
 folder_table = Table('folder', metadata,
                  Column('id', Integer, primary_key=True),
                  #Column('tid', Integer, unique=True, nullable=False), #the toodledo id
-                 Column('tid', Integer), #the toodledo id - can be null till we pick one up
+                 Column('tid', Integer), #the toodledo id - can be null till we pick one up - not needed if we stop synching with toodledo
                  Column('title', String(32), nullable=False),#unique=True - toodledo can have same title
                  Column('private', Boolean, default=False),
                  Column('archived', Boolean, default=False),
@@ -164,11 +156,6 @@ class Sync(object):
         self.timestamp = timestamp
         self.unix_timestamp = unix_timestamp
 
-#class Temp_tid(object):
-#    def __init__(self, title=None, type_=None):
-#        self.title = title
-#        self.type_ = type_
-
 mapper(Context, context_table, properties = {'folders':relation(Folder,
 primaryjoin=and_(context_table.c.id==task_table.c.context_tid, folder_table.c.id==task_table.c.folder_tid),
 viewonly=True, foreign_keys=[folder_table.c.id], remote_side=[task_table.c.context_tid]), #backref=backref('contexts', remote_side=[task_table.c.folder_tid])),
@@ -194,8 +181,6 @@ mapper(TaskKeyword, taskkeyword_table, properties= {
 
 mapper(Sync, sync_table)
 
-#mapper(Temp_tid, temp_tid_table)
-
 # note that even if databases don't exist these won't fail
 #local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False}, echo=False)
 #Local_Session = sessionmaker(bind=local_engine)
@@ -203,8 +188,8 @@ mapper(Sync, sync_table)
 
 if internet_accessible():
     try:
-        #remote_engine = create_engine(rds_uri, echo=True)
-        remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False, pool_recycle=500)
+        remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=True)
+        #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False, pool_recycle=500)
         Remote_Session = sessionmaker(bind=remote_engine)
         remote_session = Remote_Session()
 
