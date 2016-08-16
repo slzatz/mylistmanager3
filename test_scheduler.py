@@ -191,7 +191,7 @@ def incoming():
             title = subject[:pos].strip()
             mods = subject[pos+1:].strip().split()
         else:
-            title = subject[3:].strip()
+            title = subject
             mods = []
         tasks = session.query(Task).filter(Task.title==title).all()
         if len(tasks) > 1:
