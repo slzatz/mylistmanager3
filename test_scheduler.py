@@ -48,7 +48,7 @@ def alarm(task_id):
         #print(response.body)
         return
     
-    subject = task.title
+    subject = task.title + " {{" + str(task_id) + "}}"
     body = task.note if task.note else ''
     hints = "| priority: !! or zero or 0; alarm: off; star: star or * or nostar; remind: off"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
