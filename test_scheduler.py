@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import sys
 import os
 import json
+import re #################################################################################################################
 from os.path import expanduser
 from functools import wraps
 home = expanduser('~')
@@ -185,25 +186,27 @@ def incoming():
         subject = request.form.get('headers[Subject]')
         if subject.lower().startswith('re:'):
             subject = subject[3:].strip()
-
+        id_ = None
+        p = re.compile('{{[^"]*}}')  ##################################################################
+        m = p.search(subject)
+        if m:
+            begin,end = m.span()
+            id_ = int(subject[begin+2:end-2])
+            subject = subject[:begin] + subject[end:]
+        
         pos = subject.find('|')
         if pos != -1:
-            title = subject[:pos].strip()
             mods = subject[pos+1:].strip().split()
+            subject = subject[:pos].strip()
         else:
-            title = subject
             mods = []
-        tasks = session.query(Task).filter(Task.title==title).all()
-        if len(tasks) > 1:
-            print("More than one task had the title: {}".format(title))
-            return Response("More than one task had the title: {}".format(title), mimetype='text/plain')
-        elif len(tasks) == 1:
-            print("There was a match - only one task had the title: {}".format(title))
-            task = tasks[0]
-            update = True
+        print("subject =",subject) 
+        if id_:
+            task = session.query(Task).get(id_)
+            task.title = subject
         else:
-            print("No task matched so assuming this is a new task: {}".format(title))
-            task = Task(title=title)
+            print("There was no {{id}} so assuming this is a new task: {}".format(subject))
+            task = Task(title=subject)
             task.startdate = datetime.today().date() 
             session.add(task)
             session.commit()
@@ -241,7 +244,7 @@ def incoming():
         session.commit()
 
         text = "Updated task" if update else "Created new task"
-        return Response("{} with title: {}".format(text,title), mimetype='text/plain')
+        return Response("{} with title: {}".format(text,subject), mimetype='text/plain')
 
     else:
         return 'It was not a post method'
