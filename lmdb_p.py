@@ -181,20 +181,12 @@ mapper(TaskKeyword, taskkeyword_table, properties= {
 
 mapper(Sync, sync_table)
 
-# note that even if databases don't exist these won't fail
-#local_engine = create_engine(sqlite_uri, connect_args={'check_same_thread':False}, echo=False)
-#Local_Session = sessionmaker(bind=local_engine)
-#local_session = Local_Session()
-
 if internet_accessible():
     try:
-        remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=True)
+        remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False)
         #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False, pool_recycle=500)
         Remote_Session = sessionmaker(bind=remote_engine)
         remote_session = Remote_Session()
-
-        #metadata.bind = local_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
-        #metadata.create_all(local_engine) # only creates if tables not present but not
 
         metadata.bind = remote_engine # I think only necessary if you're issuing a metadata.create_all(engine) command
         metadata.create_all(remote_engine) # only creates if tables not present but not

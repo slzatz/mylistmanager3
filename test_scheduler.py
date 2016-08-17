@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import sys
 import os
 import json
-import re #################################################################################################################
+import re 
 from os.path import expanduser
 from functools import wraps
 home = expanduser('~')
@@ -187,7 +187,7 @@ def incoming():
         if subject.lower().startswith('re:'):
             subject = subject[3:].strip()
         id_ = None
-        p = re.compile('{{[^"]*}}')  ##################################################################
+        p = re.compile('{{[^"]*}}')  
         m = p.search(subject)
         if m:
             begin,end = m.span()
