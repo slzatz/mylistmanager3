@@ -204,13 +204,13 @@ def incoming():
         if id_:
             task = session.query(Task).get(id_)
             task.title = subject
+            print("There was an id: {} so assuming this is a modification of an existing task: {}".format(id_,subject))
         else:
-            print("There was no {{id}} so assuming this is a new task: {}".format(subject))
+            print("There was no id so assuming this is a new task: {}".format(subject))
             task = Task(title=subject)
             task.startdate = datetime.today().date() 
             session.add(task)
             session.commit()
-            update = False
 
         body = request.form.get('plain')
         pattern = "================="
@@ -243,11 +243,11 @@ def incoming():
 
         session.commit()
 
-        text = "Updated task" if update else "Created new task"
-        return Response("{} with title: {}".format(text,subject), mimetype='text/plain')
 
     else:
-        return 'It was not a post method'
+        print("It was not a post method")
+
+    return "OK"
 
 @app.route("/incoming_from_echo", methods=['GET', 'POST'])
 def incoming_from_echo():
