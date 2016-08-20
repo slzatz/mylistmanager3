@@ -53,6 +53,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
     last_server_sync = server_sync.timestamp 
 
     log+= "LISTMANAGER SYNCRONIZATION\n"
+    log+= "Server you are synching with is {}\n".format(p.remote_engine)
     log+= "Local Time is {0}\n\n".format(datetime.datetime.now())
     delta = datetime.datetime.now() - last_client_sync
     log+= "The last time client was synced (based on client clock) was {}, which was {} days and {} minutes ago.\n".format(last_client_sync.isoformat(' ')[:19], delta.days, delta.seconds/60)
