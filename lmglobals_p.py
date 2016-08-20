@@ -4,8 +4,8 @@ import configparser as configparser
 
 cwd = os.getcwd()  #cwd => /home/slzatz/mylistmanager
 CONFIG_FILE = os.path.join(cwd,'mylistmanager_p.ini')
-#REMOTE_DB = 'listmanager_p' ############### 09082015
-REMOTE_DB = 'listmanager_pi' ############### 09082015
+REMOTE_DB = 'listmanager_p' ############### 09082015 #to create postgresql database on 08202016
+#REMOTE_DB = 'listmanager_pi' ############### 09082015
 WHOOSH_DIR = os.path.join(cwd, 'whoosh_index_p')
 IMAGES_DIR = os.path.join(cwd,'bitmaps')
 PLUGIN_DIR = os.path.join(cwd,'plugins')

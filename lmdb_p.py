@@ -19,7 +19,7 @@ import sqlalchemy.exc as sqla_exc
 from config import RDS_URI ### should change to PG_URI
 from lmglobals_p import REMOTE_DB, internet_accessible #, LOCAL_DB_FILE
 
-__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc'] 
+__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc', 'raspi_session'] 
 
 metadata = MetaData()
 task_table = Table('task',metadata,
@@ -195,3 +195,11 @@ if internet_accessible():
         remote_session = None
 else:
     remote_session = None
+
+###############################################3
+
+RASPI_URI = 'postgresql+psycopg2://pi:Duster99@0.tcp.ngrok.io:10616'
+RASPI_DB = 'listmanager_pi' ############### 09082015
+raspi_engine = create_engine(RASPI_URI+'/'+RASPI_DB, echo=False)
+Raspi_Session = sessionmaker(bind=raspi_engine)
+raspi_session = Raspi_Session()
