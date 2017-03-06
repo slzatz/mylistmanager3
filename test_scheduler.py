@@ -16,6 +16,8 @@ from twitter import *
 from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import sendgrid
+import paho.mqtt.publish as mqtt_publish #####################################
+from config import aws_host
 
 # Sendgrid stuff below
 sg = sendgrid.SendGridAPIClient(apikey=c.SENDGRID_API_KEY)
@@ -180,6 +182,25 @@ def recent():
 
     return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) 
     
+@app.route("/starred_work_todos")
+def starred_work_todos():
+    tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.star == True, Task.completed == None)).order_by(desc(Task.modified))
+    titles = [task.title for task in tasks]
+    print(datetime.datetime.now())
+    print(repr(titles).encode('ascii', 'ignore'))
+    data = {"header":"To Do", "text":titles, "pos":3} #text value is a list
+    mqtt_publish.single('esp_tft', json.dumps(data), hostname='localhost', retain=False, port=1883, keepalive=60)
+    return "\n".join(titles)
+
+
+
+    tasks = session.query(Task).filter(and_(Task.completed == None, Task.modified > (datetime.now() - timedelta(days=2))))
+    tasks2 = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.completed == None)).order_by(desc(Task.modified))
+
+    z = list(j.id for j in scheduler.get_jobs())
+    tasks3 = session.query(Task).filter(Task.id.in_(z))
+
+    return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) 
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
     if request.method == 'POST':
@@ -243,6 +264,7 @@ def incoming():
 
         session.commit()
 
+        update_alarms() # added that alarms should be updated when new or modified tasks are received by email 02012017
 
     else:
         print("It was not a post method")
