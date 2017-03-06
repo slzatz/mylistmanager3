@@ -17,7 +17,6 @@ from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import sendgrid
 import paho.mqtt.publish as mqtt_publish #####################################
-from config import aws_host
 
 # Sendgrid stuff below
 sg = sendgrid.SendGridAPIClient(apikey=c.SENDGRID_API_KEY)
