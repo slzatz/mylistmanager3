@@ -64,7 +64,7 @@ def alarm(task_id):
     response = sg.client.mail.send.post(request_body=mail_data)
     print(response.status_code)
     #print(response.body)
-    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm","text":[subject], "pos":2}), hostname='localhost', retain=False, port=1883, keepalive=60)
+    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm","text":[subject], "pos":4}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
     #starred tasks automatically repeat their alarm every 24h
     if task.star:
