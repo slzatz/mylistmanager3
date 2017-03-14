@@ -162,13 +162,22 @@ def index():
 
 @app.route("/update_alarms")
 def update_alarms():
+    # note that if it a task.remind and * even if it's past it will be advanced a day and may miss the current day
     for j in scheduler.get_jobs():
         j.remove()
     #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
     tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
     for t in tasks:
-        j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+        if t.duetime > datetime.now():
+            j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+        else:
+            delta = datetime.now() - t.duetime
+            if t.duetime.hour > datetime.now().hour:
+                duetime = datetime.now() + timedelta(delta.seconds)
+            else:  
+                duetime = t.duetime + timedelta(delta.days+1)
+            j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
         print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
         print("Alarm scheduled: {}".format(repr(j)))
 
@@ -261,7 +270,12 @@ def incoming():
 
         session.commit()
 
-        update_alarms() # added that alarms should be updated when new or modified tasks are received by email 02012017
+        #update_alarms() # added that alarms should be updated when new or modified tasks are received by email 02012017
+        if task.star and task.remind:
+            j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=datetime.now()+timedelta(days=1), name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
+            print("Incoming email was starred and remind so task was scheduled")
+            print('Task id:{}; star: {}; title:{}'.format(task.id, task.star, task.title))
+            print("Alarm scheduled: {}".format(repr(j)))
 
     else:
         print("It was not a post method")
