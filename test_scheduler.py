@@ -52,7 +52,7 @@ def alarm(task_id):
     
     subject = task.title + " {{" + str(task_id) + "}}"
     body = task.note if task.note else ''
-    hints = "| priority: !! or zero or 0; alarm: off; star: star or * or nostar; remind: off"
+    hints = "| priority: !! or zero or 0; alarm/remind: (on, remind, alarm) or (off, noremind, noalarm); star: (star, *) or nostar"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
     body = header+hints+"\n==================================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_id, subject))
@@ -66,7 +66,7 @@ def alarm(task_id):
     #print(response.body)
     mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm","text":[subject], "pos":4}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
-    #starred tasks automatically repeat their alarm every 24h
+    #starred tasks with remind set to 1 automatically repeat their alarm every 24h
     if task.star and task.remind:
         #the combination of task.star and task.remind mean that the task will keep alarming but you don't want to change the task.duedate or it keeps overwriting any changes on client
         #task.duedate = task.duetime = task.duetime + timedelta(days=1)
@@ -244,8 +244,11 @@ def incoming():
                 task.star = False
             if m in ('*', 'star'):
                 task.star = True
-            if m == 'off':
-                task.remind = None
+            if m in ('off', 'noremind', 'noalarm'):
+                task.remind = 0
+            if m in ('on', 'remind', 'alarm'):
+                task.remind = 1
+                task.duedate = task.duetime = datetime.now() + timedelta(days=1)
             if m.startswith('@'):
                 context_title = m[1:].replace('_', ' ') # allows you to 'not work' as 'not_work'
                 context = session.query(Context).filter_by(title=context_title).first()
@@ -265,7 +268,7 @@ def incoming():
         print("It was not a post method")
 
     return "OK"
-
+# the below worked but not using Amazon right now to create tasks although could re-explore
 @app.route("/incoming_from_echo", methods=['GET', 'POST'])
 def incoming_from_echo():
     if request.method == 'POST':
