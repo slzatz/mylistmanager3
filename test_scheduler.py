@@ -167,6 +167,7 @@ def update_alarms():
         j.remove()
     #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
     tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
+    tasks = session.query(Task).filter(Task.remind == 1).filter(or_(Task.duetime > datetime.now(), Task.star == True))
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
     for t in tasks:
         if t.duetime > datetime.now():
