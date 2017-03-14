@@ -67,10 +67,12 @@ def alarm(task_id):
     mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm","text":[subject], "pos":4}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
     #starred tasks automatically repeat their alarm every 24h
-    if task.star:
-        task.duedate = task.duetime = task.duetime + timedelta(days=1)
-        session.commit()
-        j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
+    if task.star and task.remind:
+        #the combination of task.star and task.remind mean that the task will keep alarming but you don't want to change the task.duedate or it keeps overwriting any changes on client
+        #task.duedate = task.duetime = task.duetime + timedelta(days=1)
+        #session.commit()
+        #j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
+        j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=datetime.now()+timedelta(days=1), name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
         print("Starred task was scheduled again")
         print('Task id:{}; star: {}; title:{}'.format(task.id, task.star, task.title))
         print("Alarm scheduled: {}".format(repr(j)))
@@ -80,7 +82,8 @@ url = 'sqlite:///scheduler_test.sqlite'
 scheduler.add_jobstore('sqlalchemy', url=url)
 
 # On restarting program, want to pick up the latest alarms
-tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
+#tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
+tasks = session.query(Task).filter(and_(Task.remind == 1, _or(Task.duetime > datetime.now(), Task.star == True)))
 print("On restart, there are {} tasks that are being scheduled".format(tasks.count()))
 for t in tasks:
     j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
@@ -162,7 +165,8 @@ def index():
 def update_alarms():
     for j in scheduler.get_jobs():
         j.remove()
-    tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
+    #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
+    tasks = session.query(Task).filter(and_(Task.remind == 1, _or(Task.duetime > datetime.now(), Task.star == True)))
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
     for t in tasks:
         j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
