@@ -174,9 +174,9 @@ def update_alarms():
         else:
             delta = datetime.now() - t.duetime
             if t.duetime.hour > datetime.now().hour:
-                duetime = datetime.now() + timedelta(delta.seconds)
+                duetime = datetime.now() + timedelta(seconds=delta.seconds)
             else:  
-                duetime = t.duetime + timedelta(delta.days+1)
+                duetime = t.duetime + timedelta(days=delta.days+1)
             j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
         print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
         print("Alarm scheduled: {}".format(repr(j)))
