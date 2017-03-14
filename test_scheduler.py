@@ -82,15 +82,14 @@ url = 'sqlite:///scheduler_test.sqlite'
 scheduler.add_jobstore('sqlalchemy', url=url)
 
 # On restarting program, want to pick up the latest alarms
-#tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
-tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
-print("On restart, there are {} tasks that are being scheduled".format(tasks.count()))
-for t in tasks:
-    j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
-    print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
-    print("Alarm scheduled: {}".format(repr(j)))
-
-scheduler.start()
+#tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
+#print("On restart, there are {} tasks that are being scheduled".format(tasks.count()))
+#for t in tasks:
+#    j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+#    print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
+#    print("Alarm scheduled: {}".format(repr(j)))
+#
+#scheduler.start()
 
 app = Flask(__name__)
 
@@ -332,6 +331,10 @@ def sonos_check():
     else:
         #return "No Change"
         return json.dumps(sonos_track)
+
+# update alarms before restarting scheduler
+update_alarms()
+scheduler.start()
 
 if __name__ == '__main__':
     app.run(host=HOST, debug=DEBUG, use_reloader=False)
