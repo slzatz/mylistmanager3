@@ -1,6 +1,7 @@
 '''
 script used to recreate postgresql listmanager db on a raspberry pi from the one
 that was located on AWS RDS
+Also was then created a load_ec2_from_raspi to do the reverse
 '''
 
 import datetime
