@@ -541,11 +541,11 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
         local_session.delete(t)
         local_session.commit()     
          
-    client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2) # giving a little buffer if the db takes time to update on client or server
+    client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
 
     connection = p.remote_engine.connect()
     result = connection.execute("select extract(epoch from now())")
-    server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=2)
+    server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=10) # not sure why this is necessary but it really is
 
     local_session.commit()  
 
