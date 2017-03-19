@@ -197,8 +197,12 @@ def recent():
     
 @app.route("/starred_work_todos")
 def starred_work_todos():
-    tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.star == True, Task.completed == None)).order_by(desc(Task.modified))
-    titles = [task.title for task in tasks]
+    #tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.star == True, Task.completed == None)).order_by(desc(Task.modified))
+    #titles = [task.title for task in tasks]
+
+    tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.completed == None)).order_by(desc(Task.modified))
+    titles = ['#'+task.title if task.star else task.title for task in tasks]
+
     print(datetime.now())
     print(repr(titles).encode('ascii', 'ignore'))
     data = {"header":"To Do", "text":titles, "pos":3} #text value is a list
