@@ -543,9 +543,16 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
          
     client_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=5) # giving a little buffer if the db takes time to update on client or server
 
-    connection = p.remote_engine.connect()
-    result = connection.execute("select extract(epoch from now())")
-    server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=10) # not sure why this is necessary but it really is
+    # saw definitively that the resulting timestamp could be earlier than when the server tasks were modified -- no idea why
+    #connection = p.remote_engine.connect()
+    #result = connection.execute("select extract(epoch from now())")
+    #server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=10) # not sure why this is necessary but it really is
+
+    task = remote_session.query(p.Task).get(11) #Call Spectacles ...
+    priority = task.priority
+    task.priority = priority + 1 if priority < 3 else 0
+    remote_session.commit()
+    server_sync.timestamp = task.modified + datetime.timedelta(seconds=5) # not sure why this is necessary but it really is
 
     local_session.commit()  
 
