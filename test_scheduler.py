@@ -17,6 +17,7 @@ from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import sendgrid
 import paho.mqtt.publish as mqtt_publish #####################################
+from random import shuffle
 
 # Sendgrid stuff below
 sg = sendgrid.SendGridAPIClient(apikey=c.SENDGRID_API_KEY)
@@ -200,9 +201,9 @@ def starred_work_todos():
     #tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.star == True, Task.completed == None)).order_by(desc(Task.modified))
     #titles = [task.title for task in tasks]
 
-    tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.completed == None)).order_by(desc(Task.modified))
+    tasks = session.query(Task).join(Context).filter(Context.title == 'work', Task.priority == 3, Task.completed == None)
     titles = ['#'+task.title if task.star else task.title for task in tasks]
-
+    shuffle(titles)
     print(datetime.now())
     print(repr(titles).encode('ascii', 'ignore'))
     data = {"header":"To Do", "text":titles, "pos":3} #text value is a list
