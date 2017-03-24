@@ -65,7 +65,7 @@ def alarm(task_id):
     response = sg.client.mail.send.post(request_body=mail_data)
     print(response.status_code)
     #print(response.body)
-    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm","text":[subject], "pos":4}), hostname='localhost', retain=False, port=1883, keepalive=60)
+    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm","text":["#"+subject, body], "pos":4}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
     #starred tasks with remind set to 1 automatically repeat their alarm every 24h
     if task.star and task.remind:
@@ -198,10 +198,7 @@ def recent():
     
 @app.route("/starred_work_todos")
 def starred_work_todos():
-    #tasks = session.query(Task).join(Context).filter(and_(Context.title == 'work', Task.priority == 3, Task.star == True, Task.completed == None)).order_by(desc(Task.modified))
-    #titles = [task.title for task in tasks]
-
-    tasks = session.query(Task).join(Context).filter(Context.title == 'work', Task.priority == 3, Task.completed == None)
+    tasks = session.query(Task).join(Context).filter(Context.title=='work', Task.priority==3, Task.completed==None, Task.deleted==False)
     titles = ['#'+task.title if task.star else task.title for task in tasks]
     shuffle(titles)
     print(datetime.now())
