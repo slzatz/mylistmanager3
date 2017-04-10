@@ -1,5 +1,6 @@
 '''
-This version uses Sendgrid to send email and uses twitter to send direct messages
+Uses Sendgrid to send email, CloudMailin to receive mail as HTTP posts, Twitter to send direct messages
+and sends mqtt messages to display_info_photos.py via the mqtt broker that is also running on this AWS EC2
 '''
 from datetime import datetime, timedelta
 import sys
@@ -16,7 +17,7 @@ from twitter import *
 from lmdb_p import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import sendgrid
-import paho.mqtt.publish as mqtt_publish #####################################
+import paho.mqtt.publish as mqtt_publish 
 from random import shuffle
 
 # Sendgrid stuff below
@@ -26,7 +27,8 @@ mail_data = {
             "from": {"email": c.CLOUDMAILIN},
             "content":[{"type":"text/plain", "value":""}]
             }
-# Note that using cloudmailin as sender makes it possible for recipient to respond
+# Note that using cloudmailin as sender makes it possible to respond to an alert email
+# and update the item that generated the email although really not using this feature much if at all
 
 session = remote_session
 
@@ -55,17 +57,17 @@ def alarm(task_id):
     body = task.note if task.note else ''
     hints = "| priority: !! or zero or 0; alarm/remind: (on, remind, alarm) or (off, noremind, noalarm); star: (star, *) or nostar"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
-    body = header+hints+"\n==================================================================================\n"+body
+    #body = header+hints+"\n==================================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_id, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
 
     mail_data["personalizations"][0]["subject"] = subject #subject of the email
-    mail_data["content"][0]["value"] = body #body of the email
+    mail_data["content"][0]["value"] = header+hints+"\n==================================================================================\n"+body
     response = sg.client.mail.send.post(request_body=mail_data)
     print(response.status_code)
     #print(response.body)
-    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm", "text":["#"+subject, body], "pos":4, "font":14, "bullets":False}), hostname='localhost', retain=False, port=1883, keepalive=60)
+    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm", "text":["#"+subject, body], "pos":4, "font_size":14, "bullets":False}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
     #starred tasks with remind set to 1 automatically repeat their alarm every 24h
     if task.star and task.remind:
@@ -81,16 +83,6 @@ def alarm(task_id):
 scheduler = BackgroundScheduler()
 url = 'sqlite:///scheduler_test.sqlite'
 scheduler.add_jobstore('sqlalchemy', url=url)
-
-# On restarting program, want to pick up the latest alarms
-#tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
-#print("On restart, there are {} tasks that are being scheduled".format(tasks.count()))
-#for t in tasks:
-#    j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
-#    print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
-#    print("Alarm scheduled: {}".format(repr(j)))
-#
-#scheduler.start()
 
 app = Flask(__name__)
 
@@ -221,9 +213,11 @@ def incoming():
             id_ = int(subject[begin+2:end-2])
             subject = subject[:begin] + subject[end:]
         
-        pos = subject.find('|')
+        #pos = subject.find('|')
+        pos = subject.find('@') #the start of the task mods is the context flag
         if pos != -1:
-            mods = subject[pos+1:].strip().split()
+            #mods = subject[pos+1:].strip().split()
+            mods = subject[pos:].strip().split()
             subject = subject[:pos].strip()
         else:
             mods = []
@@ -330,15 +324,6 @@ def scrobble():
 
     return Response("OK", mimetype='text/plain')
     
-#@app.route('/echo/<artist>/<source>') #0.0.0.0:5000/2145/0/10/how%20are%20you
-#def echo(artist, source):
-#    print(artist)
-#    print(source)
-#    sonos_companion['artist'] = artist
-#    sonos_companion['source'] = source
-#    sonos_companion['updated'] = True
-#    return json.dumps(sonos_companion)
-
 @app.route('/sonos_check') #0.0.0.0:5000/2145/0/10/how%20are%20you
 def sonos_check():
     if sonos_track['updated']:
