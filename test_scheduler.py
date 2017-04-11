@@ -67,7 +67,7 @@ def alarm(task_id):
     response = sg.client.mail.send.post(request_body=mail_data)
     print(response.status_code)
     #print(response.body)
-    mqtt_publish.single('esp_tft', json.dumps({"header":"Alarm", "text":["#"+subject, body], "pos":4, "font_size":14, "bullets":False}), hostname='localhost', retain=False, port=1883, keepalive=60)
+    mqtt_publish.single('esp_tft', json.dumps({"header":"Reminder", "text":["#"+subject, body], "pos":12, "font_size":14, "bullets":False}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
     #starred tasks with remind set to 1 automatically repeat their alarm every 24h
     if task.star and task.remind:
@@ -160,22 +160,25 @@ def update_alarms():
         j.remove()
     #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
     #tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
-    tasks = session.query(Task).filter(and_(Task.remind == 1, Task.completed == None)).filter(or_(Task.duetime > datetime.now(), Task.star == True))
+    #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.completed == None)).filter(or_(Task.duetime > datetime.now(), Task.star == True))
+    #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.completed == None)).filter(or_(Task.duetime > datetime.now(), Task.star == True))
+    tasks = session.query(Task).filter(Task.remind == 1, Task.completed == None)
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
+    z = []
     for t in tasks:
         if t.duetime > datetime.now():
             j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+            z.append("id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')))
         else:
-            delta = datetime.now() - t.duetime
-            if t.duetime.hour > datetime.now().hour:
-                duetime = datetime.now() + timedelta(seconds=delta.seconds)
-            else:  
-                duetime = t.duetime + timedelta(days=delta.days+1)
+            delta = datetime.now() - t.duetime 
+            duetime = t.duetime + timedelta(days=delta.days+1)
             j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+            z.append("id: {} name: {} run date: {} (advanced)".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')))
+
         print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
         print("Alarm scheduled: {}".format(repr(j)))
 
-    z = ["id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')) for j in scheduler.get_jobs()]
+    #z = ["id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')) for j in scheduler.get_jobs()]
     return Response('\n'.join(z), mimetype='text/plain')
 
 @app.route("/recent")
