@@ -155,30 +155,21 @@ def index():
 
 @app.route("/update_alarms")
 def update_alarms():
-    # note that if it a task.remind and * even if it's past it will be advanced a day and may miss the current day
+    # delete all existing alarms since apscheduler has no knowledge of how db may have changed
     for j in scheduler.get_jobs():
         j.remove()
-    #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.duetime > datetime.now()))
-    #tasks = session.query(Task).filter(and_(Task.remind == 1, or_(Task.duetime > datetime.now(), Task.star == True)))
-    #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.completed == None)).filter(or_(Task.duetime > datetime.now(), Task.star == True))
-    #tasks = session.query(Task).filter(and_(Task.remind == 1, Task.completed == None)).filter(or_(Task.duetime > datetime.now(), Task.star == True))
-    tasks = session.query(Task).filter(Task.remind == 1, Task.completed == None)
+
+    tasks = session.query(Task).filter(Task.remind==1, Task.completed==None, Task.duetime>datetime.now())
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
     z = []
     for t in tasks:
         if t.duetime > datetime.now():
-            j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
-            z.append("id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')))
-        else:
-            delta = datetime.now() - t.duetime 
-            duetime = t.duetime + timedelta(days=delta.days+1)
-            j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
-            z.append("id: {} name: {} run date: {} (advanced)".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')))
+        j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
+        z.append("id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')))
 
         print('Task id:{}; star: {}; title:{}'.format(t.id, t.star, t.title))
         print("Alarm scheduled: {}".format(repr(j)))
 
-    #z = ["id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')) for j in scheduler.get_jobs()]
     return Response('\n'.join(z), mimetype='text/plain')
 
 @app.route("/recent")
