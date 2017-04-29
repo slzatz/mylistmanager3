@@ -33,14 +33,15 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
     # Have now added pool_recycle to create_engine so remote_session = p.remote_session may be OK
     #remote_session = p.Remote_Session()
     remote_session = p.remote_session
+    print("synchronize_s: remote_session = ", remote_session)
     try:
         #p.remote_engine.execute("Select 1")
         remote_session.execute("SELECT 1")
     except sqla_exc.OperationalError as e: 
         remote_session = p.Remote_Session()
-        print("Connection to raspberry pi postgresql was probably lost:",e)
+        print("synchronize_s: Connection to aws postgresql was probably lost:",e)
     else:
-        print("Connection to raspberry pi postgresql works")
+        print("synchronize_s: Connection to aws postgresql works")
 
     print_("****************************** BEGIN SYNC (JSON) *******************************************")
         

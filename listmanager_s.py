@@ -31,7 +31,6 @@ from subprocess import Popen
 import resources
 import requests
 import base64
-from optparse import OptionParser
 from functools import partial
 
 import markdown2 as markdown
@@ -49,6 +48,7 @@ from whoosh.query import Term, Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 from whoosh import analysis
 from lmdb_s import *
+from lmdb_p import remote_session, Task as p_Task
 
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
@@ -610,9 +610,9 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.icons = {'context': self.context_icons, 'folder':self.folder_icons, 'app':{'star':(QtGui.QIcon(':/bitmaps/star.png'),''),'alarm':(QtGui.QIcon(':/bitmaps/alarm-clock.png'),'')}}
          
-        self.myevent = MyEvent()
+        self.myevent = MyEvent() 
 
-        try:
+        try: 
             import myevents
         except ImportError as e:
             print(e)
@@ -626,6 +626,28 @@ class ListManager(QtWidgets.QMainWindow):
         
         if args.ini:
             QtCore.QTimer.singleShot(0, self.loadtabs)
+
+        timer = QtCore.QTimer()
+        timer.timeout.connect(self.keep_db_alive)
+        timer.start(300000) 
+
+        self.timer = timer # assume here to keep from getting garbage collected
+
+    def keep_db_alive(self):
+        if remote_session:
+            print("listmanager: remote_session = ", remote_session)
+            try:
+                alive = remote_session.query(remote_session.query(p_Task).exists()).all()
+            except Exception as e:
+                print("Had a problem connecting to postgresql database")
+            else:
+                if alive[0][0]:
+                    print(datetime.datetime.now().isoformat(' ') + " - database connection alive")
+                else:
+                    print(datetime.datetime.now().isoformat(' ') + " - problem with db connection")
+        else:
+            print(datetime.datetime.now().isoformat(' ') + " - could not check db because no internet connection was present on startup")
+            
 
     def loadtabs(self):
         # open the tabs that were last open when the application was closed
@@ -1350,7 +1372,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.new_row = False 
         
-        self.myevent.signal.emit('set_reminder', {'task':task, 'session':session})
+        #self.myevent.signal.emit('set_reminder', {'task':task, 'session':session}) #######################################4-11-2017###############################################################
 
     @update_row
     @check_modified
@@ -1779,7 +1801,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         print_("Note Saved")
 
-        self.myevent.signal.emit('set_reminder', {'task':self.task, 'session':session})
+        #self.myevent.signal.emit('set_reminder', {'task':self.task, 'session':session})
 
     def displayitems(self):
 
@@ -2645,8 +2667,6 @@ class ListManager(QtWidgets.QMainWindow):
     @check_modified
     def ontaskinfo(self, check, retrieve_server=False): #appear to have to add check to all of them because triggered is returning check 12-21-2014
 
-        import lmdb_p
-
         print_("check={}".format(check))
 
         task = self.task
@@ -2670,7 +2690,7 @@ class ListManager(QtWidgets.QMainWindow):
         if task.tid and retrieve_server: # if it's a new task that hasn't gotten a tid from server yet, there won't be a server task to retrieve
             
             try:
-                server_task = lmdb_p.remote_session.query(lmdb_p.Task).filter_by(id=task.tid).one()
+                server_task = remote_session.query(p_Task).filter_by(id=task.tid).one()
 
             except sqla_orm_exc.NoResultFound:
                 s_task = {}
@@ -2913,7 +2933,7 @@ class ListManager(QtWidgets.QMainWindow):
             
             elif tab_value == 'alarm':
                 #tasks = session.query(Task).filter(~or_(Task.remind == None, Task.remind ==0))  # note server thinks it's zero but I have lots of None should decide
-                tasks = session.query(Task).filter(and_(or_(Task.remind != None, Task.remind != 0), Task.duedate > datetime.datetime.now()))
+                tasks = session.query(Task).filter(and_(or_(Task.remind != None, Task.remind != 0), Task.duetime > datetime.datetime.now()))
                 
             else:
                print("We have a problem because that is a tab value of tab type app  that I don't recognize; tab_value =",tab_value)
@@ -3412,6 +3432,4 @@ if __name__ == '__main__':
 
     mainwin.show()
     app.exec_() 
-
-
 

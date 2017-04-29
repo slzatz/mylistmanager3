@@ -53,7 +53,7 @@ def alarm(task_id):
         #print(response.body)
         return
     
-    subject = task.title + " {{" + str(task_id) + "}}"
+    subject = task.title + " [" + str(task_id) + "]"
     body = task.note if task.note else ''
     hints = "| priority: !! or zero or 0; alarm/remind: (on, remind, alarm) or (off, noremind, noalarm); star: (star, *) or nostar"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
@@ -67,10 +67,15 @@ def alarm(task_id):
     response = sg.client.mail.send.post(request_body=mail_data)
     print(response.status_code)
     #print(response.body)
-    mqtt_publish.single('esp_tft', json.dumps({"header":"Reminder", "text":["#"+subject, body], "pos":12, "font_size":14, "bullets":False}), hostname='localhost', retain=False, port=1883, keepalive=60)
+
+    text = ["#{red}"+subject]
+    text.extend(body.split("\n"))
+
+    mqtt_publish.single('esp_tft', json.dumps({"header":"Reminder", "text":text, "pos":12, "font_size":14, "bullets":False, "color":(255,0,0)}), hostname='localhost', retain=False, port=1883, keepalive=60)
 
     #starred tasks with remind set to 1 automatically repeat their alarm every 24h
-    if task.star and task.remind:
+    if 0:
+    #if task.star and task.remind:
         #the combination of task.star and task.remind mean that the task will keep alarming but you don't want to change the task.duedate or it keeps overwriting any changes on client
         #task.duedate = task.duetime = task.duetime + timedelta(days=1)
         #session.commit()
