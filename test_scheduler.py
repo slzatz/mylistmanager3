@@ -163,7 +163,6 @@ def update_alarms():
     print("On restart or following sync, there are {} tasks that are being scheduled".format(tasks.count()))
     z = []
     for t in tasks:
-        if t.duetime > datetime.now():
         j = scheduler.add_job(alarm, 'date', id=str(t.id), run_date=t.duetime, name=t.title[:50], args=[t.id], replace_existing=True) 
         z.append("id: {} name: {} run date: {}".format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')))
 
