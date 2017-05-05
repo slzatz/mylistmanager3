@@ -1,4 +1,5 @@
 '''
+Python 3 only
 Uses Sendgrid to send email, CloudMailin to receive mail as HTTP posts, Twitter to send direct messages
 and sends mqtt messages to display_info_photos.py via the mqtt broker that is also running on this AWS EC2
 '''
@@ -8,7 +9,6 @@ import os
 import json
 import re 
 from os.path import expanduser
-from functools import wraps
 home = expanduser('~')
 import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
@@ -20,7 +20,7 @@ import sendgrid
 import paho.mqtt.publish as mqtt_publish 
 from random import shuffle
 
-# Sendgrid stuff below
+# using Sendgrid to send alarm messages
 sg = sendgrid.SendGridAPIClient(apikey=c.SENDGRID_API_KEY)
 mail_data = {
             "personalizations": [{"to":[{"email": "slzatz@gmail.com"}, {"email":"szatz@webmd.net"}], "subject":""}],
@@ -50,14 +50,12 @@ def alarm(task_id):
         mail_data["content"][0]["value"] = "The exception was: {}".format(e) #body of the email
         response = sg.client.mail.send.post(request_body=mail_data)
         print('mail status code = ',response.status_code)
-        #print(response.body)
         return
     
     subject = task.title + " [" + str(task_id) + "]"
     body = task.note if task.note else ''
     hints = "| priority: !! or zero or 0; alarm/remind: (on, remind, alarm) or (off, noremind, noalarm); star: (star, *) or nostar"
     header = "star: {}; priority: {}; context: {}; reminder: {}".format(task.star, task.priority, task.context.title, task.remind)
-    #body = header+hints+"\n==================================================================================\n"+body
     print('Alarm! id:{}; subject:{}'.format(task_id, subject))
 
     tw.direct_messages.new(user='slzatz', text=subject[:110])
@@ -66,24 +64,11 @@ def alarm(task_id):
     mail_data["content"][0]["value"] = header+hints+"\n==================================================================================\n"+body
     response = sg.client.mail.send.post(request_body=mail_data)
     print(response.status_code)
-    #print(response.body)
 
     text = ["#{red}"+subject]
     text.extend(body.split("\n"))
 
     mqtt_publish.single('esp_tft', json.dumps({"header":"Reminder", "text":text, "pos":12, "font_size":14, "bullets":False, "color":(255,0,0)}), hostname='localhost', retain=False, port=1883, keepalive=60)
-
-    #starred tasks with remind set to 1 automatically repeat their alarm every 24h
-    if 0:
-    #if task.star and task.remind:
-        #the combination of task.star and task.remind mean that the task will keep alarming but you don't want to change the task.duedate or it keeps overwriting any changes on client
-        #task.duedate = task.duetime = task.duetime + timedelta(days=1)
-        #session.commit()
-        #j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
-        j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=datetime.now()+timedelta(days=1), name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
-        print("Starred task was scheduled again")
-        print('Task id:{}; star: {}; title:{}'.format(task.id, task.star, task.title))
-        print("Alarm scheduled: {}".format(repr(j)))
 
 scheduler = BackgroundScheduler()
 url = 'sqlite:///scheduler_test.sqlite'
@@ -111,47 +96,6 @@ def authenticate():
     'Could not verify your access level for that URL.\n'
     'You have to login with proper credentials', 401,
     {'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
-
-############################# note - will need to create another task function to handle a simple reminder that was created outside of listmanager ###############
-@app.route('/add/<int:delay>/<msg>')
-def add(delay, msg):
-    alarm_time = datetime.now() + timedelta(seconds=delay)
-    j = scheduler.add_job(alarmxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, 'date', run_date=alarm_time, name=msg[:15], args=[msg])
-    return 'added new job: id: {}<br>  name: {}<br>  run date: {}'.format(j.id, j.name, j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p'))
-
-@app.route('/add_task/<int:task_id>/<int:days>/<int:minutes>/<msg>') #0.0.0.0:5000/2145/0/10/how%20are%20you
-@requires_auth
-def add_task(task_id, days, minutes, msg):
-    alarm_time = datetime.now() + timedelta(days=days, minutes=minutes)
-    j = scheduler.add_job(alarm, 'date', id=str(task_id), run_date=alarm_time, name=msg[:50], args=[task_id], replace_existing=True)
-    z = {'id':j.id, 'name':j.name, 'run_date':j.trigger.run_date.strftime('%a %b %d %Y %I:%M %p')}
-    return json.dumps(z)
-
-#@app.route("/sync")
-#def do_immediate_sync():
-#    if sync_in_progress:
-#        return Response("There appears to be a sync already going on", mimetype='text/plain')
-#    else:
-#        j = scheduler.add_job(sync, name="sync")
-#        return Response("Initiated sync - check /sync-log to see what happened", mimetype='text/plain')
-   
-#@app.route("/sync-log")
-#def sync_log():
-#    if sync_in_progress:
-#        return Response("Sync currently underway", mimetype='text/plain')
-#    else:
-#        with open("sync_log", 'r') as f:
-#            z = f.read()
-#        return Response(z, mimetype='text/plain')
 
 @app.route("/")
 def index():
@@ -186,6 +130,7 @@ def recent():
 
     return render_template("recent.html", tasks=tasks, tasks2=tasks2, tasks3=tasks3) 
     
+# not really using this but allows you to update the info box of starred todos
 @app.route("/starred_work_todos")
 def starred_work_todos():
     tasks = session.query(Task).join(Context).filter(Context.title=='work', Task.priority==3, Task.completed==None, Task.deleted==False)
@@ -197,11 +142,12 @@ def starred_work_todos():
     mqtt_publish.single('esp_tft', json.dumps(data), hostname='localhost', retain=False, port=1883, keepalive=60)
     return "\n".join(titles)
 
+# emails coming in from cloudmailin
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
     if request.method == 'POST':
         subject = request.form.get('headers[Subject]')
-        if subject.lower().startswith('re:'):
+        if subject[:3].lower() in ('re:', 'fw:'):
             subject = subject[3:].strip()
         id_ = None
         p = re.compile('{{[^"]*}}')  
@@ -214,11 +160,12 @@ def incoming():
         #pos = subject.find('|')
         pos = subject.find('@') #the start of the task mods is the context flag
         if pos != -1:
-            #mods = subject[pos+1:].strip().split()
             mods = subject[pos:].strip().split()
             subject = subject[:pos].strip()
         else:
-            mods = []
+            #mods = []
+            # if no @context then assume work, priority 3 and a star
+            mods = ['@work', '!!!', '*'] 
         print("subject =",subject) 
         if id_:
             task = session.query(Task).get(id_)
@@ -276,61 +223,6 @@ def incoming():
         print("It was not a post method")
 
     return "OK"
-# the below worked but not using Amazon right now to create tasks although could re-explore
-@app.route("/incoming_from_echo", methods=['GET', 'POST'])
-def incoming_from_echo():
-    if request.method == 'POST':
-        data = request.get_json() #this is a python dictionary
-        print(data)
-
-        task = Task(title=data.get('title', 'No title'), priority=data.get('priority', 3), star=data.get('star', False))
-        task.startdate = datetime.today().date() 
-        task.note = data.get('note', "Created from Echo on {}".format(task.startdate))
-
-        session.add(task)
-        session.commit()
-
-        context = session.query(Context).filter_by(title=data.get('context', '')).first()
-        if context:
-            task.context = context
-
-        echo_folder = session.query(Folder).filter_by(title='echo').one()
-        task.folder = echo_folder
-
-        session.commit()
-
-        if task.star:
-            task.remind = 1
-            task.duedate = task.duetime = datetime.now() + timedelta(days=1)
-            session.commit()
-            j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=task.duetime, name=task.title[:15], args=[task.id], replace_existing=True) 
-
-        print("Created new task with title: {}, star: {}, context: {}, folder: {}, remind: {}".format(task.title, "yes" if task.star else "no", task.context.title, task.folder.title, "yes" if task.remind else "no"))
-        return Response("Created new task with title: {}".format(task.title), mimetype='text/plain')
-
-    else:
-        return 'It was not a post method'
-
-@app.route("/scrobble", methods=['POST'])
-def scrobble():
-    data = request.get_json() #this is a python dictionary
-    print(data)
-
-    sonos_track['artist'] = data.get('artist', '')
-    sonos_track['title'] = data.get('title', '')
-    sonos_track['updated'] = True
-
-    return Response("OK", mimetype='text/plain')
-    
-@app.route('/sonos_check') #0.0.0.0:5000/2145/0/10/how%20are%20you
-def sonos_check():
-    if sonos_track['updated']:
-        temp = dict(sonos_track)
-        sonos_track['updated'] = False
-        return json.dumps(temp)
-    else:
-        #return "No Change"
-        return json.dumps(sonos_track)
 
 # update alarms before restarting scheduler
 update_alarms()
