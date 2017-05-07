@@ -32,7 +32,7 @@ import resources
 import requests
 import base64
 from functools import partial
-
+from tabulate import tabulate
 import markdown2 as markdown
 #import config as c
 from config import SCHEDULER_URI
@@ -1795,6 +1795,18 @@ class ListManager(QtWidgets.QMainWindow):
         simple_html = simple_html.replace('\n</code></pre>', '</code></pre>')
 
         self.note.setHtml(simple_html)
+
+        #if self.task.context.title=='tables':
+        if self.task.tag is not None and 'table' in self.task.tag.split(','):
+            try:
+                table_as_list = json.loads(text)
+            except ValueError:
+                print("Probably not valid json")
+            else:
+                table_as_str = tabulate(table_as_list, headers='firstrow')
+                print(table_as_str)
+                self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
+
         self.db_note.setPlainText(text)
 
         self.modified = {}
@@ -1938,6 +1950,17 @@ class ListManager(QtWidgets.QMainWindow):
             simple_html = markdown.markdown(note)
             simple_html = simple_html.replace('\n</code></pre>', '</code></pre>')
             self.note.setHtml(simple_html)
+
+            #if task.context.title=='tables':
+            if task.tag is not None and 'table' in task.tag.split(','):
+                try:
+                    table_as_list = json.loads(note)
+                except ValueError:
+                    print("Probably not valid json")
+                else:
+                    table_as_str = tabulate(table_as_list, headers='firstrow')
+                    print(table_as_str)
+                    self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
             self.db_note.setPlainText(note)
 
@@ -2511,6 +2534,18 @@ class ListManager(QtWidgets.QMainWindow):
         simple_html = simple_html.replace('\n</code></pre>', '</code></pre>')
 
         self.note.setHtml(simple_html)
+
+        #if self.task.context.title=='tables':
+        if self.task.tag is not None and 'table' in self.task.tag.split(','):
+            try:
+                table_as_list = json.loads(text)
+            except ValueError:
+                print("Probably not valid json")
+            else:
+                table_as_str = tabulate(table_as_list, headers='firstrow')
+                print(table_as_str)
+                self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
+
         self.db_note.setPlainText(text)
 
         print(self.modified) #the writes to self.note and self.db_note produce self.modified={'plain_note':True,'note':True}
