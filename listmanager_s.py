@@ -1797,14 +1797,9 @@ class ListManager(QtWidgets.QMainWindow):
         self.note.setHtml(simple_html)
 
         if self.task.tag and 'table' in self.task.tag.split(','):
-            try:
-                table_as_list = json.loads(text)
-            except ValueError:
-                print("Probably not valid json")
-            else:
-                table_as_str = tabulate(table_as_list, headers='firstrow')
-                print(table_as_str)
-                self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
+            table_as_list = [t.split(",") for t in self.task.note.split("\n")]
+            table_as_str = tabulate(table_as_list, headers='firstrow')
+            self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
         self.db_note.setPlainText(text)
 
@@ -1951,14 +1946,9 @@ class ListManager(QtWidgets.QMainWindow):
             self.note.setHtml(simple_html)
 
             if task.tag and 'table' in task.tag.split(','):
-                try:
-                    table_as_list = json.loads(note)
-                except ValueError:
-                    print("Probably not valid json")
-                else:
-                    table_as_str = tabulate(table_as_list, headers='firstrow')
-                    print(table_as_str)
-                    self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
+                table_as_list = [t.split(",") for t in task.note.split("\n")]
+                table_as_str = tabulate(table_as_list, headers='firstrow')
+                self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
             self.db_note.setPlainText(note)
 
@@ -2534,14 +2524,9 @@ class ListManager(QtWidgets.QMainWindow):
         self.note.setHtml(simple_html)
 
         if self.task.tag and 'table' in self.task.tag.split(','):
-            try:
-                table_as_list = json.loads(text)
-            except ValueError:
-                print("Probably not valid json")
-            else:
-                table_as_str = tabulate(table_as_list, headers='firstrow')
-                print(table_as_str)
-                self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
+            table_as_list = [t.split(",") for t in self.task.note.split("\n")]
+            table_as_str = tabulate(table_as_list, headers='firstrow')
+            self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
         self.db_note.setPlainText(text)
 
