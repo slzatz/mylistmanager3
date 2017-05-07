@@ -149,6 +149,7 @@ def incoming():
         subject = request.form.get('headers[Subject]')
         if subject[:3].lower() in ('re:', 'fw:'):
             subject = subject[3:].strip()
+        body = request.form.get('plain')
         id_ = None
         p = re.compile('{{[^"]*}}')  
         m = p.search(subject)
@@ -182,7 +183,7 @@ def incoming():
             session.add(task)
             session.commit()
 
-        body = request.form.get('plain')
+        #body = request.form.get('plain')
         pattern = "================="
         pos = body.rfind(pattern)
         note = body[1+pos+len(pattern):] if pos!=-1 else body
