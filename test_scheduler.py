@@ -168,7 +168,9 @@ def incoming():
             body = body[:pos if pos!=-1 else len(body)+1] 
             pos = body.find(subject)
             if pos != -1:
-                body = body[pos+len(subject):]
+                pos = body.find(subject, pos+len(subject))
+                if pos != -1:
+                    body = body[pos+len(subject):]
             mods = ['@industry', '!!!', '*'] 
         else:
             #mods = []
