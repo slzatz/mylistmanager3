@@ -1796,8 +1796,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.note.setHtml(simple_html)
 
-        #if self.task.context.title=='tables':
-        if self.task.tag is not None and 'table' in self.task.tag.split(','):
+        if self.task.tag and 'table' in self.task.tag.split(','):
             try:
                 table_as_list = json.loads(text)
             except ValueError:
@@ -1951,8 +1950,7 @@ class ListManager(QtWidgets.QMainWindow):
             simple_html = simple_html.replace('\n</code></pre>', '</code></pre>')
             self.note.setHtml(simple_html)
 
-            #if task.context.title=='tables':
-            if task.tag is not None and 'table' in task.tag.split(','):
+            if task.tag and 'table' in task.tag.split(','):
                 try:
                     table_as_list = json.loads(note)
                 except ValueError:
@@ -2535,8 +2533,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.note.setHtml(simple_html)
 
-        #if self.task.context.title=='tables':
-        if self.task.tag is not None and 'table' in self.task.tag.split(','):
+        if self.task.tag and 'table' in self.task.tag.split(','):
             try:
                 table_as_list = json.loads(text)
             except ValueError:
