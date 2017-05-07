@@ -162,6 +162,10 @@ def incoming():
         if pos != -1:
             mods = subject[pos:].strip().split()
             subject = subject[:pos].strip()
+        elif body.find("Maryellen Wiess") != -1:
+            pos = body.find("Maryellen Wiess, 64 Sixth Street, Wood Ridge, NJ 07075")
+            body = body[:pos if pos!=-1 else len(body)+1] 
+            mods = ['@industry', '!!!', '*'] 
         else:
             #mods = []
             # if no @context then assume work, priority 3 and a star
