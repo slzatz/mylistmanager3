@@ -166,6 +166,9 @@ def incoming():
         elif body.find("Maryellen Wiess") != -1:
             pos = body.find("Maryellen Wiess, 64 Sixth Street, Wood Ridge, NJ 07075")
             body = body[:pos if pos!=-1 else len(body)+1] 
+            pos = body.find(subject)
+            if pos != -1:
+                body = body[pos+len(subject):]
             mods = ['@industry', '!!!', '*'] 
         else:
             #mods = []
