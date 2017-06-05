@@ -1798,7 +1798,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         if self.task.tag and 'table' in self.task.tag.split(','):
             table_as_list = [t.split(",") for t in self.task.note.split("\n")]
-            table_as_str = tabulate(table_as_list, headers='firstrow')
+            table_as_str = tabulate(table_as_list, headers='firstrow', stralign='right') #############################
             self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
         self.db_note.setPlainText(text)
@@ -1947,7 +1947,7 @@ class ListManager(QtWidgets.QMainWindow):
 
             if task.tag and 'table' in task.tag.split(','):
                 table_as_list = [t.split(",") for t in task.note.split("\n")]
-                table_as_str = tabulate(table_as_list, headers='firstrow')
+                table_as_str = tabulate(table_as_list, headers='firstrow', stralign='right')
                 self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
             self.db_note.setPlainText(note)
@@ -2525,7 +2525,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         if self.task.tag and 'table' in self.task.tag.split(','):
             table_as_list = [t.split(",") for t in self.task.note.split("\n")]
-            table_as_str = tabulate(table_as_list, headers='firstrow')
+            table_as_str = tabulate(table_as_list, headers='firstrow', stralign='right') ########################################
             self.note.setHtml('<code><pre>'+table_as_str+'</code></pre>')
 
         self.db_note.setPlainText(text)
