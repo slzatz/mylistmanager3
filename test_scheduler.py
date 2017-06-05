@@ -149,6 +149,8 @@ def incoming():
         subject = request.form.get('headers[Subject]')
         if subject[:3].lower() in ('re:', 'fw:'):
             subject = subject[3:].strip()
+        elif subject[:4].lower() == 'fwd:': 
+            subject = subject[4:].strip()
         body = request.form.get('plain')
         id_ = None
         p = re.compile('{{[^"]*}}')  
