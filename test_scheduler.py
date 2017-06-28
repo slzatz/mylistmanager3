@@ -195,7 +195,7 @@ def incoming():
         pos = body.rfind(pattern)
         note = body[1+pos+len(pattern):] if pos!=-1 else body
         #print(body) 
-        task.note = note
+        task.note = note.strip()
 
         for m in mods:
             if '!' in m:
