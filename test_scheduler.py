@@ -14,7 +14,7 @@ import config as c
 sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
 from flask import Flask, request, Response, render_template
 from twitter import *
-from lmdb_p import *
+from lmdb_aws import *
 from apscheduler.schedulers.background import BackgroundScheduler
 import sendgrid
 import paho.mqtt.publish as mqtt_publish 
