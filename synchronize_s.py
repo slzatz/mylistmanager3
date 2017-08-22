@@ -78,7 +78,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
         log+="There were no new server Folders added since the last sync.\n"    
 
     #get server updated tasks
-    server_updated_tasks = remote_session.query(p.Task).filter(and_(p.Task.modified > last_server_sync, p.Task.deleted==False)).all()
+    server_updated_tasks = remote_session.query(p.Task).filter(and_(p.Task.modified > last_server_sync, p.Task.deleted==False, p.Task.id > 1)).all()
 
     if server_updated_tasks:
         nn+=len(server_updated_tasks)
@@ -549,7 +549,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
     #result = connection.execute("select extract(epoch from now())")
     #server_sync.timestamp = datetime.datetime.fromtimestamp(result.scalar()) + datetime.timedelta(seconds=10) # not sure why this is necessary but it really is
 
-    task = remote_session.query(p.Task).get(11) #Call Spectacles ...
+    task = remote_session.query(p.Task).get(1) #Call Spectacles ...
     priority = task.priority
     task.priority = priority + 1 if priority < 3 else 0
     remote_session.commit()
