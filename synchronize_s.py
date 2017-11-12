@@ -392,7 +392,7 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
         task.remind = st.remind
         task.startdate = st.startdate if st.startdate else st.added ################ may 2, 2012
         task.folder_tid = st.folder_tid 
-        task.title = st.title
+        task.title = st.title if st.title else '' # somehow st.title can be None and needs to be a string
         task.added = st.added
         task.star = st.star
         task.priority = st.priority
