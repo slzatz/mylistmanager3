@@ -402,7 +402,9 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
 
         local_session.commit() #new/updated client task commit
 
-        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=st.id, star=st.star, priority=st.priority, completed=st.completed, title=st.title[:30])
+        #log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=st.id, star=st.star, priority=st.priority, completed=st.completed, title=st.title[:30])
+
+        log+="{action}: tid: {tid}; star: {star}; priority: {priority}; completed: {completed}; title: {title}\n".format(action=action, tid=task.tid, star=task.star, priority=task.priority, completed=task.completed, title=task.title[:30])
 
         if task.tag:
             for tk in task.taskkeywords:
