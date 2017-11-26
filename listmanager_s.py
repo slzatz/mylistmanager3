@@ -50,6 +50,11 @@ from whoosh import analysis
 from lmdb_s import *
 from lmdb_p import remote_session, Task as p_Task
 
+from SolrClient import SolrClient
+from config import SOLR_URI
+solr = SolrClient(SOLR_URI + '/solr')
+collection = 'listmanager'
+
 parser = argparse.ArgumentParser(description='Command line options mainly for debugging purposes.')
 
 # for all of the following: if the command line option is not present then the value is the opposite of the action
@@ -101,6 +106,7 @@ class ListManager(QtWidgets.QMainWindow):
         super(ListManager, self).__init__(parent)
         
         self.setWindowTitle("My Listmanager")
+        self.solr_ids = [10]
 
         status = self.statusBar()
         status.setSizeGripEnabled(False)
@@ -406,7 +412,9 @@ class ListManager(QtWidgets.QMainWindow):
         a_folder_icon_color = action("Folder", partial(self.iconcolordialog, type_='folder'))
         a_context_icon_color = action("Context", partial(self.iconcolordialog, type_='context'))
         m_icon_color = displaymenu.addMenu("Chose Icon/Text Color")
+
         add_actions(m_icon_color, (a_folder_icon_color, a_context_icon_color))
+
         toolmenu = self.menuBar().addMenu("&Tools")
 
         a_synchronize = action("&Synchronize (with postgresql)", self.synchronize, 'Alt+S', icon='arrow_ns')
@@ -427,11 +435,13 @@ class ListManager(QtWidgets.QMainWindow):
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+V') #changed 10282015
+        a_search_solr = action("Search Listman Solr DB", self.search_solr)
 
         add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
                                          a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                                          a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
-                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None, a_create_whooshdb, a_edit_note_in_vim))
+                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None,
+                                         a_create_whooshdb, a_edit_note_in_vim, a_search_solr))
                                          
         a_create_image_string = action("Create image string", self.create_image_string)
 
@@ -1976,7 +1986,7 @@ class ListManager(QtWidgets.QMainWindow):
             self.note_manager.format_toolbar.setEnabled(True)
             
             # highlight search terms in note if on search tab
-            if self.Properties['tab']['type'] == 'search':
+            if self.Properties['tab']['type'] in ('search','solr'):
                 self.highlightsearchterms()
             else:
                 self.highlighter.setDocument(None)
@@ -2423,9 +2433,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.refreshlistonly()
 
         # if there were no changes, then don't update alarms
-        if self.sync_log != 'Canceled sync':
+        if 0: #self.sync_log != 'Canceled sync':
             try:
-                #r = requests.get("http://54.173.234.69:5000/update_alarms")
                 r = requests.get(SCHEDULER_URI + '/update_alarms')
             except Exception as e:
                 QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
@@ -2547,6 +2556,52 @@ class ListManager(QtWidgets.QMainWindow):
         Popen([g.VIM, "+set nonu", "+set lines=40", "+set columns=100", os.path.abspath(temp.name)])
         self.fs_watcher.addPath(os.path.abspath(temp.name))
         
+    def search_solr(self):
+        print_("got here")
+        query_string, ok = QtWidgets.QInputDialog.getText(self,"Solr","Enter terms to search EC2 Solr") 
+        
+        if not(ok and query_string):
+            return
+
+        print_(query_string)
+            
+        s1 = 'title:' + ' OR title:'.join(query_string.split())
+        s2 = 'note:' + ' OR note:'.join(query_string.split())
+        s3 = 'tag:' + ' OR tag:'.join(query_string.split())
+        s = s1 + ' OR ' + s2 + 'OR ' + s3
+        result = solr.query(collection, {'q':s, 'rows':30, 'fl':['score', 'id', 'title', 'tag', 'star', 'context', 'completed'], 'sort':'score desc'})
+        items = result.docs
+        count = result.get_results_count()
+        if count==0:
+            text = "Did not find any items"
+        else:
+            text = "item count = {}\n\n".format(count)
+            for n,item in enumerate(items,1):
+                try:
+                    text+= "{}\n".format(n)
+                    text+= "score: {}\n".format(str(item['score']))
+                    text+= "id: {}\n".format(str(item['id']))
+                    text+= "title: {}\n".format(item['title'])
+                    text+= "tag: {}\n".format(item.get('teg', ''))
+                    text+= "star: {}\n".format(str(item['star']))
+                    text+= "context: {}\n".format(item['context'])
+                    text+= "completed: {}\n\n".format(str(item['completed']))
+                except Exception as e:
+                    text+= e
+
+        dlg = lmdialogs.SynchResults("Synchronization Results", text, parent=self, OkCancel=True)
+        dlg.exec_()
+
+        self.solr_ids = [x['id'] for x in items]
+
+        self.createnewtab(
+                           title='Solr',
+                           query_string=query_string,
+                           tab={'type':'solr', 'value':'howdy'},
+                           filter_by={'column':'context','value':'*ALL'},
+                           collapsible=False,
+                           col_order = ['box','startdate','star','title','context','tag'])
+
     def print_note_to_log(self):
         print_(self.note.toHtml())
 
@@ -2904,6 +2959,12 @@ class ListManager(QtWidgets.QMainWindow):
         #tab_type
         if tab_type == 'context':
             tasks = tasks.join(Context).filter(Context.title==tab_value)
+
+        elif tab_type == 'solr':
+            query_ids = self.solr_ids
+            order_expressions = [(Task.tid==i).desc() for i in query_ids]
+            tasks = tasks.filter(Task.tid.in_(query_ids)).order_by(*order_expressions)
+            #tasks = tasks.filter(Task.tid.in_(query_ids))
 
         elif tab_type == 'search':
             
