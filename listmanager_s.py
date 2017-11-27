@@ -2573,24 +2573,25 @@ class ListManager(QtWidgets.QMainWindow):
         items = result.docs
         count = result.get_results_count()
         if count==0:
-            text = "Did not find any items"
-        else:
-            text = "item count = {}\n\n".format(count)
-            for n,item in enumerate(items,1):
-                try:
-                    text+= "{}\n".format(n)
-                    text+= "score: {}\n".format(str(item['score']))
-                    text+= "id: {}\n".format(str(item['id']))
-                    text+= "title: {}\n".format(item['title'])
-                    text+= "tag: {}\n".format(item.get('teg', ''))
-                    text+= "star: {}\n".format(str(item['star']))
-                    text+= "context: {}\n".format(item['context'])
-                    text+= "completed: {}\n\n".format(str(item['completed']))
-                except Exception as e:
-                    text+= e
+            #text = "Did not find any items"
+            return
+        #else:
+        #    text = "item count = {}\n\n".format(count)
+        #    for n,item in enumerate(items,1):
+        #        try:
+        #            text+= "{}\n".format(n)
+        #            text+= "score: {}\n".format(str(item['score']))
+        #            text+= "id: {}\n".format(str(item['id']))
+        #            text+= "title: {}\n".format(item['title'])
+        #            text+= "tag: {}\n".format(item.get('teg', ''))
+        #            text+= "star: {}\n".format(str(item['star']))
+        #            text+= "context: {}\n".format(item['context'])
+        #            text+= "completed: {}\n\n".format(str(item['completed']))
+        #        except Exception as e:
+        #            text+= e
 
-        dlg = lmdialogs.SynchResults("Synchronization Results", text, parent=self, OkCancel=True)
-        dlg.exec_()
+        #dlg = lmdialogs.SynchResults("Synchronization Results", text, parent=self, OkCancel=True)
+        #dlg.exec_()
 
         self.solr_ids = [x['id'] for x in items]
 
