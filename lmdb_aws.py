@@ -22,9 +22,10 @@ from lmglobals_p import REMOTE_DB, internet_accessible #, LOCAL_DB_FILE
 
 __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc', 'func']
 
-# aws server appears to be 4 hours ahead
+# aws server appears to be 5 hours ahead during EST (November - April)
+# aws server appears to be 4 hours ahead during DST (April - Nov)
 def adjusted_time():
-    return datetime.datetime.now() - datetime.timedelta(hours=4)
+    return datetime.datetime.now() - datetime.timedelta(hours=5)
 
 metadata = MetaData()
 task_table = Table('task',metadata,
