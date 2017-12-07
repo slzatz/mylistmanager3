@@ -48,7 +48,7 @@ from whoosh.query import Term, Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 from whoosh import analysis
 from lmdb_s import *
-from lmdb_p import remote_session, Task as p_Task
+from lmdb_p import remote_session, Task as p_Task # joinedload #added joined load
 
 from SolrClient import SolrClient
 from config import SOLR_URI
@@ -2744,36 +2744,23 @@ class ListManager(QtWidgets.QMainWindow):
 
         task = self.task
 
-        f = lambda x: x if x is not None else ''
+        labels = ('id', 'tid', 'star', 'priority', 'title', 'context','context_tid', 'folder','folder_tid',
+                  'tag', 'added', 'modified', 'duedate', 'duetime','startdate','completed','note')
 
-        #c_map = {'sqlite_id':'id', 'context_id':'context_tid', 'folder_id':'folder_tid'} #dialog label:actual label
-        c_map = {}
-        s_map = {'tid':'id', 'folder_id':'folder', 'context_id':'context'}
-
-        #labels = ('sqlite_id', 'tid', 'star', 'priority', 'title', 'context','context_id', 'folder','folder_id', 'tag', 'added', 'modified', 'duedate', 'duetime','startdate','completed','note')
-        labels = ('id', 'tid', 'star', 'priority', 'title', 'context','context_tid', 'folder','folder_tid', 'tag', 'added', 'modified', 'duedate', 'duetime','startdate','completed','note')
-
-        task.context
-        task.folder
         c_task = dict(task.__dict__)
-        #print(c_task)
-        c_task = {lab:f(c_task[c_map.get(lab,lab)]) for lab in labels} 
         c_task.update(context=c_task['context'].title, folder=c_task['folder'].title)
 
         if task.tid and retrieve_server: # if it's a new task that hasn't gotten a tid from server yet, there won't be a server task to retrieve
             
             try:
-                server_task = remote_session.query(p_Task).filter_by(id=task.tid).one()
+                server_task = remote_session.query(p_Task).options(joinedload(p_Task.context), joinedload(p_Task.folder)).filter_by(id=task.tid).one()
 
             except sqla_orm_exc.NoResultFound:
                 s_task = {}
 
             else:
-                server_task.context
-                server_task.folder
+
                 s_task = dict(server_task.__dict__)
-                #print(s_task)
-                s_task = {lab:f(s_task[c_map.get(lab,lab)]) for lab in labels} 
                 s_task.update(context=s_task['context'].title, folder=s_task['folder'].title)
 
         dlg = lmdialogs.TaskInfo("Compare", data = [c_task, s_task], labels=labels, parent=self)
