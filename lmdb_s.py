@@ -30,7 +30,9 @@ __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'local
 metadata = MetaData()
 task_table = Table('task',metadata,
               Column('id', Integer, primary_key=True),
-              Column('tid', Integer), #, unique=True, nullable=False), #the toodledo id ... unique=True, nullable=False), needs to be non-unique because we get the tids on sync
+              # tid: should be unique=True, nullable=False but needs to be 
+              # non-unique because the sqlite task.tid is blank until sync
+              Column('tid', Integer), 
               #Column('parent_tid', Integer, ForeignKey('task.tid'), default=0), # if this column is going to refer to tid, then postgres wanted tid to be unique and not nullable
               Column('priority', Integer, default=1),
               Column('title',String(255)),
@@ -49,10 +51,10 @@ task_table = Table('task',metadata,
               Column('deleted', Boolean, default=False),
               Column('created', DateTime, default=datetime.datetime.now), 
               Column('modified', DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now),
-              Column('startdate', Date),
+              Column('startdate', Date), # this has been hijacked to represent the true date the item was created originally
               #Column('starttime', Time),
-              Column('remind', Integer)
-)
+              Column('remind', Integer) # number of minutes prior to duedate that reminder will be sent
+              )
 
 #startdate : A GMT unix timestamp for when the task starts. The time component of this timestamp will always be noon
 
@@ -82,7 +84,7 @@ context_table = Table('context', metadata,
                  Column('icon', String(32)),
                  Column('textcolor', Integer),
                  Column('image', LargeBinary)
-)
+                 )
 
 folder_table = Table('folder', metadata,
                  Column('id', Integer, primary_key=True),
@@ -96,7 +98,7 @@ folder_table = Table('folder', metadata,
                  Column('icon', String(32)),
                  Column('textcolor', Integer),
                  Column('image', LargeBinary)
-)
+                 )
 
 #temp_tid_table = Table('temp_tid', metadata,
 #                 Column('id', Integer, primary_key=True),
@@ -109,17 +111,18 @@ folder_table = Table('folder', metadata,
 keyword_table = Table('keyword', metadata,
                  Column('id',Integer, primary_key=True),
                  Column('name', String(25), unique=True, nullable=False), #note tag is <=65
-)
+                 )
+
 taskkeyword_table = Table('task_keyword', metadata,
                       Column('task_id', Integer, ForeignKey('task.id'), primary_key=True), 
                       Column('keyword_id', Integer, ForeignKey('keyword.id'), primary_key=True), 
-)
+                      )
 
 sync_table = Table('sync', metadata,
                       Column('machine', String(20), primary_key=True), #NYCPSSZATZ1 or dell4300
                       Column('timestamp', DateTime),
                       #Column('unix_timestamp', Integer) #09022015
-)
+                      )
 
 class Task(object):
     def __init__(self, title=None, tid=None, **kw):

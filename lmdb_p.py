@@ -24,7 +24,10 @@ __all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remot
 metadata = MetaData()
 task_table = Table('task',metadata,
               Column('id', Integer, primary_key=True),
-              Column('tid', Integer), #, unique=True, nullable=False), #the toodledo id ... unique=True, nullable=False), needs to be non-unique because we get the tids on sync not needed if stop toodledo
+              # tid below, unique=True, nullable=False), #the toodledo id ...
+              # unique=True, nullable=False), needs to be non-unique because
+              # we get the tids on sync not in use because not using toodledo
+              Column('tid', Integer), 
               Column('priority', Integer, default=1),
               Column('title',String(255)),
               Column('tag',String(64)),

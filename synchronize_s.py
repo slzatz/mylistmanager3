@@ -35,7 +35,6 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
     remote_session = p.remote_session
     print("synchronize_s: remote_session = ", remote_session)
     try:
-        #p.remote_engine.execute("Select 1")
         remote_session.execute("SELECT 1")
     except sqla_exc.OperationalError as e: 
         remote_session = p.Remote_Session()
@@ -372,20 +371,23 @@ def synchronizetopostgres(parent=None, showlogdialog=True): # if running outside
 
     for st in server_updated_tasks:
         
-        # to find the sqlite task that corresponds to the updated server task you need to match the sqlite task.tid with the 
-        # postgres task.id
+        # to find the sqlite task that corresponds to the updated server task
+        # you need to match the sqlite task.tid with the postgres task.id
         task = local_session.query(Task).filter_by(tid=st.id).first()
         
         if not task:
             action = "created"
             task = Task()
             local_session.add(task)
+            # next line important: local db task.tid is the unique key that 
+            # links to the foreign key in context and folder tables
             task.tid = st.id
         else:
             action = "updated"
             
-        #  Note that the foreign key that context_tid points to is different between postgres and sqlite
-        # postgres points to context.id and sqlite points to context.tid but the actual values are identical
+        # Note that the foreign key that context_tid points to is different
+        # between postgres and sqlite postgres points to context.id and local
+        # sqlite db points to context.tid but the actual values are identical
         task.context_tid = st.context_tid
         task.duedate = st.duedate
         task.duetime = st.duetime if st.duetime else None #########
