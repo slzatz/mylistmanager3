@@ -22,7 +22,6 @@ import configparser as configparser
 import json
 import re
 import textwrap
-import base64
 import io
 import importlib #for plugins
 import argparse
@@ -30,11 +29,9 @@ import tempfile
 from subprocess import Popen
 import resources
 import requests
-import base64
 from functools import partial
 from tabulate import tabulate
 import markdown2 as markdown
-#import config as c
 from config import SCHEDULER_URI
 import lmglobals_s as g
 
@@ -2412,7 +2409,18 @@ class ListManager(QtWidgets.QMainWindow):
             
         import synchronize_s #should have already been imported unless internet wasn't available on startup
 
-        self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self, showlogdialog=True) # this is the money shot
+        # Below is the money shot
+        self.sync_log, changes, tasklist, deletelist = synchronize_s.synchronizetopostgres(parent=self,
+                                                                      showlogdialog=True)
+
+        try:
+            r = requests.get(SCHEDULER_URI + '/update_alarms')
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
+        else:
+            txt = r.text if r.text else "There are no alarms"
+            dlg = lmdialogs.SynchResults("Alarms", txt, parent=self)
+            dlg.exec_()
 
         print("changes={0}".format(changes))
         print("tasklist={0}".format([t.title for t in tasklist])) #this is a goofy print
@@ -2432,16 +2440,6 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.refreshlistonly()
 
-        # if there were no changes, then don't update alarms
-        if 0: #self.sync_log != 'Canceled sync':
-            try:
-                r = requests.get(SCHEDULER_URI + '/update_alarms')
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(self, 'Alert', "Exception updating alarms: {}".format(e))
-            else:
-                dlg = lmdialogs.SynchResults("Alarms", r.text, parent=self)
-                dlg.exec_()
-                
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
         dlg.exec_()
