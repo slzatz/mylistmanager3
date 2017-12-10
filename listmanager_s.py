@@ -27,6 +27,7 @@ import importlib #for plugins
 import argparse
 import tempfile
 from subprocess import Popen
+import subprocess
 import resources
 import requests
 from functools import partial

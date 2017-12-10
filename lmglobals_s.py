@@ -1,6 +1,7 @@
 import os
 import urllib.request, urllib.error
 import configparser as configparser
+import platform
 
 from PyQt5 import QtGui,QtWidgets
 
@@ -15,12 +16,13 @@ PLUGIN_DIR = os.path.join(cwd,'plugins')
 USER_ICONS = 'folder_icons'
 #CORE_ICONS = ''
 LOG_FILE = os.path.join(cwd,'logfile_s.txt')
-VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
-del cwd
 
-# these are for toodledo and are not necessary for _s which is sqlite - postgresql
-#key = None
-#timestamp = None
+if platform.system() == 'Windows':
+    VIM = os.path.abspath("c:/Program Files (x86)/Vim/vim74/gvim.exe")
+else:
+    VIM = "gvim"
+
+#del cwd # is this really necessary
 
 config = configparser.RawConfigParser()
 config.read(CONFIG_FILE)
