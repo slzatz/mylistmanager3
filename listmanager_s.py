@@ -433,13 +433,12 @@ class ListManager(QtWidgets.QMainWindow):
         a_clearsavedtabs = action("Clear Saved Tabs", self.clearsavedtabs)
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+V') #changed 10282015
-        a_search_solr = action("Search Listman Solr DB", self.search_solr)
 
         add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
-                                         a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
-                                         a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
-                                         a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None,
-                                         a_create_whooshdb, a_edit_note_in_vim, a_search_solr))
+                    a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
+                    a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
+                    a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None,
+                    a_create_whooshdb, a_edit_note_in_vim))
                                          
         a_create_image_string = action("Create image string", self.create_image_string)
 
@@ -502,10 +501,16 @@ class ListManager(QtWidgets.QMainWindow):
 
         displayToolbar = self.addToolBar("Display")
         displayToolbar.setObjectName("DisplayToolBar")
-        add_actions(displayToolbar, (a_refresh, None, a_showcompleted, a_toggle_collapsible, a_removesort, None, a_modifycolumns))
+        add_actions(displayToolbar, (a_refresh, None, a_showcompleted,
+                    a_toggle_collapsible, a_removesort, None, a_modifycolumns))
+
         toolsToolbar = self.addToolBar("Tools")
         toolsToolbar.setObjectName("Tools ToolBar")
         toolsToolbar.addAction(a_synchronize)
+
+        searchToolbar = self.addToolBar("Search")
+        searchToolbar.setObjectName("SearchToolBar")
+
         search_tb = QtWidgets.QToolButton()
         search_tb.setIcon(QtGui.QIcon('bitmaps/magnifier-left.png'))
         search_tb.setPopupMode(QtWidgets.QToolButton.InstantPopup)
@@ -515,7 +520,8 @@ class ListManager(QtWidgets.QMainWindow):
         a_search_all.setChecked(True)
         self.a_search_all = a_search_all
 
-        search_context = action("Search Context...", partial(self.searchcontext, search='context'), checkable=True)
+        search_context = action("Search Context...", partial(self.searchcontext,
+                                 search='context'), checkable=True)
 
         search_what = QtWidgets.QActionGroup(self)
         search_what.addAction(a_search_all)
@@ -525,20 +531,24 @@ class ListManager(QtWidgets.QMainWindow):
         search_menu.addAction(search_context)
 
         search_tb.setMenu(search_menu)
+        searchToolbar.addWidget(search_tb)
 
         lineEdit = QtWidgets.QLineEdit()
-        lineEdit.setWindowIcon(QtGui.QIcon("bitmaps/refresh.png"))    
         lineEdit.setFixedSize(140,25)
-        searchToolbar=self.addToolBar("Search")
-        searchToolbar.setObjectName("SearchToolBar")
-        searchToolbar.addWidget(search_tb)
+
         searchToolbar.addWidget(lineEdit)
 
         self.search = lineEdit
-
-        #lineEdit.setDisabled(False)
-        #self.query_parse_flag = 10   
         self.search.textEdited.connect(self.do_search)
+
+        ################################### solr search #######################################
+        lineEdit2 = QtWidgets.QLineEdit()
+        lineEdit2.setFixedSize(300,25)
+        searchToolbar.addWidget(None)
+        searchToolbar.addWidget(lineEdit2)
+        self.solrsearch = lineEdit2
+        self.solrsearch.returnPressed.connect(self.search_solr)
+        ################################### solr search #######################################
 
         # needs to be here because the actions need to have been defined (in Menus section)
         self.tab_manager.setContextMenuPolicy(Qt.ActionsContextMenu)
@@ -2556,12 +2566,8 @@ class ListManager(QtWidgets.QMainWindow):
         self.fs_watcher.addPath(os.path.abspath(temp.name))
         
     def search_solr(self):
-        print_("got here")
-        query_string, ok = QtWidgets.QInputDialog.getText(self,"Solr","Enter terms to search EC2 Solr") 
+        query_string = self.solrsearch.text()
         
-        if not(ok and query_string):
-            return
-
         print_(query_string)
             
         s1 = 'title:' + ' OR title:'.join(query_string.split())
