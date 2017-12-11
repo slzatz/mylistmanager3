@@ -417,6 +417,7 @@ class ListManager(QtWidgets.QMainWindow):
 
         a_synchronize = action("&Synchronize (with postgresql)", self.synchronize, 'Alt+S', icon='arrow_ns')
         a_showsync_log = action("Show Synchronize Log", self.showsync_log)
+        a_update_solr = action("Update Solr Database", self.update_solr)
         a_showdeleted = action("Show Deleted", self.showdeleted)
         a_print_note_to_log = action("Print Note to Log", self.print_note_to_log)
         a_close_event = action("Write ini file", self.closeEvent)
@@ -434,7 +435,7 @@ class ListManager(QtWidgets.QMainWindow):
         a_create_whooshdb = action("Create Whoosh Database", self.create_whooshdb2)
         a_edit_note_in_vim = action("Edit note in vim", self.edit_note_in_vim, 'Alt+V') #changed 10282015
 
-        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_updatewhooshentry,
+        add_actions(toolmenu, (a_synchronize, a_showsync_log, None, a_update_solr, None, a_updatewhooshentry,
                     a_whooshtaskinfo, None, a_print_note_to_log, a_close_event, a_on_simple_html2log, None,
                     a_ontaskinfo, a_get_tabinfo, None, a_showdeleted, None, a_removedeadkeywords, 
                     a_deletecontexts, None, a_renew_alarms, a_startdate, a_resetinterp, a_clearsavedtabs, None,
@@ -2453,6 +2454,51 @@ class ListManager(QtWidgets.QMainWindow):
             self.deletefromwhooshdb(id_)
 
         self.refreshlistonly()
+
+    def update_solr(self):
+        solr = SolrClient(SOLR_URI + '/solr/')
+        collection = 'listmanager'
+        solr_sync = remote_session.query(Sync).get('solr')
+        last_solr_sync = solr_sync.timestamp
+        print_("Last Solr sync = " + last_solr_sync.isoformat(' '))
+        tasks = remote_session.query(p_Task).filter(p_Task.modified > last_solr_sync)
+        print_("Number of tasks modified since last sync = " + str(tasks.count()))
+        return
+        max = round(tasks.count(), -2) + 200
+        s = 0
+        for n in range(100, max, 100):
+    
+            documents = []
+            for task in tasks[s:n]:
+                document = {}
+                document['id'] = task.id
+                document['title'] = task.title
+                document['note'] = task.note if task.note else ''
+                document['tag'] =[t for t in task.tag.split(',')] if task.tag else []
+
+                document['completed'] = task.completed != None
+                document['star'] = task.star # haven't used this yet and schema doesn't currently reflect it
+
+                #note that I didn't there was any value in indexing or storing context and folder
+                document['context'] = task.context.title
+                document['folder'] = task.folder.title
+
+                documents.append(document)
+
+            json_docs = json.dumps(documents)
+            response = solr.index_json(collection, json_docs)
+
+            # response = solr.commit(collection, waitSearcher=False) # doesn't actually seem to work
+            # Since solr.commit didn't seem to work, substituted the below, which works
+            url = SOLR_URI + '/solr/' + collection + '/update'
+            r = requests.post(url, data={"commit":"true"})
+            print(r.text)
+
+            print("Tasks {} to {}".format(s,n))
+            s = n
+    
+        solr_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2)
+        print(solr_sync.timestamp)
 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
