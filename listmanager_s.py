@@ -545,6 +545,9 @@ class ListManager(QtWidgets.QMainWindow):
         lineEdit2 = QtWidgets.QLineEdit()
         lineEdit2.setFixedSize(300,25)
         searchToolbar.addWidget(None)
+        solr_icon = QtWidgets.QAction(QtGui.QIcon('bitmaps/solr-logo.png'), "solr", self)
+        solr_icon.setEnabled(False)
+        searchToolbar.addAction(solr_icon)
         searchToolbar.addWidget(lineEdit2)
         self.solrsearch = lineEdit2
         self.solrsearch.returnPressed.connect(self.search_solr)
