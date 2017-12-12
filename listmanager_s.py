@@ -36,7 +36,7 @@ import markdown2 as markdown
 from config import SCHEDULER_URI
 import lmglobals_s as g
 
-#note synchronize_s is imported in If __name__ == main to delay import until logger defined
+#note synchronize_s is imported in if __name__ == __main__ to delay import until logger defined
 import lminterpreter
 
 from whoosh.index import create_in
@@ -104,7 +104,7 @@ class ListManager(QtWidgets.QMainWindow):
         super(ListManager, self).__init__(parent)
         
         self.setWindowTitle("My Listmanager")
-        self.solr_ids = [10]
+        self.solr_ids = [45] #10 Only here because ini/config has tab
 
         status = self.statusBar()
         status.setSizeGripEnabled(False)
@@ -134,6 +134,7 @@ class ListManager(QtWidgets.QMainWindow):
         self.priorities = [-1,0,1,2,3] # the possible priorities - matches Toodledo
 
         self.active_search = None
+        self.solr_search = None
         self.search_contexts = None # for when we're searching specific context(s)
 
         self.sync_log = ''
@@ -1783,16 +1784,16 @@ class ListManager(QtWidgets.QMainWindow):
             self.search.clear() # this may generate a text updated event that we need to catch
             self.active_search = None
 
+        if tab['type'] =='solr_search':
+            self.solrsearch.clear() # this may generate a text updated event that we need to catch
+            print_("here")
+            self.solr_search = None
         #current widget should be correct because of setting current index
         splitter = self.tab_manager.currentWidget() # this is not working and is removing another tab
         self.tab_manager.removeTab(L)
         splitter.deleteLater() # not sure if you need this or not
 
         del self.PageProperties[splitter]
-
-
-
-
 
     @update_row
     @update_whooshdb
@@ -2297,15 +2298,6 @@ class ListManager(QtWidgets.QMainWindow):
             self.active_search = None
             self.search.clear()
         
-    @check_modified
-    @check_task_selected
-    def ontouch(self):
-
-        self.task.modified = datetime.datetime.now()
-        session.commit()
-
-        self.refreshlistonly()
-
     def highlightsearchterms(self):
         terms = self.Properties['query_string']
         self.highlighter.setDocument(self.note.document())
@@ -2463,7 +2455,7 @@ class ListManager(QtWidgets.QMainWindow):
         print_("Last Solr sync = " + last_solr_sync.isoformat(' '))
         tasks = remote_session.query(p_Task).filter(p_Task.modified > last_solr_sync)
         print_("Number of tasks modified since last sync = " + str(tasks.count()))
-        return
+        #return
         max = round(tasks.count(), -2) + 200
         s = 0
         for n in range(100, max, 100):
@@ -2498,7 +2490,8 @@ class ListManager(QtWidgets.QMainWindow):
             s = n
     
         solr_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2)
-        print(solr_sync.timestamp)
+        # do you need a commit?
+        print_("New Solr sync = " + solr_sync.timestamp.isoformat(' '))
 
     def showsync_log(self):
         dlg = lmdialogs.SynchResults("Synchronization Results", self.sync_log, parent=self)
@@ -2649,13 +2642,23 @@ class ListManager(QtWidgets.QMainWindow):
 
         self.solr_ids = [x['id'] for x in items]
 
-        self.createnewtab(
+        if self.solr_search:
+            self.tab_manager.setCurrentWidget(self.solr_search)
+            self.Properties['query_string'] = query_string
+            #self.Properties['search_contexts'] = self.search_contexts
+            self.refreshlistonly()
+            # set current tab to solr_search
+
+        else:
+            self.createnewtab(
                            title='Solr',
                            query_string=query_string,
-                           tab={'type':'solr', 'value':'howdy'},
+                           tab={'type':'solr_search', 'value':'solr_search'},
                            filter_by={'column':'context','value':'*ALL'},
                            collapsible=False,
                            col_order = ['box','startdate','star','title','context','tag'])
+
+            self.solr_search = self.tab_manager.currentWidget()
 
     def print_note_to_log(self):
         print_(self.note.toHtml())
@@ -3002,7 +3005,7 @@ class ListManager(QtWidgets.QMainWindow):
         if tab_type == 'context':
             tasks = tasks.join(Context).filter(Context.title==tab_value)
 
-        elif tab_type == 'solr':
+        elif tab_type == 'solr_search':
             query_ids = self.solr_ids
             order_expressions = [(Task.tid==i).desc() for i in query_ids]
             tasks = tasks.filter(Task.tid.in_(query_ids)).order_by(*order_expressions)
