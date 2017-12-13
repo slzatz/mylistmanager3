@@ -1638,7 +1638,8 @@ class ListManager(QtWidgets.QMainWindow):
             Properties = self.PageProperties[sw] 
             tab = Properties['tab']
       
-            if  tab['value'] != 'active_search':
+            #if  tab['value'] != 'active_search':
+            if  not tab['value'] in ('active_search', 'solr_search'):
                 x.append(Properties)
 
         if not cg.has_section('Startup'):
