@@ -2616,8 +2616,9 @@ class ListManager(QtWidgets.QMainWindow):
         s1 = 'title:' + ' OR title:'.join(query_string.split())
         s2 = 'note:' + ' OR note:'.join(query_string.split())
         s3 = 'tag:' + ' OR tag:'.join(query_string.split())
-        s = s1 + ' OR ' + s2 + 'OR ' + s3
-        result = solr.query(collection, {'q':s, 'rows':30, 'fl':['score', 'id', 'title', 'tag', 'star', 'context', 'completed'], 'sort':'score desc'})
+        s = s1 + ' OR ' + s2 + ' OR ' + s3
+        print_(s)
+        result = solr.query(collection, {'q':s, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 'context', 'completed'], 'sort':'score desc'})
         items = result.docs
         count = result.get_results_count()
         if count==0:
