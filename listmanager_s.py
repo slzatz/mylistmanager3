@@ -46,7 +46,7 @@ from whoosh.query import Term, Or, Prefix
 from whoosh.filedb.filestore import FileStorage
 from whoosh import analysis
 from lmdb_s import *
-from lmdb_p import remote_session, Task as p_Task # joinedload #added joined load
+from lmdb_p import remote_session, Task as p_Task, Sync as p_Sync # joinedload #added joined load
 
 from SolrClient import SolrClient
 from config import SOLR_URI
@@ -2451,12 +2451,11 @@ class ListManager(QtWidgets.QMainWindow):
     def update_solr(self):
         solr = SolrClient(SOLR_URI + '/solr/')
         collection = 'listmanager'
-        solr_sync = remote_session.query(Sync).get('solr')
+        solr_sync = remote_session.query(p_Sync).get('solr')
         last_solr_sync = solr_sync.timestamp
         print_("Last Solr sync = " + last_solr_sync.isoformat(' '))
         tasks = remote_session.query(p_Task).filter(p_Task.modified > last_solr_sync)
         print_("Number of tasks modified since last sync = " + str(tasks.count()))
-        #return
         max = round(tasks.count(), -2) + 200
         s = 0
         for n in range(100, max, 100):
@@ -2491,7 +2490,7 @@ class ListManager(QtWidgets.QMainWindow):
             s = n
     
         solr_sync.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=2)
-        # do you need a commit?
+        remote_session.commit()
         print_("New Solr sync = " + solr_sync.timestamp.isoformat(' '))
 
     def showsync_log(self):
