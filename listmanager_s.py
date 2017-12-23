@@ -2000,7 +2000,7 @@ class ListManager(QtWidgets.QMainWindow):
             self.note_manager.format_toolbar.setEnabled(True)
             
             # highlight search terms in note if on search tab
-            if self.Properties['tab']['type'] in ('search','solr'):
+            if self.Properties['tab']['type'] in ('search','solr_search'):
                 self.highlightsearchterms()
             else:
                 self.highlighter.setDocument(None)
