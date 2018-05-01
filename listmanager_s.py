@@ -623,9 +623,12 @@ class ListManager(QtWidgets.QMainWindow):
                                 }     
                                 
         normal = QtGui.QFont()
-        bold = QtGui.QFont()
+        ps = 12 if sys.platform == 'linux' else 10
+        normal.setPointSize(ps)
+        #normal.setFamily("helvetica")
+        bold = QtGui.QFont(normal)
         bold.setBold(True)
-        strikeout = QtGui.QFont()
+        strikeout = QtGui.QFont(normal)
         strikeout.setStrikeOut(True)
         boldstrikeout = QtGui.QFont(bold)
         boldstrikeout.setStrikeOut(True)
