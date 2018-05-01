@@ -181,6 +181,12 @@ class ListManager(QtWidgets.QMainWindow):
         self.db_note.setEnabled(False)
         self.db_note.textChanged.connect(self.note_modified)
 
+        db_font = QtGui.QFont()
+        ps = 14 if sys.platform == 'linux' else 10
+        db_font.setPointSize(ps)
+        db_font.setFamily("helvetica")
+        self.db_note.setFont(db_font)
+
         self.note_manager = NoteManager(main_window=self)
         self.note_manager.menuBar().setVisible(False)
         self.note_manager.format_toolbar.setEnabled(False)
