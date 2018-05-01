@@ -23,7 +23,8 @@ class NoteTextEdit(QtWidgets.QTextEdit): #(QTextEdit):QTextBrowser
         self.setMouseTracking(True)
 
         font = QtGui.QFont()
-        font.setPointSize(10)
+        ps = 12 if sys.platform == 'linux' else 10
+        font.setPointSize(ps)
         font.setFamily("helvetica")
         self.document().setDefaultFont(font)
 
