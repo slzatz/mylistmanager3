@@ -3341,6 +3341,10 @@ class TitleDelegate(QtWidgets.QItemDelegate):
         print("in createEditor")
         
         editor = QtWidgets.QLineEdit(parent)
+        f = QtGui.QFont()
+        ps = 12 if sys.platform == 'linux' else 10
+        f.setPointSize(ps)
+        editor.setFont(f) #############################################################################################################
         #editor = QItemDelegate.createEditor(self, parent, option, index) # this creates the default editor for the cell and should work (untested)
         
         #somehow the editingFinished signal seems to trigger a bunch of things without explicitly connecting it to anything
