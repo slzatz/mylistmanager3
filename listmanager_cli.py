@@ -179,7 +179,7 @@ class Listmanager(Cmd):
         if s:
             task_ids = s.split()
         elif self.solr_ids:
-            task_ids = [str(id_) for id_ in self.solr_ids][:10]
+            task_ids = [str(id_) for id_ in self.solr_ids][:20]
 
         z = ['./task_display.py']
         z.extend(task_ids)
