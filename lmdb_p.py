@@ -128,7 +128,8 @@ class Task(object):
         return [tk.keyword for tk in self.taskkeywords]
 
     def __repr__(self):
-        return "<Task(%d - '%s')>" % (self.tid if self.tid else 0, self.title)
+        #return "<Task(%d - '%s')>" % (self.tid if self.tid else 0, self.title)
+        return "<Task(%d - '%s')>" % (self.id, self.title)
 
 class Context(object):
     def __init__(self, tid=None, title=None):
