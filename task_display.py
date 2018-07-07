@@ -115,9 +115,9 @@ while 1:
             c = task_num
             draw(task_num)
 
-        screen.move(0, size[1]-8)
+        screen.move(0, size[1]-20)
         screen.clrtoeol()
-        screen.addstr(0, size[1]-8, f"key/task num ={c}", curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, size[1]-20, f"key/task num = {c}", curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
         
     size_current = screen.getmaxyx()
