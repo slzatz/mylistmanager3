@@ -150,7 +150,6 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide any new text for the title"
 
     def do_note(self, s):
-        print("in do_note: s = ", s)
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -161,18 +160,20 @@ class Listmanager(Cmd):
 
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
 
-        initial_message = task.note if task.note else ''  # if you want to set up the file somehow
+        current_note = task.note if task.note else ''  # if you want to set up the file somehow
 
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
-            tf.write(initial_message.encode("utf-8"))
+            tf.write(current_note.encode("utf-8"))
             tf.flush()
             call([EDITOR, tf.name])
 
-            # do the parsing with `tf` using regular File operations.
-            # for instance:
+            # on return from closing vim
             tf.seek(0)
-            edited_message = tf.read()   # self.task.note =
-            task.note = edited_message.decode("utf-8")
+            updated_note = tf.read()  
+            # two things - should the two lines below be
+            # unindented and should we check if file has changed?
+            # if updated_note == current_note: then exit
+            task.note = updated_note.decode("utf-8")
             session.commit()
 
         self.update_solr(task)
