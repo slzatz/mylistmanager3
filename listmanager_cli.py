@@ -1,13 +1,14 @@
 #!bin/python
 
 from cmd2 import Cmd
+from cmd2.parsing import StatementParser
 from SolrClient import SolrClient
 from config import SOLR_URI
 from lmdb_p import *
 import tempfile
 import sys
 import os
-from subprocess import call
+from subprocess import call, check_output, run, PIPE
 import json
 import datetime
 import requests
@@ -21,6 +22,10 @@ session = remote_session
 
 def bold(text):
     return "\033[1m" + text + "\033[0m"
+
+def myparser():
+    parser = StatementParser(terminators=[';', '&'])
+    return parser
 
 class Listmanager(Cmd):
 
@@ -91,7 +96,7 @@ class Listmanager(Cmd):
         s3 = 'tag:' + ' OR tag:'.join(s0)
         q = s1 + ' OR ' + s2 + ' OR ' + s3
         #print(q)
-        result = solr.query(collection, {'q':s, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 'context', 'completed'], 'sort':'score desc'})
+        result = solr.query(collection, {'q':q, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 'context', 'completed'], 'sort':'score desc'})
         items = result.docs
         count = result.get_results_count()
         if count==0:
@@ -122,19 +127,17 @@ class Listmanager(Cmd):
         order_expressions = [(Task.id==i).desc() for i in self.solr_ids]
         tasks = session.query(Task).filter(Task.id.in_(self.solr_ids)).order_by(*order_expressions)
         z = [(task,f"{task.id}: {task.title}") for task  in tasks]
-        task = self.select(z, bold(self.colorize("\nWhich one? ", 'cyan')))
+        task = self.select(z, bold(self.colorize("\nWhich one (or Return if you just want a view set)? ", 'cyan')))
         if task:
-            #self.msg = "edit the 'note' or the 'title'"
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {task.title[:25]}...]> ", 'magenta'))
             self.task = task
         else:
-            #self.msg = "There is currently no task selected"
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
             self.task = None
 
-    def do_title___(self, s):
+    def do_title_(self, s):
         if not self.task:
             self.msg = "There is no task selected"
             return
@@ -147,6 +150,7 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide any new text for the title"
 
     def do_note(self, s):
+        print("in do_note: s = ", s)
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -157,11 +161,10 @@ class Listmanager(Cmd):
 
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
 
-        initial_message = self.task.note if self.task.note else ''  # if you want to set up the file somehow
+        initial_message = task.note if task.note else ''  # if you want to set up the file somehow
 
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
             tf.write(initial_message.encode("utf-8"))
-            #tf.write(initial_message)
             tf.flush()
             call([EDITOR, tf.name])
 
@@ -169,7 +172,7 @@ class Listmanager(Cmd):
             # for instance:
             tf.seek(0)
             edited_message = tf.read()   # self.task.note =
-            self.task.note = edited_message.decode("utf-8")
+            task.note = edited_message.decode("utf-8")
             session.commit()
 
         self.update_solr(task)
@@ -183,8 +186,17 @@ class Listmanager(Cmd):
 
         z = ['./task_display.py']
         z.extend(task_ids)
-        #call(['./task_display.py', '2000', '3000'])
-        call(z)
+        #response = call(z)
+        #response = check_output(z)
+        response = run(z, check=True, stderr=PIPE) # using stderr because stdout is used by task_display.py
+        if response.stderr:
+            command = json.loads(response.stderr)
+            print(command)
+            self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
+
+        self.msg = "response.stderr = "+response.stderr.decode('utf-8')
+
+        # if edit file has a task id then do_edit("note "+task_id)
 
     def do_info(self, s):
         if s:
@@ -386,12 +398,13 @@ class Listmanager(Cmd):
             self.msg = self.colorize("You need to indicate whether editing a note or the title", 'red')
             return
 
-        p = int(s.argv[2]) if len(s.argv) == 3 else ''
+        #p = int(s.argv[2]) if len(s.argv) == 3 else ''
+        p = s.argv[2] if len(s.argv) == 3 else ''
         
         if s.argv[1] == 'note':
-            self.do_note(p)
+            self.do_note(myparser().parse("note "+p))
         elif s.argv[1] == 'title':
-            self.do_title(p)
+            self.do_title(myparser().parse("title "+p))
 
     def do_quit(self, s):
         self.quit = True
