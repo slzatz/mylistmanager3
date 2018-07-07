@@ -40,20 +40,17 @@ screen.nodelay(True)
 font = curses.A_NORMAL
 
 win = curses.newwin(size[0]-2, size[1]-1, 1, 1)
-#win.box() #################
-#win.addstr(2,2, "No content yet", curses.color_pair(3)|curses.A_BOLD)##############  
 
 task_num = 0
 max_chars_line = size[1] - 10
 
 def draw(task_num):
-    #global selected_pos
     win.clear()
     win.box()
     task = tasks[task_num]
 
     header = task.title
-    note = task.note
+    note = task.note if task.note else ""
     paras = note.splitlines()
     lines = textwrap.wrap(note, max_chars_line)
     win.addstr(1, 1, header, curses.A_BOLD)
@@ -77,6 +74,7 @@ def draw(task_num):
 
 screen.clear()
 screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]}", curses.A_BOLD)
+
 s = "h:move left l:move right n:edit [n]ote t:edit [t]itle q:quit and return without editing"
 if len(s) > size[1]:
     s = s[:size[1]-1]
@@ -90,19 +88,7 @@ while 1:
     n = screen.getch()
     if n != -1:
         c = chr(n)
-        if c.isnumeric():
-            task_num = int(c)
-            if task_num < len(tasks):
-                redraw = True
-        elif c == 'h':
-            task_num = task_num-1 if task_num > 0 else len(tasks)-1
-            c = task_num
-            redraw = True
-        elif c == 'l':
-            task_num = task_num+1 if task_num < len(tasks)-1  else 0
-            c = task_num
-            redraw = True
-        elif c in ['q', 'n', 't']:
+        if c in ['q', 'n', 't']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
@@ -116,16 +102,26 @@ while 1:
 
             sys.exit()
 
-        if redraw:
+        if c.isnumeric():
+            task_num = int(c)
+            if task_num < len(tasks):
+                draw(task_num)
+        elif c == 'h':
+            task_num = task_num-1 if task_num > 0 else len(tasks)-1
+            c = task_num
+            draw(task_num)
+        elif c == 'l':
+            task_num = task_num+1 if task_num < len(tasks)-1 else 0
+            c = task_num
             draw(task_num)
 
         screen.move(0, size[1]-8)
         screen.clrtoeol()
-        screen.addstr(0, size[1]-8, f"key={c}", curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, size[1]-8, f"key/task num ={c}", curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
         
     size_current = screen.getmaxyx()
     if size != size_current:
         size = size_current
         screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]}", curses.A_BOLD)
-    time.sleep(.1)
+    time.sleep(.05)
