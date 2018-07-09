@@ -1,5 +1,11 @@
 #!bin/python
+'''
+note have to figure out if the number should be the 'find number' or the task id
+so should this be task = remote_session.query(Task).get(self.task_ids[int(s)])
+Currently using task.id in most places except do_select -- that actually may be 
+the right way to do it to only use 'view id' with select and task.id everywhere else.
 
+'''
 from cmd2 import Cmd
 from cmd2.parsing import StatementParser
 from SolrClient import SolrClient
@@ -12,13 +18,11 @@ from subprocess import call, check_output, run, PIPE
 import json
 import datetime
 import requests
+import xml.etree.ElementTree as ET
 
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
-#session = local_session
 session = remote_session
-
-#solr_ids = [] #10 Only here because ini/config has tab
 
 def bold(text):
     return "\033[1m" + text + "\033[0m"
@@ -38,7 +42,8 @@ class Listmanager(Cmd):
         self.quit = False
         self.task = None
         self.msg = ''
-        self.solr_ids = []
+        #self.solr_ids = []
+        self.task_ids = []
 
         super().__init__(use_ipython=False) #, startup_script='sonos_cli2_startup')
         # need to run super before the line below
@@ -81,7 +86,12 @@ class Listmanager(Cmd):
         # Since solr.commit didn't seem to work, substituted the below, which works
         url = SOLR_URI + '/solr/' + collection + '/update'
         r = requests.post(url, data={"commit":"true"})
-        print(r.text)
+        #print(r.text)
+        root = ET.fromstring(r.text)
+        if root[0][0].text == '0':
+            print(self.colorize("solr update successful", 'yellow'))
+        else:
+            print(self.colorize("there was a problem with the solr update", 'yellow'))
 
     def do_find(self, s):
         '''Select the master speaker that will be controlled; no arguments'''
@@ -121,17 +131,20 @@ class Listmanager(Cmd):
                     text+= e
             print(text)
 
-        self.solr_ids = [x['id'] for x in items]
-
+        solr_ids = [x['id'] for x in items]
+        #print(self.colorize(repr(solr_ids), 'yellow')) 
+        # note that (unfortunately) some solr ids exist for tasks that have been deleted -- need to fix that
         # important: since we are dealing with server using 'id' not 'tid'
-        order_expressions = [(Task.id==i).desc() for i in self.solr_ids]
-        tasks = session.query(Task).filter(Task.id.in_(self.solr_ids)).order_by(*order_expressions)
-        z = [(task,f"{task.id}: {task.title}") for task  in tasks]
-        task = self.select(z, bold(self.colorize("\nWhich one (or Return if you just want a view set)? ", 'cyan')))
+        order_expressions = [(Task.id==i).desc() for i in solr_ids]
+        tasks = session.query(Task).filter(Task.id.in_(solr_ids)).order_by(*order_expressions)
+        self.task_ids = [task.id for task in tasks]
+        z = [(task,f"{task.id}: {task.title}") for task in tasks]
+        task = self.select(z, bold(self.colorize("Choose one (or Return if you want to create a set of tasks for the view command)? ", 'cyan')))
         if task:
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {task.title[:25]}...]> ", 'magenta'))
             self.task = task
+            self.do_view(myparser().parse(f"view {task.id}")) #######################################
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
@@ -150,7 +163,6 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide any new text for the title"
 
     def do_note(self, s):
-        print("in do_note: s = ", s)
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -161,42 +173,37 @@ class Listmanager(Cmd):
 
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
 
-        initial_message = task.note if task.note else ''  # if you want to set up the file somehow
+        note = task.note if task.note else ''  # if you want to set up the file somehow
 
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
-            tf.write(initial_message.encode("utf-8"))
+            tf.write(note.encode("utf-8"))
             tf.flush()
             call([EDITOR, tf.name])
 
-            # do the parsing with `tf` using regular File operations.
-            # for instance:
+            # editing in vim and return here
             tf.seek(0)
-            edited_message = tf.read()   # self.task.note =
-            task.note = edited_message.decode("utf-8")
+            new_note = tf.read()   # self.task.note =
+            task.note = new_note.decode("utf-8")
             session.commit()
 
         self.update_solr(task)
-        self.msg = "note updated"
+        self.msg = self.colorize("note updated", 'green')
 
     def do_view(self, s):
         if s:
             task_ids = s.split()
-        elif self.solr_ids:
-            task_ids = [str(id_) for id_ in self.solr_ids][:20]
+        elif self.task_ids:
+            task_ids = [str(id_) for id_ in self.task_ids][:20]
 
         z = ['./task_display.py']
         z.extend(task_ids)
-        #response = call(z)
-        #response = check_output(z)
         response = run(z, check=True, stderr=PIPE) # using stderr because stdout is used by task_display.py
         if response.stderr:
             command = json.loads(response.stderr)
-            print(command)
+            #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
             self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
 
-        self.msg = "response.stderr = "+response.stderr.decode('utf-8')
-
-        # if edit file has a task id then do_edit("note "+task_id)
+        self.msg = ''
 
     def do_info(self, s):
         if s:
@@ -280,7 +287,6 @@ class Listmanager(Cmd):
     def do_title(self, s):
         if s:
             task = remote_session.query(Task).get(int(s))
-            print("Got here")
         elif self.task:
             task = self.task
         else:
@@ -289,26 +295,23 @@ class Listmanager(Cmd):
 
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
 
-        #initial_message = self.task.note if self.task.note else ''  # if you want to set up the file somehow
-        initial_message = task.title 
+        #initial_message = task.title 
 
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
-            tf.write(initial_message.encode("utf-8"))
-            #tf.write(initial_message)
+            tf.write(task.title.encode("utf-8"))
             tf.flush()
             call([EDITOR, tf.name])
 
-            # do the parsing with `tf` using regular File operations.
-            # for instance:
+            # editing in vim and return here
             tf.seek(0)
-            edited_message = tf.read().strip()   # self.task.note =
-            #self.task.note = edited_message.decode("utf-8")
+            new_title = tf.read().strip()   # self.task.note =
 
-        task.title = edited_message.decode("utf-8")
+        task.title = new_title.decode("utf-8")
+        self.prompt = bold(self.colorize(f"[{task.id}: {task.title[:25]}...]> ", 'magenta'))
         session.commit()
 
         self.update_solr(task)
-        self.msg = "title updated"
+        self.msg = self.colorize("title updated", 'green')
 
     def do_context(self, s=None):
         if s:
@@ -319,22 +322,9 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide an id and there was no selected task"
             return
 
-        #if not self.task:
-        #    self.msg = self.colorize("You have to select a task first", 'red')
-        #    return
-        #if s:
-        #    context = remote_session.query(Context).filter_by(title=s).first()
-        #else:
-        #    contexts = remote_session.query(Context).filter(Context.id!=1).all()
-        #    contexts.sort(key=lambda c:str.lower(c.title))
-        #    no_context = session.query(Context).filter_by(id=1).one()
-        #    contexts = [no_context] + contexts
-        #    z = [(context,f"{context.id}: {context.title}") for context  in contexts]
-        #    context = self.select(z, "Select a context for the current task? ")
-
         contexts = remote_session.query(Context).filter(Context.id!=1).all()
         contexts.sort(key=lambda c:str.lower(c.title))
-        no_context = session.query(Context).filter_by(id=1).one()
+        no_context = remote_session.query(Context).filter_by(id=1).one()
         contexts = [no_context] + contexts
         z = [(context,f"{context.id}: {context.title}") for context  in contexts]
         context = self.select(z, "Select a context for the current task? ")
@@ -349,10 +339,12 @@ class Listmanager(Cmd):
         text+= self.colorize("green\n", 'green')
         text+= self.colorize("magenta\n", 'magenta')
         text+= self.colorize("cyan\n", 'cyan')
+        text+= self.colorize("yellow\n", 'yellow')
         text+= bold(self.colorize("red bold\n", 'red'))
         text+= bold(self.colorize("green bold\n", 'green'))
         text+= bold(self.colorize("magenta bold\n", 'magenta'))
         text+= bold(self.colorize("cyan bold\n", 'cyan'))
+        text+= bold(self.colorize("yellow bold\n", 'yellow'))
 
         self.msg = text
 
@@ -365,13 +357,10 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide an id and there was no selected task"
             return
 
-        #keywords = remote_session.query(Keyword).all()
+        #keywords = remote_session.query(Keyword).all() # better to just look at context's keywords
         keywords = remote_session.query(Keyword).join(TaskKeyword,Task,Context).filter(Context.title==task.context.title).all()
         keywords.sort(key=lambda x:str.lower(x.name))
         keyword_names = [keyword.name for keyword in keywords]
-        #z = [(keyword,keyword.name) for keyword in keywords]
-        #z = [(keyword, f"{keyword.id}: {keyword.name}") for keyword in keywords]
-        #z = [(keyword, f"{keyword.id}: {keyword.name}" if keyword not in task.keywords else self.colorize( f"{keyword.id}: {keyword.name}", 'green')) for keyword in keywords]
         z = [(keyword, f"{keyword.id}: {keyword.name}" \
              if keyword not in task.keywords \
              else self.colorize( f"{keyword.id}: {keyword.name}", 'green')) \
@@ -398,13 +387,22 @@ class Listmanager(Cmd):
             self.msg = self.colorize("You need to indicate whether editing a note or the title", 'red')
             return
 
-        #p = int(s.argv[2]) if len(s.argv) == 3 else ''
         p = s.argv[2] if len(s.argv) == 3 else ''
         
         if s.argv[1] == 'note':
             self.do_note(myparser().parse("note "+p))
         elif s.argv[1] == 'title':
             self.do_title(myparser().parse("title "+p))
+
+    def do_select(self, s):
+        if not s.isdigit():
+            self.msg = self.colorize(f"You need to enter a valid number from 1 to {len(self.task_ids)}", 'red')
+            return
+        task_id = self.task_ids[int(s)-1]
+        self.task = task = remote_session.query(Task).get(task_id)
+        self.prompt = bold(self.colorize(f"[{task.id}: {task.title[:25]}...]> ", 'magenta'))
+        self.do_view(myparser().parse(f"view {task.id}")) #######################################
+        self.msg = ""
 
     def do_quit(self, s):
         self.quit = True

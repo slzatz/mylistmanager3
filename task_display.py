@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Process tasks.')
 parser.add_argument('task_ids', metavar='N', type=int, nargs='+',
                     help='an integer that represents the task id`')
 args = parser.parse_args()
-print(args.task_ids)  #[234, 128, 712, 3456]
+#print(args.task_ids)  #[234, 128, 712, 3456]
 
 tasks = []
 for task_id in args.task_ids:
