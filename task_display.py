@@ -49,15 +49,18 @@ def draw(task_num):
     win.box()
     task = tasks[task_num]
 
-    header = task.title
+    win.addstr(1, 1, task.title, curses.A_BOLD)
     note = task.note if task.note else ""
     paras = note.splitlines()
-    lines = textwrap.wrap(note, max_chars_line)
-    win.addstr(1, 1, header, curses.A_BOLD)
 
     n = 2
 
     for para in paras:
+        # this handles blank lines
+        if not para:
+            n+=1
+            continue
+
         for line in textwrap.wrap(para, max_chars_line):
 
             if n+2 == size[0]:
