@@ -112,7 +112,7 @@ class Listmanager(Cmd):
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
             self.task = task
-            self.do_view(myparser().parse(f"view {task.id}")) #######################################
+            #self.do_view(myparser().parse(f"view {task.id}")) #######################################
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
@@ -170,7 +170,8 @@ class Listmanager(Cmd):
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
             self.task = task
-            self.do_view(myparser().parse(f"view {task.id}")) #######################################
+            # the below works but for now let's not automatically go to the ncurses version of the note
+            #self.do_view(myparser().parse(f"view {task.id}")) #######################################
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
@@ -213,7 +214,7 @@ class Listmanager(Cmd):
         else:
             self.msg = self.colorize("note was not changed", 'red')
 
-    def do_view(self, s):
+    def do_viewall(self, s):
         '''provide task ids or view the current task list; ex: view 4482 4455 4678'''
         if s:
             task_ids = s.split()
@@ -291,7 +292,7 @@ class Listmanager(Cmd):
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
             self.task = task
-            self.do_view(myparser().parse(f"view {task.id}")) #######################################
+            #self.do_view(myparser().parse(f"view {task.id}")) #######################################
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
@@ -431,13 +432,35 @@ class Listmanager(Cmd):
             self.do_title(myparser().parse("title "+p))
 
     def do_select(self, s):
-        if not s.isdigit():
+        if not s.isdigit:
+            self.msg = self.colorize(f"You need to enter a task number between 1 and {len(self.task_ids)}", 'red')
+            return
+        else:
+            task_id = self.task_ids[int(s)-1]
+            self.task = task = remote_session.query(Task).get(task_id)
+        self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
+        self.msg = ""
+
+    def do_view(self, s):
+        if not s:
+            if not self.task:
+                return
+            task = self.task
+        elif not s.isdigit():
             self.msg = self.colorize(f"You need to enter a valid number from 1 to {len(self.task_ids)}", 'red')
             return
-        task_id = self.task_ids[int(s)-1]
-        self.task = task = remote_session.query(Task).get(task_id)
+        else:
+            task_id = self.task_ids[int(s)-1]
+            self.task = task = remote_session.query(Task).get(task_id)
+        z = ['./task_display.py']
+        z.append(str(task.id))
+        response = run(z, check=True, stderr=PIPE) # using stderr because stdout is used by task_display.py
+        if response.stderr:
+            command = json.loads(response.stderr)
+            #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
+            self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
         self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
-        self.do_view(myparser().parse(f"view {task.id}")) #######################################
+        #self.do_view(myparser().parse(f"view {task.id}")) #######################################
         self.msg = ""
 
     def do_star(self, s):
@@ -455,6 +478,20 @@ class Listmanager(Cmd):
         self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
         self.msg = ''
 
+    def do_lynx(self, s):
+        if not self.task:
+            self.msg = ''
+            return
+        note = self.task.note if self.task.note else ''
+        with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+            tf.write(note.encode("utf-8"))
+            tf.flush()
+            fn = tf.name
+            call(['mkd2html', fn])
+            html_fn  = fn[:fn.find('.')] + '.html'
+            #print(f"file name = {html_fn}")
+            call(['lynx', html_fn])
+        
     def do_quit(self, s):
         self.quit = True
 
