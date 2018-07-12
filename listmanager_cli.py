@@ -92,7 +92,7 @@ class Listmanager(Cmd):
         else:
             print(self.colorize("there was a problem with the solr update", 'yellow'))
 
-    def do_show(self, s):
+    def do_open(self, s):
         '''Retrive tasks by context'''
 
         contexts = remote_session.query(Context).filter(Context.id!=1).all()
@@ -106,7 +106,9 @@ class Listmanager(Cmd):
             return
         tasks = remote_session.query(Task).join(Context).filter(Task.context==context, Task.deleted==False).order_by(desc(Task.modified)).limit(40)
         self.task_ids = [task.id for task in tasks]
-        z = [(task,f"{task.id}:{'*' if task.star else ' '}{task.title}") for task in tasks]
+        #z = [(task,f"{'*' if task.star else ' '}{task.title}({task.id})") for task in tasks]
+        z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
+                         f"{task.title} ({task.id})" for task in tasks]
         task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
         if task:
             self.msg = ""
@@ -366,6 +368,8 @@ class Listmanager(Cmd):
         context = self.select(z, "Select a context for the current task? ")
         if context:
             task.context = context
+            remote_session.commit()
+            self.update_solr(task)
             self.msg = f"{task.id}: {task.title} now has context {context.title}"
         else:
             self.msg = self.colorize("You did not select a context", 'red')
@@ -430,6 +434,8 @@ class Listmanager(Cmd):
             self.do_note(myparser().parse("note "+p))
         elif s.argv[1] == 'title':
             self.do_title(myparser().parse("title "+p))
+        elif s.argv[1] == 'context':
+            self.do_context(myparser().parse("context "+p))
 
     def do_select(self, s):
         if not s.isdigit:
@@ -490,7 +496,8 @@ class Listmanager(Cmd):
             call(['mkd2html', fn])
             html_fn  = fn[:fn.find('.')] + '.html'
             #print(f"file name = {html_fn}")
-            call(['lynx', html_fn])
+            #call(['lynx', html_fn])
+            call(['chromium', html_fn])
         
     def do_quit(self, s):
         self.quit = True
