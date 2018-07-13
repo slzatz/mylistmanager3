@@ -57,6 +57,22 @@ class Listmanager(Cmd):
         self.msg = ''
         return s
 
+    def task_id_check(self, s):
+        if s.isdigit(): # works if no s (s = '')
+            task = remote_session.query(Task).get(int(s))
+            if not task:
+                self.msg = self.colorize("That was not a valid task.id", 'red')
+                return
+        elif self.task:
+            task = self.task
+        else:
+            self.msg = self.colorize(
+                f"The command needs a task.id or for self.task to be defined", 'red')
+            return
+
+        self.msg = ""
+        return task
+
     def update_solr(self, task=None):
         solr = SolrClient(SOLR_URI + '/solr/')
         collection = 'listmanager'
@@ -108,7 +124,7 @@ class Listmanager(Cmd):
         self.task_ids = [task.id for task in tasks]
         #z = [(task,f"{'*' if task.star else ' '}{task.title}({task.id})") for task in tasks]
         z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
-                         f"{task.title} ({task.id})" for task in tasks]
+             (task, f"{task.title} ({task.id})") for task in tasks]
         task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
         if task:
             self.msg = ""
@@ -310,14 +326,11 @@ class Listmanager(Cmd):
         print(f"raw: {s.raw}")
 
     def do_delete(self, s):
-        if s:
-            task = remote_session.query(Task).get(int(s))
-        elif self.task:
-            task = self.task
-        else:
-            self.msg = "You didn't provide an id and there was no selected task"
+        task = self.task_id_check(s)
+        if not task:
             return
 
+        task = remote_session.query(Task).get(int(s))
         task.deleted = not task.deleted
         remote_session.commit()
         self.msg = f"{task.title} - deleted {task.deleted}"
@@ -484,20 +497,22 @@ class Listmanager(Cmd):
         self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
         self.msg = ''
 
-    def do_lynx(self, s):
-        if not self.task:
-            self.msg = ''
+    def do_html(self, s):
+        task = self.task_id_check(s)
+        if not task:
             return
-        note = self.task.note if self.task.note else ''
+
+        note = task.note if task.note else ''
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
             tf.write(note.encode("utf-8"))
             tf.flush()
             fn = tf.name
             call(['mkd2html', fn])
             html_fn  = fn[:fn.find('.')] + '.html'
-            #print(f"file name = {html_fn}")
             #call(['lynx', html_fn])
-            call(['chromium', html_fn])
+            #call(['chromium', '-new-window', html_fn])
+            #call(['chromium', '-new-tab', html_fn])
+            call(['chromium', html_fn]) # default is -new-tab
         
     def do_quit(self, s):
         self.quit = True
