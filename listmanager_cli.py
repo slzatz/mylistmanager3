@@ -43,6 +43,13 @@ class Listmanager(Cmd):
         self.task = None
         self.msg = ''
         self.task_ids = []
+        # below shouldn't change so makes sense to precalculate
+        contexts = remote_session.query(Context).filter(Context.id!=1).all()
+        contexts.sort(key=lambda c:str.lower(c.title))
+        no_context = remote_session.query(Context).filter_by(id=1).one()
+        contexts = [no_context] + contexts
+        self.contexts = contexts
+        self.c_titles = [c.title.lower() for c in contexts]
 
         super().__init__(use_ipython=False) #, startup_script='sonos_cli2_startup')
         # need to run super before the line below
@@ -119,11 +126,8 @@ class Listmanager(Cmd):
     def do_open(self, s):
         '''Retrive tasks by context'''
 
-        contexts = remote_session.query(Context).filter(Context.id!=1).all()
-        contexts.sort(key=lambda c:str.lower(c.title))
         if s:
-            c_titles = [c.title for c in contexts]
-            for c_title in c_titles:
+            for c_title in self.c_titles:
                 if c_title.startswith(s):
                     tasks = remote_session.query(Task).join(Context).filter(
                             Context.title==c_title, Task.deleted==False).order_by(
@@ -132,9 +136,8 @@ class Listmanager(Cmd):
             else:
                 self.msg = self.colorize("{s} didn't match a context title", 'red')
         else:
-            no_context = remote_session.query(Context).filter_by(id=1).one()
-            contexts = [no_context] + contexts
-            z = [(context,f"{context.title}") for context  in contexts]
+            # below could be moved into init since it doesn't change
+            z = [(context,f"{context.title.lower()}") for context in self.contexts]
             context = self.select(z, self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
 
             if not context:
@@ -406,11 +409,8 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide an id and there was no selected task"
             return
 
-        contexts = remote_session.query(Context).filter(Context.id!=1).all()
-        contexts.sort(key=lambda c:str.lower(c.title))
-        no_context = remote_session.query(Context).filter_by(id=1).one()
-        contexts = [no_context] + contexts
-        z = [(context,f"{context.title}") for context  in contexts]
+        # the below should probably be moved into init
+        z = [(context,f"{context.title.lower()}") for context in self.contexts]
         context = self.select(z, "Select a context for the current task? ")
         if context:
             task.context = context
