@@ -73,6 +73,14 @@ class Listmanager(Cmd):
         self.msg = ""
         return task
 
+    def myselect(self, tasks):
+        z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
+             (task, f"{task.title} ({task.id})") for task in tasks]
+        task = self.select(z, self.colorize(
+               "\nSelect (or ENTER if you don't want to make a selection): ", 'cyan'))
+
+        return task
+
     def update_solr(self, task=None):
         solr = SolrClient(SOLR_URI + '/solr/')
         collection = 'listmanager'
@@ -113,19 +121,34 @@ class Listmanager(Cmd):
 
         contexts = remote_session.query(Context).filter(Context.id!=1).all()
         contexts.sort(key=lambda c:str.lower(c.title))
-        no_context = remote_session.query(Context).filter_by(id=1).one()
-        contexts = [no_context] + contexts
-        z = [(context,f"{context.title}") for context  in contexts]
-        context = self.select(z, "Select a context to display: ")
-        if not context:
-            self.msg = ''
-            return
-        tasks = remote_session.query(Task).join(Context).filter(Task.context==context, Task.deleted==False).order_by(desc(Task.modified)).limit(40)
+        if s:
+            c_titles = [c.title for c in contexts]
+            for c_title in c_titles:
+                if c_title.startswith(s):
+                    tasks = remote_session.query(Task).join(Context).filter(
+                            Context.title==c_title, Task.deleted==False).order_by(
+                            desc(Task.modified)).limit(40)
+                    break
+            else:
+                self.msg = self.colorize("{s} didn't match a context title", 'red')
+        else:
+            no_context = remote_session.query(Context).filter_by(id=1).one()
+            contexts = [no_context] + contexts
+            z = [(context,f"{context.title}") for context  in contexts]
+            context = self.select(z, self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
+
+            if not context:
+                self.msg = ''
+                return
+
+            tasks = remote_session.query(Task).join(Context).filter(
+                    Task.context==context, Task.deleted==False).order_by(
+                    desc(Task.modified)).limit(40)
+
         self.task_ids = [task.id for task in tasks]
-        #z = [(task,f"{'*' if task.star else ' '}{task.title}({task.id})") for task in tasks]
-        z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
-             (task, f"{task.title} ({task.id})") for task in tasks]
-        task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
+
+        task = self.myselect(tasks)
+
         if task:
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
@@ -182,8 +205,12 @@ class Listmanager(Cmd):
         tasks = session.query(Task).filter(Task.deleted==False,
                         Task.id.in_(solr_ids)).order_by(*order_expressions)
         self.task_ids = [task.id for task in tasks]
-        z = [(task,f"{task.id}:{'*' if task.star else ' '}{task.title}") for task in tasks]
-        task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
+        #z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
+        #     (task, f"{task.title} ({task.id})") for task in tasks]
+        #task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
+
+        task = self.myselect(tasks)
+
         if task:
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
@@ -281,6 +308,7 @@ class Listmanager(Cmd):
             return
 
         task = Task(priority=3, title=s)
+        task.startdate = datetime.datetime.today().date() 
         remote_session.add(task)
         remote_session.commit()
         self.task = task
@@ -292,20 +320,25 @@ class Listmanager(Cmd):
     def do_recent(self, s):
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         if not s or s == 'all':
-            tasks = tasks.filter(Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)))
+            tasks = tasks.filter(
+                    Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)))
         elif s == 'created':
-            tasks = tasks.filter(Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
+            tasks = tasks.filter(
+                    Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
         elif s == 'completed':
-            tasks = tasks.filter(Task.completed > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
+            tasks = tasks.filter(
+                    Task.completed > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
         elif s == 'modified':
-            tasks = tasks.filter(and_(Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)), ~(Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())))
-
+            tasks = tasks.filter(
+                    and_(
+                    Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)),
+                    ~(Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
+                    ))
 
         self.task_ids = [task.id for task in tasks]
-        #z = [(task,f"{task.id}: {task.title}") for task  in tasks]
-        z = [(task,f"{task.id}:{'*' if task.star else ' '}{task.title}") for task in tasks]
-        z = [(task,f"{task.id}:{'*' if task.star else ' '}{task.title}") for task in tasks]
-        task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
+
+        task = self.myselect(tasks)
+
         if task:
             self.msg = ""
             self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
