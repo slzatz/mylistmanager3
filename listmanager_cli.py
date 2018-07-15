@@ -179,9 +179,9 @@ class Listmanager(Cmd):
         if s:
             for c_title in self.c_titles:
                 if c_title.startswith(s):
-                    tasks = remote_session.query(Task).join(Context).filter(
-                            Context.title==c_title, Task.deleted==False).order_by(
-                            desc(Task.modified)).limit(40)
+                    tasks = remote_session.query(Task).join(Context).\
+                            filter(Context.title==c_title, Task.deleted==False).\
+                            order_by(desc(Task.modified)).limit(40)
                     break
             else:
                 self.msg = self.colorize("{s} didn't match a context title", 'red')
@@ -194,11 +194,12 @@ class Listmanager(Cmd):
                 self.msg = ''
                 return
 
-            tasks = remote_session.query(Task).join(Context).filter(
-                    Task.context==context, Task.deleted==False).order_by(
-                    desc(Task.modified)).limit(40)
+            tasks = remote_session.query(Task).join(Context).\
+                    filter(Task.context==context, Task.deleted==False).\
+                    order_by(desc(Task.modified)).limit(40)
 
         self.task_ids = [task.id for task in tasks]
+        self.tasks = tasks
         task = self.task_select(tasks)
 
         if task:
@@ -425,10 +426,10 @@ class Listmanager(Cmd):
         if not task:
             return
 
-        task = remote_session.query(Task).get(int(s))
+        #task = remote_session.query(Task).get(int(s))
         task.deleted = not task.deleted
         remote_session.commit()
-        self.msg = f"{task.title} - deleted {task.deleted}"
+        self.msg = f"{task.title} has been {'deleted' if task.deleted else 'restored'}"
 
     def do_title(self, s):
         if s:
@@ -482,27 +483,45 @@ class Listmanager(Cmd):
         text+= self.colorize("magenta\n", 'magenta')
         text+= self.colorize("cyan\n", 'cyan')
         text+= self.colorize("yellow\n", 'yellow')
+        text+= self.colorize("blue\n", 'blue')
+        text+= self.colorize("underline\n", 'underline')
         text+= bold(self.colorize("red bold\n", 'red'))
         text+= bold(self.colorize("green bold\n", 'green'))
         text+= bold(self.colorize("magenta bold\n", 'magenta'))
         text+= bold(self.colorize("cyan bold\n", 'cyan'))
         text+= bold(self.colorize("yellow bold\n", 'yellow'))
+        text+= bold(self.colorize("blue bold\n", 'blue'))
+        text+= bold(self.colorize("underline\n", 'underline'))
 
         self.msg = text
 
     def do_sort(self, s):
-        params = ['modified', 'created', 'startdate'] 
+        if self.tasks is None:
+            self.msg = self.colorize("There are no tasks", 'red')
+            return
+
+        params = ['modified', 'created', 'star', 'startdate', 'completed'] 
         for param in params:
             if param.startswith(s):
-                tasks = remote_session.query(Task).join(Context).filter(
-                        Context.title==c_title, Task.deleted==False).order_by(
-                        desc(Task.modified)).limit(40)
+                # from_self() enables further queries when the base
+                # query has limits (which it does if it was generated
+                # by open [context]
+                tasks = self.tasks.from_self().order_by(desc(getattr(Task, param)))
                 break
         else:
-            self.msg = self.colorize("{s} didn't match a context title", 'red')
-        if s.startswith
-        if not s:
-            sort = 'modified'
+            self.msg = self.colorize("{s} didn't match a Task attribute", 'red')
+            return
+
+        self.task_ids = [task.id for task in tasks]
+        task = self.task_select(tasks)
+        if task:
+            self.msg = ""
+            self.task_prompt(task)
+            self.task = task
+        else:
+            self.msg = ""
+            self.prompt = self.colorize("> ", 'red')
+            self.task = None
 
     def do_tags(self, s):
         if s:
