@@ -1,9 +1,11 @@
 #!bin/python
 '''
-note have to figure out if the number should be the 'find number' or the task id
-so should this be task = remote_session.query(Task).get(self.task_ids[int(s)])
-Currently using task.id in most places except do_select -- that actually may be 
-the right way to do it to only use 'view id' with select and task.id everywhere else.
+note have to figure out if the number should be the 'find number' or the
+task id so should this be
+task = remote_session.query(Task).get(self.task_ids[int(s)])
+Currently using task.id in most places except do_select -- that actually
+may be the right way to do it to only use 'view id' with select and
+task.id everywhere else.
 
 '''
 from cmd2 import Cmd
@@ -37,6 +39,7 @@ class Listmanager(Cmd):
     # default_to_shell = True
 
     def __init__(self):
+        super().__init__(use_ipython=False) #, startup_script='sonos_cli2_startup')
         self.raw = "Nothing"
         self.intro = "Welcome to ListManager"
         self.quit = False
@@ -51,7 +54,7 @@ class Listmanager(Cmd):
         self.contexts = contexts
         self.c_titles = [c.title.lower() for c in contexts]
 
-        super().__init__(use_ipython=False) #, startup_script='sonos_cli2_startup')
+        #super().__init__(use_ipython=False) #, startup_script='sonos_cli2_startup')
         # need to run super before the line below
         self.prompt = self.colorize("> ", 'red')
 
@@ -63,6 +66,45 @@ class Listmanager(Cmd):
         print("2:preparse:self.raw =",s)
         self.msg = ''
         return s
+
+    def select2(self, opts, prompt="Your choice? "):
+        local_opts = opts
+        if isinstance(opts, str):
+            local_opts = list(zip(opts.split(), opts.split()))
+        fulloptions = []
+        for opt in local_opts:
+            if isinstance(opt, str):
+                fulloptions.append((opt, opt))
+            else:
+                try:
+                    fulloptions.append((opt[0], opt[1]))
+                except IndexError:
+                    fulloptions.append((opt[0], opt[0]))
+        ###############################################
+        self.poutput('\n')
+        ###############################################
+        for (idx, (_, text)) in enumerate(fulloptions):
+            self.poutput('  %2d. %s\n' % (idx + 1, text))
+        while True:
+            response = input(prompt)
+
+            #if rl_type != RlType.NONE:
+                #hlen = readline.get_current_history_length()
+                #if hlen >= 1 and response != '':
+                #    readline.remove_history_item(hlen - 1)
+            ##############################################
+            if not response:
+                return
+            ##############################################
+            try:
+                choice = int(response)
+                result = fulloptions[choice - 1][0]
+                break
+            except (ValueError, IndexError):
+                self.poutput(
+                  "{!r} isn't a valid choice. Pick a number between 1 and {}:\n"
+                  .format(response, len(fulloptions)))
+        return result
 
     def task_id_check(self, s):
         if s.isdigit(): # works if no s (s = '')
@@ -80,10 +122,10 @@ class Listmanager(Cmd):
         self.msg = ""
         return task
 
-    def myselect(self, tasks):
+    def task_select(self, tasks):
         z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
              (task, f"{task.title} ({task.id})") for task in tasks]
-        task = self.select(z, self.colorize(
+        task = self.select2(z, self.colorize(
                "\nSelect (or ENTER if you don't want to make a selection): ", 'cyan'))
 
         return task
@@ -149,8 +191,7 @@ class Listmanager(Cmd):
                     desc(Task.modified)).limit(40)
 
         self.task_ids = [task.id for task in tasks]
-
-        task = self.myselect(tasks)
+        task = self.task_select(tasks)
 
         if task:
             self.msg = ""
@@ -207,12 +248,9 @@ class Listmanager(Cmd):
         order_expressions = [(Task.id==i).desc() for i in solr_ids]
         tasks = session.query(Task).filter(Task.deleted==False,
                         Task.id.in_(solr_ids)).order_by(*order_expressions)
-        self.task_ids = [task.id for task in tasks]
-        #z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
-        #     (task, f"{task.title} ({task.id})") for task in tasks]
-        #task = self.select(z, bold(self.colorize("Choose (or ENTER if you want to create a set of tasks for the view command)? ", 'cyan')))
 
-        task = self.myselect(tasks)
+        self.task_ids = [task.id for task in tasks]
+        task = self.task_select(tasks)
 
         if task:
             self.msg = ""
@@ -249,10 +287,7 @@ class Listmanager(Cmd):
 
             # editing in vim and return here
             tf.seek(0)
-            #new_note = tf.read()   # self.task.note =
             new_note = tf.read().decode("utf-8")   # self.task.note =
-            #task.note = new_note.decode("utf-8")
-            #session.commit()
 
         if new_note != note:
             task.note = new_note
@@ -300,6 +335,7 @@ class Listmanager(Cmd):
         text+= f"deleted: {task.deleted}\n"
         text+= f"created: {task.created}\n"
         text+= f"modified: {task.modified}\n"
+        text+= f"startdate: {task.startdate}\n"
         text+= f"note: {task.note[:30] if task.note else ''}"
 
         self.msg = text
@@ -324,23 +360,30 @@ class Listmanager(Cmd):
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         if not s or s == 'all':
             tasks = tasks.filter(
-                    Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)))
+                    Task.modified > (datetime.datetime.now()
+                    -datetime.timedelta(days=2))).order_by(desc(Task.modified))
+
         elif s == 'created':
             tasks = tasks.filter(
-                    Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
+                    Task.created > (datetime.datetime.now()
+                    -datetime.timedelta(days=2)).date()).order_by(desc(Task.modified))
+
         elif s == 'completed':
             tasks = tasks.filter(
-                    Task.completed > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
+                    Task.completed > (datetime.datetime.now()
+                    -datetime.timedelta(days=2)).date()).order_by(desc(Task.modified))
+
         elif s == 'modified':
             tasks = tasks.filter(
                     and_(
-                    Task.modified > (datetime.datetime.now()-datetime.timedelta(days=2)),
-                    ~(Task.created > (datetime.datetime.now()-datetime.timedelta(days=2)).date())
-                    ))
+                    Task.modified > (datetime.datetime.now()
+                    -datetime.timedelta(days=2)),
+                    ~(Task.created > (datetime.datetime.now()-
+                    datetime.timedelta(days=2)).date())
+                    )).order_by(desc(Task.modified))
 
         self.task_ids = [task.id for task in tasks]
-
-        task = self.myselect(tasks)
+        task = self.task_select(tasks)
 
         if task:
             self.msg = ""
@@ -381,8 +424,6 @@ class Listmanager(Cmd):
             return
 
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
-
-        #initial_message = task.title 
 
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
             tf.write(task.title.encode("utf-8"))
