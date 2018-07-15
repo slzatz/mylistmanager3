@@ -8,3 +8,10 @@ config.py
 *.bac
 indexdir/
 lmdb/
+bin/
+lib/
+lib64/
+lmdb_s/
+pip-selfcheck.json
+pyvenv.cfg
+whoosh_index_s/

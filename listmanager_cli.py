@@ -67,6 +67,11 @@ class Listmanager(Cmd):
         self.msg = ''
         return s
 
+    def task_prompt(self, task):
+        self.prompt = bold(self.colorize(
+            f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ",
+            'magenta'))
+
     def select2(self, opts, prompt="Your choice? "):
         local_opts = opts
         if isinstance(opts, str):
@@ -123,8 +128,11 @@ class Listmanager(Cmd):
         return task
 
     def task_select(self, tasks):
-        z = [(task, bold(f"*{task.title}({task.id})")) if task.star else \
-             (task, f"{task.title} ({task.id})") for task in tasks]
+        z = [(task, bold(
+             f"*{task.title}({task.id}) {'[c]' if task.completed else ''}"))
+             if task.star else #\
+             (task, f"{task.title} ({task.id}) {'[c]' if task.completed else ''}")
+             for task in tasks]
         task = self.select2(z, self.colorize(
                "\nSelect (or ENTER if you don't want to make a selection): ", 'cyan'))
 
@@ -195,7 +203,7 @@ class Listmanager(Cmd):
 
         if task:
             self.msg = ""
-            self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
+            self.task_prompt(task)
             self.task = task
             #self.do_view(myparser().parse(f"view {task.id}")) #######################################
         else:
@@ -254,7 +262,7 @@ class Listmanager(Cmd):
 
         if task:
             self.msg = ""
-            self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
+            self.task_prompt(task)
             self.task = task
             # the below works but for now let's not automatically go to the ncurses version of the note
             #self.do_view(myparser().parse(f"view {task.id}")) #######################################
@@ -306,7 +314,8 @@ class Listmanager(Cmd):
 
         z = ['./task_display.py']
         z.extend(task_ids)
-        response = run(z, check=True, stderr=PIPE) # using stderr because stdout is used by task_display.py
+        # using stderr below because stdout is used by task_display.py
+        response = run(z, check=True, stderr=PIPE) 
         if response.stderr:
             command = json.loads(response.stderr)
             #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
@@ -324,7 +333,7 @@ class Listmanager(Cmd):
             self.msg = "There is no task selected"
             return
 
-        text = f"id: {task.id}\n"
+        text = f"\nid: {task.id}\n"
         text+= f"title: {task.title}\n"
         text+= f"priority: {task.priority}\n"
         text+= f"star: {task.star}\n"
@@ -336,22 +345,25 @@ class Listmanager(Cmd):
         text+= f"created: {task.created}\n"
         text+= f"modified: {task.modified}\n"
         text+= f"startdate: {task.startdate}\n"
-        text+= f"note: {task.note[:30] if task.note else ''}"
+        text+= f"note: {task.note[:70] if task.note else ''}"
 
-        self.msg = text
+        print(text)
+        self.msg = ''
 
     def do_new(self, s):
-        
-        if not s:
-            self.msg = self.colorize("You need to provide a title", 'red')
-            return
-
-        task = Task(priority=3, title=s)
+        task = Task(priority=3, title=s if s else '')
         task.startdate = datetime.datetime.today().date() 
         remote_session.add(task)
         remote_session.commit()
         self.task = task
-        self.prompt = bold(self.colorize(f"[{task.id}: {task.title[:25]}...]> ", 'magenta'))
+        
+        if s:
+            self.update_solr()
+        else:
+            self.do_title(myparser().parse("title"))
+            # solr updated in do_title
+
+        self.task_prompt(task)
         self.update_solr()
         self.msg = "New task created"
         self.do_context() # msg = "slkfldsf" so it could then be added to the context msg
@@ -387,9 +399,9 @@ class Listmanager(Cmd):
 
         if task:
             self.msg = ""
-            self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
+            self.task_prompt(task)
             self.task = task
-            #self.do_view(myparser().parse(f"view {task.id}")) #######################################
+            #self.do_view(myparser().parse(f"view {task.id}")) ############
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
@@ -435,9 +447,8 @@ class Listmanager(Cmd):
             new_title = tf.read().strip()   # self.task.note =
 
         task.title = new_title.decode("utf-8")
-        self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''} {task.title[:25]}...]> ", 'magenta'))
         session.commit()
-
+        self.task_prompt(task)
         self.update_solr(task)
         self.msg = self.colorize("title updated", 'green')
 
@@ -484,8 +495,10 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide an id and there was no selected task"
             return
 
-        #keywords = remote_session.query(Keyword).all() # better to just look at context's keywords
-        keywords = remote_session.query(Keyword).join(TaskKeyword,Task,Context).filter(Context.title==task.context.title).all()
+        # Believe it is better to just look at keywords with a Context
+        keywords = remote_session.query(Keyword).join(
+            TaskKeyword,Task,Context).filter(
+            Context.title==task.context.title).all()
         keywords.sort(key=lambda x:str.lower(x.name))
         keyword_names = [keyword.name for keyword in keywords]
         z = [(keyword, f"{keyword.id}: {keyword.name}" \
@@ -496,7 +509,9 @@ class Listmanager(Cmd):
         keyword = self.select(z, "Select a keyword for the current task? ")
         if keyword:
             if keyword in task.keywords:
-                self.msg = self.colorize(f"{keyword.name} already attached to {task.title}!", 'red')
+                self.msg = self.colorize(
+                    f"{keyword.name} already attached to {task.title}!",
+                    'red')
                 return
             taskkeyword = TaskKeyword(task, keyword)
             remote_session.add(taskkeyword)
@@ -512,7 +527,9 @@ class Listmanager(Cmd):
         The two options are edit note and edit title
         '''
         if len(s.argv) < 2:
-            self.msg = self.colorize("You need to indicate whether editing a note or the title", 'red')
+            self.msg = self.colorize(
+                "You need to indicate whether editing a note or the title",
+                'red')
             return
 
         p = s.argv[2] if len(s.argv) == 3 else ''
@@ -526,12 +543,14 @@ class Listmanager(Cmd):
 
     def do_select(self, s):
         if not s.isdigit:
-            self.msg = self.colorize(f"You need to enter a task number between 1 and {len(self.task_ids)}", 'red')
+            self.msg = self.colorize(
+                f"You need to enter a task number between 1 and {len(self.task_ids)}",
+                'red')
             return
         else:
             task_id = self.task_ids[int(s)-1]
             self.task = task = remote_session.query(Task).get(task_id)
-        self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
+        self.task_prompt(task)
         self.msg = ""
 
     def do_view(self, s):
@@ -540,20 +559,24 @@ class Listmanager(Cmd):
                 return
             task = self.task
         elif not s.isdigit():
-            self.msg = self.colorize(f"You need to enter a valid number from 1 to {len(self.task_ids)}", 'red')
+            self.msg = self.colorize(
+                f"You need to enter a valid number from 1 to {len(self.task_ids)}",
+                'red')
             return
         else:
             task_id = self.task_ids[int(s)-1]
             self.task = task = remote_session.query(Task).get(task_id)
         z = ['./task_display.py']
         z.append(str(task.id))
-        response = run(z, check=True, stderr=PIPE) # using stderr because stdout is used by task_display.py
+        # using stderr below because stdout is used by task_display.py
+        response = run(z, check=True, stderr=PIPE)
         if response.stderr:
             command = json.loads(response.stderr)
             #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
             self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
-        self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
-        #self.do_view(myparser().parse(f"view {task.id}")) #######################################
+
+        self.task_prompt(task)
+        #self.do_view(myparser().parse(f"view {task.id}")) ##############
         self.msg = ""
 
     def do_star(self, s):
@@ -568,7 +591,7 @@ class Listmanager(Cmd):
         task.star = not task.star
         remote_session.commit()
         self.update_solr(task)
-        self.prompt = bold(self.colorize(f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ", 'magenta'))
+        self.task_prompt(task)
         self.msg = ''
 
     def do_html(self, s):
