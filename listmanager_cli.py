@@ -224,7 +224,9 @@ class Listmanager(Cmd):
         s3 = 'tag:' + ' OR tag:'.join(s0)
         q = s1 + ' OR ' + s2 + ' OR ' + s3
         #print(q)
-        result = solr.query(collection, {'q':q, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 'context', 'completed'], 'sort':'score desc'})
+        result = solr.query(collection, {
+                'q':q, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 
+                'context', 'completed'], 'sort':'score desc'})
         items = result.docs
         count = result.get_results_count()
         if count==0:
@@ -251,12 +253,14 @@ class Listmanager(Cmd):
 
         solr_ids = [x['id'] for x in items]
         #print(self.colorize(repr(solr_ids), 'yellow')) 
-        # note that (unfortunately) some solr ids exist for tasks that have been deleted -- need to fix that
+        # note that (unfortunately) some solr ids exist for
+        # tasks that have been deleted -- need to fix that
         # important: since we are dealing with server using 'id' not 'tid'
-        order_expressions = [(Task.id==i).desc() for i in solr_ids]
-        tasks = session.query(Task).filter(Task.deleted==False,
-                        Task.id.in_(solr_ids)).order_by(*order_expressions)
+        self.tasks = session.query(Task).filter(
+                     Task.deleted==False, Task.id.in_(solr_ids))
 
+        order_expressions = [(Task.id==i).desc() for i in solr_ids]
+        tasks = self.tasks.order_by(*order_expressions)
         self.task_ids = [task.id for task in tasks]
         task = self.task_select(tasks)
 
@@ -485,6 +489,20 @@ class Listmanager(Cmd):
         text+= bold(self.colorize("yellow bold\n", 'yellow'))
 
         self.msg = text
+
+    def do_sort(self, s):
+        params = ['modified', 'created', 'startdate'] 
+        for param in params:
+            if param.startswith(s):
+                tasks = remote_session.query(Task).join(Context).filter(
+                        Context.title==c_title, Task.deleted==False).order_by(
+                        desc(Task.modified)).limit(40)
+                break
+        else:
+            self.msg = self.colorize("{s} didn't match a context title", 'red')
+        if s.startswith
+        if not s:
+            sort = 'modified'
 
     def do_tags(self, s):
         if s:

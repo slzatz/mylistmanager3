@@ -10,7 +10,7 @@ indexdir/
 lmdb/
 bin/
 lib/
-lib64/
+lib64
 lmdb_s/
 pip-selfcheck.json
 pyvenv.cfg
