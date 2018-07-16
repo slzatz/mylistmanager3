@@ -101,6 +101,9 @@ class Listmanager(Cmd):
             if not response:
                 return
             ##############################################
+            if response == 'q':
+                return -1
+            ##############################################
             try:
                 choice = int(response)
                 result = fulloptions[choice - 1][0]
@@ -127,14 +130,15 @@ class Listmanager(Cmd):
         self.msg = ""
         return task
 
-    def task_select(self, tasks):
+    def task_select(self, tasks, prompt=None):
+        if prompt is None:
+            prompt = "\nSelect (or ENTER if you don't want to make a selection): "
         z = [(task, bold(
              f"*{task.title}({task.id}) {'[c]' if task.completed else ''}"))
              if task.star else #\
              (task, f"{task.title} ({task.id}) {'[c]' if task.completed else ''}")
              for task in tasks]
-        task = self.select2(z, self.colorize(
-               "\nSelect (or ENTER if you don't want to make a selection): ", 'cyan'))
+        task = self.select2(z, self.colorize(prompt, 'cyan'))
 
         return task
 
@@ -174,14 +178,14 @@ class Listmanager(Cmd):
             print(self.colorize("there was a problem with the solr update", 'yellow'))
 
     def do_open(self, s):
-        '''Retrive tasks by context'''
+        '''Retrieve tasks by context'''
 
         if s:
             for c_title in self.c_titles:
                 if c_title.startswith(s):
                     tasks = remote_session.query(Task).join(Context).\
                             filter(Context.title==c_title, Task.deleted==False).\
-                            order_by(desc(Task.modified)).limit(40)
+                            order_by(desc(Task.modified))
                     break
             else:
                 self.msg = self.colorize("{s} didn't match a context title", 'red')
@@ -196,7 +200,53 @@ class Listmanager(Cmd):
 
             tasks = remote_session.query(Task).join(Context).\
                     filter(Task.context==context, Task.deleted==False).\
-                    order_by(desc(Task.modified)).limit(40)
+                    order_by(desc(Task.modified))
+
+        offset = 0
+        prompt_msg = "\nSelect a task or ENTER to keep browsing or q+ENTER to quit: "
+        while 1:
+            tasks = tasks.offset(offset).limit(40)
+            self.task_ids = [task.id for task in tasks]
+            self.tasks = tasks
+            task = self.task_select(tasks, prompt_msg)
+
+            if task == -1:
+                self.msg = ""
+                self.prompt = self.colorize("> ", 'red')
+                self.task = None
+                break
+            elif task:
+                self.msg = ""
+                self.task_prompt(task)
+                self.task = task
+                break
+            else:
+                offset+=40
+
+    def do_old_open(self, s):
+        '''Retrive tasks by context'''
+
+        if s:
+            for c_title in self.c_titles:
+                if c_title.startswith(s):
+                    tasks = remote_session.query(Task).join(Context).\
+                            filter(Context.title==c_title, Task.deleted==False).\
+                            order_by(desc(Task.modified)).limit(80)
+                    break
+            else:
+                self.msg = self.colorize("{s} didn't match a context title", 'red')
+        else:
+            # below could be moved into init since it doesn't change
+            z = [(context,f"{context.title.lower()}") for context in self.contexts]
+            context = self.select(z, self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
+
+            if not context:
+                self.msg = ''
+                return
+
+            tasks = remote_session.query(Task).join(Context).\
+                    filter(Task.context==context, Task.deleted==False).\
+                    order_by(desc(Task.modified)).limit(80)
 
         self.task_ids = [task.id for task in tasks]
         self.tasks = tasks
@@ -579,7 +629,7 @@ class Listmanager(Cmd):
             self.do_context(myparser().parse("context "+p))
 
     def do_select(self, s):
-        if not s.isdigit:
+        if not s.isdigit():
             self.msg = self.colorize(
                 f"You need to enter a task number between 1 and {len(self.task_ids)}",
                 'red')
