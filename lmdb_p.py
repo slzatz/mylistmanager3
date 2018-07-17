@@ -19,7 +19,7 @@ import sqlalchemy.exc as sqla_exc
 from config import RDS_URI ### should change to PG_URI
 from lmglobals_p import REMOTE_DB, internet_accessible #, LOCAL_DB_FILE
 
-__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc', 'func']
+__all__ = ['Task', 'Context', 'Folder', 'Keyword', 'TaskKeyword', 'Sync', 'remote_engine', 'sqla_exc', 'sqla_orm_exc', 'remote_session', 'or_', 'and_', 'case', 'literal', 'asc', 'desc', 'func', 'new_remote_session']
 
 metadata = MetaData()
 task_table = Table('task',metadata,
@@ -207,3 +207,7 @@ else:
 #raspi_engine = create_engine(RASPI_URI+'/'+RASPI_DB, echo=False)
 #Raspi_Session = sessionmaker(bind=raspi_engine)
 #raspi_session = Raspi_Session()
+
+def new_remote_session():
+    Remote_Session = sessionmaker(bind=remote_engine)
+    return Remote_Session()

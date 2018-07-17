@@ -116,15 +116,15 @@ while 1:
             task = tasks[task_num-1] #####
 
             if c == 'n':
-                sys.stderr.write(json.dumps({'command':'do_note',
-                                 'args':[str(task.id)]}))
+                sys.stderr.write(json.dumps({'command':'note',
+                                 'task_id':str(task.id)}))
             elif c == 't':
-                sys.stderr.write(json.dumps({'command':'do_title',
-                                 'args':[str(task.id)]}))
+                sys.stderr.write(json.dumps({'command':'title',
+                                 'task_id':str(task.id)}))
 
             else:
-                sys.stderr.write(json.dumps({'command':'do_select',
-                                 'args':[str(task_num)]}))
+                sys.stderr.write(json.dumps({'command':'select',
+                                 'task_id':str(task.id)}))
 
             sys.exit()
 

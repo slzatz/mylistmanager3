@@ -2,7 +2,7 @@
 '''
 note have to figure out if the number should be the 'find number' or the
 task id so should this be
-task = remote_session.query(Task).get(self.task_ids[int(s)])
+task = new_remote_session.query(Task).get(self.task_ids[int(s)])
 Currently using task.id in most places except do_select -- that actually
 may be the right way to do it to only use 'view id' with select and
 task.id everywhere else.
@@ -21,17 +21,24 @@ import json
 import datetime
 import requests
 import xml.etree.ElementTree as ET
+from functools import wraps
 
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
-session = remote_session
+
+remote_session = None
 
 def bold(text):
     return "\033[1m" + text + "\033[0m"
 
-def myparser():
-    parser = StatementParser(terminators=[';', '&'])
-    return parser
+def get_session(f):
+    @wraps(f)
+    def decorated(*args):
+        #remote_session = new_session()
+        session = new_remote_session()
+        print("Created new session")
+        return f(*args, remote_session = session)
+    return decorated
 
 class Listmanager(Cmd):
 
@@ -47,6 +54,7 @@ class Listmanager(Cmd):
         self.msg = ''
         self.task_ids = []
         # below shouldn't change so makes sense to precalculate
+        remote_session = new_remote_session()
         contexts = remote_session.query(Context).filter(Context.id!=1).all()
         contexts.sort(key=lambda c:str.lower(c.title))
         no_context = remote_session.query(Context).filter_by(id=1).one()
@@ -114,7 +122,8 @@ class Listmanager(Cmd):
                   .format(response, len(fulloptions)))
         return result
 
-    def task_id_check(self, s):
+    @get_session
+    def task_id_check(self, s, remote_session=None):
         if s.isdigit(): # works if no s (s = '')
             task = remote_session.query(Task).get(int(s))
             if not task:
@@ -177,7 +186,8 @@ class Listmanager(Cmd):
         else:
             print(self.colorize("there was a problem with the solr update", 'yellow'))
 
-    def do_open(self, s):
+    @get_session
+    def do_open(self, s, remote_session=None):
         '''Retrieve tasks by context'''
 
         if s:
@@ -192,7 +202,8 @@ class Listmanager(Cmd):
         else:
             # below could be moved into init since it doesn't change
             z = [(context,f"{context.title.lower()}") for context in self.contexts]
-            context = self.select(z, self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
+            context = self.select(z,
+                   self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
 
             if not context:
                 self.msg = ''
@@ -229,7 +240,7 @@ class Listmanager(Cmd):
         if s:
             for c_title in self.c_titles:
                 if c_title.startswith(s):
-                    tasks = remote_session.query(Task).join(Context).\
+                    tasks = new_remote_session().query(Task).join(Context).\
                             filter(Context.title==c_title, Task.deleted==False).\
                             order_by(desc(Task.modified)).limit(80)
                     break
@@ -244,7 +255,7 @@ class Listmanager(Cmd):
                 self.msg = ''
                 return
 
-            tasks = remote_session.query(Task).join(Context).\
+            tasks = new_remote_session().query(Task).join(Context).\
                     filter(Task.context==context, Task.deleted==False).\
                     order_by(desc(Task.modified)).limit(80)
 
@@ -256,13 +267,15 @@ class Listmanager(Cmd):
             self.msg = ""
             self.task_prompt(task)
             self.task = task
-            #self.do_view(myparser().parse(f"view {task.id}")) #######################################
+            # not sure I want to do the below automatically
+            #self.onecmd_plus_hooks(f"view {task.id}")
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
             self.task = None
 
-    def do_find(self, s):
+    @get_session
+    def do_find(self, s, remote_session=None):
         '''Find tasks via seach; ex: find esp32 wifit'''
 
         if not s:
@@ -307,7 +320,8 @@ class Listmanager(Cmd):
         # note that (unfortunately) some solr ids exist for
         # tasks that have been deleted -- need to fix that
         # important: since we are dealing with server using 'id' not 'tid'
-        self.tasks = session.query(Task).filter(
+        #self.tasks = remote_session.query(Task).filter(
+        self.tasks = remote_session.query(Task).filter(
                      Task.deleted==False, Task.id.in_(solr_ids))
 
         order_expressions = [(Task.id==i).desc() for i in solr_ids]
@@ -319,14 +333,33 @@ class Listmanager(Cmd):
             self.msg = ""
             self.task_prompt(task)
             self.task = task
-            # the below works but for now let's not automatically go to the ncurses version of the note
-            #self.do_view(myparser().parse(f"view {task.id}")) #######################################
+            # the should work but for now let's not automatically go to the
+            # ncurses version of the note
+            self.onecmd_plus_hooks(f"view {task.id}")
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
             self.task = None
 
-    def do_note(self, s):
+    @get_session
+    def do_completed(self, s, remote_session=None):
+        if s:
+            task = remote_session().query(Task).get(int(s))
+        elif self.task:
+            task = self.task
+        else:
+            self.msg = "You didn't provide an id and there was no selected task"
+
+        if not task.completed:
+            task.completed = datetime.datetime.now().date()
+        else:
+            task.completed = None
+
+        remote_session.commit()
+        self.msg = self.colorize("Task marked as completed", 'green')
+
+    @get_session
+    def do_note(self, s, remote_session=None):
         '''modify the note of either the currently selected task or task_id; ex: note 4433'''
 
         if s:
@@ -354,7 +387,7 @@ class Listmanager(Cmd):
 
         if new_note != note:
             task.note = new_note
-            session.commit()
+            remote_session.commit()
             self.update_solr(task)
             self.msg = self.colorize("note updated", 'green')
         else:
@@ -365,24 +398,21 @@ class Listmanager(Cmd):
         if s:
             task_ids = s.split()
         elif self.task_ids:
-            task_ids = [str(id_) for id_ in self.task_ids][:20]
+            task_ids = [str(id_) for id_ in self.task_ids]#[:20]
 
         z = ['./task_display.py']
         z.extend(task_ids)
         # using stderr below because stdout is used by task_display.py
         response = run(z, check=True, stderr=PIPE) 
         if response.stderr:
-            #command = json.loads(response.stderr)
             zz = json.loads(response.stderr)
-            #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
-            #self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
-            #self.do_edit(myparser().parse(f"xxx {command['action']} {command['task_id']}"))
-            getattr(self, zz['command'])(myparser().parse(f"xxx {' '.join(zz['args'])}"))
+            self.task = remote_session.query(Task).get(int(zz['task_id']))
+            self.onecmd_plus_hooks(f"{zz['command']} {zz['task_id']}")
             
+        self.msg = '' # onecmd called methods will also have a self.msg
 
-        #self.msg = '' # generally calling another method that can produce message
-
-    def do_info(self, s):
+    @get_session
+    def do_info(self, s, remote_session=None):
         '''Info on the currently selected task or for a task id that you provide'''
         if s:
             task = remote_session.query(Task).get(int(s))
@@ -409,7 +439,8 @@ class Listmanager(Cmd):
         print(text)
         self.msg = ''
 
-    def do_new(self, s):
+    @get_session
+    def do_new(self, s, remote_session=None):
         task = Task(priority=3, title=s if s else '')
         task.startdate = datetime.datetime.today().date() 
         remote_session.add(task)
@@ -419,7 +450,7 @@ class Listmanager(Cmd):
         if s:
             self.update_solr()
         else:
-            self.do_title(myparser().parse("title"))
+            self.onecmd_plus_hooks('title')
             # solr updated in do_title
 
         self.task_prompt(task)
@@ -427,7 +458,8 @@ class Listmanager(Cmd):
         self.msg = "New task created"
         self.do_context() # msg = "slkfldsf" so it could then be added to the context msg
 
-    def do_recent(self, s):
+    @get_session
+    def do_recent(self, s, remote_session=None):
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         if not s or s == 'all':
             tasks = tasks.filter(
@@ -460,7 +492,8 @@ class Listmanager(Cmd):
             self.msg = ""
             self.task_prompt(task)
             self.task = task
-            #self.do_view(myparser().parse(f"view {task.id}")) ############
+            # below should work - just not sure I want it to happen
+            #self.onecmd_plus_hooks(f"view {task.id}")
         else:
             self.msg = ""
             self.prompt = self.colorize("> ", 'red')
@@ -475,7 +508,8 @@ class Listmanager(Cmd):
         print(f"argv: {s.argv}")
         print(f"raw: {s.raw}")
 
-    def do_delete(self, s):
+    @get_session
+    def do_delete(self, s, remote_session=None):
         task = self.task_id_check(s)
         if not task:
             return
@@ -485,7 +519,8 @@ class Listmanager(Cmd):
         remote_session.commit()
         self.msg = f"{task.title} has been {'deleted' if task.deleted else 'restored'}"
 
-    def do_title(self, s):
+    @get_session
+    def do_title(self, s, remote_session=None):
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -494,24 +529,29 @@ class Listmanager(Cmd):
             self.msg = "You didn't provide an id and there was no selected task"
             return
 
+        title = task.title
+
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
 
         with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
-            tf.write(task.title.encode("utf-8"))
+            tf.write(title.encode("utf-8"))
             tf.flush()
             call([EDITOR, tf.name])
 
             # editing in vim and return here
             tf.seek(0)
-            new_title = tf.read().strip()   # self.task.note =
+            new_title = tf.read().decode("utf-8").strip()   # self.task.note =
 
-        task.title = new_title.decode("utf-8")
-        session.commit()
-        self.task_prompt(task)
-        self.update_solr(task)
-        self.msg = self.colorize("title updated", 'green')
+        if new_title != title:
+            task.title = new_title
+            remote_session.commit()
+            self.update_solr(task)
+            self.msg = self.colorize("title updated", 'green')
+        else:
+            self.msg = self.colorize("title was not changed", 'red')
 
-    def do_context(self, s=None):
+    @get_session
+    def do_context(self, remote_session=None):
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -577,7 +617,8 @@ class Listmanager(Cmd):
             self.prompt = self.colorize("> ", 'red')
             self.task = None
 
-    def do_tags(self, s):
+    @get_session
+    def do_tags(self, s, remote_session=None):
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -626,13 +667,14 @@ class Listmanager(Cmd):
         p = s.argv[2] if len(s.argv) == 3 else ''
         
         if s.argv[1] == 'note':
-            self.do_note(myparser().parse("note "+p))
+            self.onecmd_plus_hooks(f"note {p}")
         elif s.argv[1] == 'title':
-            self.do_title(myparser().parse("title "+p))
+            self.onecmd_plus_hooks(f"title {p}")
         elif s.argv[1] == 'context':
-            self.do_context(myparser().parse("context "+p))
+            self.onecmd_plus_hooks(f"context {p}")
 
-    def do_select(self, s):
+    @get_session
+    def do_select(self, s, remote_session=None):
         if not s.isdigit():
             self.msg = self.colorize(
                 f"You need to enter a task number between 1 and {len(self.task_ids)}",
@@ -662,15 +704,15 @@ class Listmanager(Cmd):
         # using stderr below because stdout is used by task_display.py
         response = run(z, check=True, stderr=PIPE)
         if response.stderr:
-            command = json.loads(response.stderr)
+            zz = json.loads(response.stderr)
             #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
-            self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
+            self.onecmd_plus_hooks(f"{zz['command']} {' '.join(zz['args'])}")
 
         self.task_prompt(task)
-        #self.do_view(myparser().parse(f"view {task.id}")) ##############
         self.msg = ""
 
-    def do_star(self, s):
+    @get_session
+    def do_star(self, s, remote_session=None):
         if s:
             task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -704,6 +746,21 @@ class Listmanager(Cmd):
         
     def do_quit(self, s):
         self.quit = True
+
+    def do_alive(self):
+        try:
+            alive = remote_session.query(remote_session.query(p_Task).exists()).all()
+        except Exception as e:
+            self.msg = self.colorize(
+                       "Had a problem connecting to postgresql database", 'red')
+        else:
+            d = datetime.datetime.now().isoformat(' ')
+            if alive[0][0]:
+                self.msg = self.colorize(
+                        f"{d} - database connection alive", 'green')
+            else:
+                self.msg = self.colorize(
+                        f"{d} - problem with database connection", 'red')
 
     def postcmd(self, stop, s):
         if self.quit:
