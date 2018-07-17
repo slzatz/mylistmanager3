@@ -372,9 +372,13 @@ class Listmanager(Cmd):
         # using stderr below because stdout is used by task_display.py
         response = run(z, check=True, stderr=PIPE) 
         if response.stderr:
-            command = json.loads(response.stderr)
+            #command = json.loads(response.stderr)
+            zz = json.loads(response.stderr)
             #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
-            self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
+            #self.do_edit(myparser().parse(f"edit {command['action']} {command['task_id']}"))
+            #self.do_edit(myparser().parse(f"xxx {command['action']} {command['task_id']}"))
+            getattr(self, zz['command'])(myparser().parse(f"xxx {' '.join(zz['args'])}"))
+            
 
         #self.msg = '' # generally calling another method that can produce message
 

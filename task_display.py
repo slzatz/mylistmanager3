@@ -41,13 +41,14 @@ font = curses.A_NORMAL
 
 win = curses.newwin(size[0]-2, size[1]-1, 1, 1)
 
-task_num = 0
+task_num = 1 ####
 max_chars_line = size[1] - 10
 
 def draw(task_num):
     win.clear()
     win.box()
-    task = tasks[task_num]
+    #task = tasks[task_num]
+    task = tasks[task_num-1] #####
 
     win.addstr(1, 1, task.title, curses.A_BOLD)
     note = task.note if task.note else ""
@@ -85,42 +86,61 @@ screen.addstr(size[0]-1, 0, s, curses.color_pair(3)|curses.A_BOLD)
 screen.refresh()
 
 draw(task_num)
-
+accum = []
 while 1:
-    redraw = False
     n = screen.getch()
     if n != -1:
-        c = chr(n)
+        if n == 10:
+            if accum:
+                accum.reverse()
+                task_num = sum((10**n)*accum[n] for n in range(len(accum)))
+
+                if task_num < len(tasks):
+                    draw(task_num)
+                    task = tasks[task_num]
+                accum = []
+            else:
+                curses.nocbreak()
+                screen.keypad(False)
+                curses.echo()
+                curses.endwin()
+                sys.stderr.write(json.dumps({'action':'ENTER', 'task_id':task.id}))
+                sys.exit()
+            
+        c = chr(n) if n != 10 else '/'
         if c in ['q', 'n', 't']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
             curses.endwin()
-            task = tasks[task_num]
+            task = tasks[task_num-1] #####
 
             if c == 'n':
-                sys.stderr.write(json.dumps({'action':'note', 'task_id':task.id}))
+                sys.stderr.write(json.dumps({'command':'do_note',
+                                 'args':[str(task.id)]}))
             elif c == 't':
-                sys.stderr.write(json.dumps({'action':'title', 'task_id':task.id}))
+                sys.stderr.write(json.dumps({'command':'do_title',
+                                 'args':[str(task.id)]}))
+
+            else:
+                sys.stderr.write(json.dumps({'command':'do_select',
+                                 'args':[str(task_num)]}))
 
             sys.exit()
 
         if c.isnumeric():
-            task_num = int(c)
-            if task_num < len(tasks):
-                draw(task_num)
+            accum.append(int(c))
         elif c == 'h':
-            task_num = task_num-1 if task_num > 0 else len(tasks)-1
-            c = task_num
+            task_num = task_num-1 if task_num > 1 else len(tasks) #####
             draw(task_num)
         elif c == 'l':
-            task_num = task_num+1 if task_num < len(tasks)-1 else 0
-            c = task_num
+            task_num = task_num+1 if task_num < len(tasks) else 1 #####
             draw(task_num)
 
-        screen.move(0, size[1]-20)
+        screen.move(0, size[1]-50)
         screen.clrtoeol()
-        screen.addstr(0, size[1]-20, f"key/task num = {c}", curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, size[1]-50, f"task num = {task_num}; char = {c}",
+                      curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
         
     size_current = screen.getmaxyx()
