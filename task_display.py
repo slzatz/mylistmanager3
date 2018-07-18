@@ -99,13 +99,13 @@ while 1:
                     draw(task_num)
                     task = tasks[task_num]
                 accum = []
-            else:
-                curses.nocbreak()
-                screen.keypad(False)
-                curses.echo()
-                curses.endwin()
-                sys.stderr.write(json.dumps({'action':'ENTER', 'task_id':task.id}))
-                sys.exit()
+            #else:
+            #    curses.nocbreak()
+            #    screen.keypad(False)
+            #    curses.echo()
+            #    curses.endwin()
+            #    sys.stderr.write(json.dumps({'action':'ENTER', 'task_id':task.id}))
+            #    sys.exit()
             
         c = chr(n) if n != 10 else '/'
         if c in ['q', 'n', 't']:
@@ -130,10 +130,10 @@ while 1:
 
         if c.isnumeric():
             accum.append(int(c))
-        elif c == 'h':
+        elif c == 'k': #'h':
             task_num = task_num-1 if task_num > 1 else len(tasks) #####
             draw(task_num)
-        elif c == 'l':
+        elif c == 'j': #'l':
             task_num = task_num+1 if task_num < len(tasks) else 1 #####
             draw(task_num)
 

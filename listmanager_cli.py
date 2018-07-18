@@ -1,11 +1,8 @@
 #!bin/python
 '''
-note have to figure out if the number should be the 'find number' or the
 task id so should this be
 task = new_remote_session.query(Task).get(self.task_ids[int(s)])
-Currently using task.id in most places except do_select -- that actually
-may be the right way to do it to only use 'view id' with select and
-task.id everywhere else.
+Currently using task.id in ? all places
 
 '''
 from cmd2 import Cmd
@@ -37,7 +34,7 @@ def get_session(f):
         #remote_session = new_session()
         session = new_remote_session()
         print("Created new session")
-        return f(*args, remote_session = session)
+        return f(*args, remote_session=session)
     return decorated
 
 class Listmanager(Cmd):
@@ -64,7 +61,7 @@ class Listmanager(Cmd):
 
         #super().__init__(use_ipython=False) #, startup_script='sonos_cli2_startup')
         # need to run super before the line below
-        self.prompt = self.colorize("> ", 'red')
+        self.prompt = bold(self.colorize("> ", 'red'))
 
     def preparse_(self, s):
         # this is supposed to be called before any parsing of input
@@ -122,6 +119,7 @@ class Listmanager(Cmd):
                   .format(response, len(fulloptions)))
         return result
 
+    # not in use but did work but introduced session issue
     @get_session
     def task_id_check(self, s, remote_session=None):
         if s.isdigit(): # works if no s (s = '')
@@ -223,7 +221,7 @@ class Listmanager(Cmd):
 
             if task == -1:
                 self.msg = ""
-                self.prompt = self.colorize("> ", 'red')
+                self.prompt = bold(self.colorize("> ", 'red'))
                 self.task = None
                 break
             elif task:
@@ -271,7 +269,7 @@ class Listmanager(Cmd):
             #self.onecmd_plus_hooks(f"view {task.id}")
         else:
             self.msg = ""
-            self.prompt = self.colorize("> ", 'red')
+            self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
     @get_session
@@ -320,7 +318,6 @@ class Listmanager(Cmd):
         # note that (unfortunately) some solr ids exist for
         # tasks that have been deleted -- need to fix that
         # important: since we are dealing with server using 'id' not 'tid'
-        #self.tasks = remote_session.query(Task).filter(
         self.tasks = remote_session.query(Task).filter(
                      Task.deleted==False, Task.id.in_(solr_ids))
 
@@ -333,18 +330,18 @@ class Listmanager(Cmd):
             self.msg = ""
             self.task_prompt(task)
             self.task = task
-            # the should work but for now let's not automatically go to the
+            # this works but for now let's not automatically go to the
             # ncurses version of the note
-            self.onecmd_plus_hooks(f"view {task.id}")
+            #self.onecmd_plus_hooks(f"view")
         else:
             self.msg = ""
-            self.prompt = self.colorize("> ", 'red')
+            self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
     @get_session
     def do_completed(self, s, remote_session=None):
         if s:
-            task = remote_session().query(Task).get(int(s))
+            self.task = task = remote_session().query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -363,7 +360,7 @@ class Listmanager(Cmd):
         '''modify the note of either the currently selected task or task_id; ex: note 4433'''
 
         if s:
-            task = remote_session.query(Task).get(int(s))
+            self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -393,6 +390,8 @@ class Listmanager(Cmd):
         else:
             self.msg = self.colorize("note was not changed", 'red')
 
+        self.task_prompt(task)
+
     def do_viewall(self, s):
         '''provide task ids or view the current task list; ex: view 4482 4455 4678'''
         if s:
@@ -406,7 +405,7 @@ class Listmanager(Cmd):
         response = run(z, check=True, stderr=PIPE) 
         if response.stderr:
             zz = json.loads(response.stderr)
-            self.task = remote_session.query(Task).get(int(zz['task_id']))
+            #self.task = remote_session.query(Task).get(int(zz['task_id']))
             self.onecmd_plus_hooks(f"{zz['command']} {zz['task_id']}")
             
         self.msg = '' # onecmd called methods will also have a self.msg
@@ -415,7 +414,7 @@ class Listmanager(Cmd):
     def do_info(self, s, remote_session=None):
         '''Info on the currently selected task or for a task id that you provide'''
         if s:
-            task = remote_session.query(Task).get(int(s))
+            self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -496,7 +495,7 @@ class Listmanager(Cmd):
             #self.onecmd_plus_hooks(f"view {task.id}")
         else:
             self.msg = ""
-            self.prompt = self.colorize("> ", 'red')
+            self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
     def do_test(self, s):
@@ -510,19 +509,23 @@ class Listmanager(Cmd):
 
     @get_session
     def do_delete(self, s, remote_session=None):
-        task = self.task_id_check(s)
-        if not task:
+        if s:
+            self.task = task = remote_session.query(Task).get(int(s))
+        elif self.task:
+            task = self.task
+        else:
+            self.msg = "You didn't provide an id and there was no selected task"
             return
 
-        #task = remote_session.query(Task).get(int(s))
         task.deleted = not task.deleted
         remote_session.commit()
+        self.task_prompt(task)
         self.msg = f"{task.title} has been {'deleted' if task.deleted else 'restored'}"
 
     @get_session
     def do_title(self, s, remote_session=None):
         if s:
-            task = remote_session.query(Task).get(int(s))
+            self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -550,10 +553,12 @@ class Listmanager(Cmd):
         else:
             self.msg = self.colorize("title was not changed", 'red')
 
+        self.task_prompt(task)
+
     @get_session
-    def do_context(self, remote_session=None):
+    def do_context(self, s, remote_session=None):
         if s:
-            task = remote_session.query(Task).get(int(s))
+            self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -571,6 +576,8 @@ class Listmanager(Cmd):
         else:
             self.msg = self.colorize("You did not select a context", 'red')
         
+        self.task_prompt(task)
+
     def do_colors(self, s):
         text = self.colorize("red\n", 'red')
         text+= self.colorize("green\n", 'green')
@@ -614,13 +621,13 @@ class Listmanager(Cmd):
             self.task = task
         else:
             self.msg = ""
-            self.prompt = self.colorize("> ", 'red')
+            self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
     @get_session
     def do_tags(self, s, remote_session=None):
         if s:
-            task = remote_session.query(Task).get(int(s))
+            self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -654,6 +661,9 @@ class Listmanager(Cmd):
         else:
             self.msg = self.colorize("You didn't select a keyword", 'red')
 
+        self.task_prompt(task)
+
+    # note sure we need do_edit
     def do_edit(self, s):
         '''The edit command requires (right now) that a task be selected
         The two options are edit note and edit title
@@ -675,30 +685,25 @@ class Listmanager(Cmd):
 
     @get_session
     def do_select(self, s, remote_session=None):
-        if not s.isdigit():
-            self.msg = self.colorize(
-                f"You need to enter a task number between 1 and {len(self.task_ids)}",
-                'red')
-            return
+        if s:
+            self.task = task = remote_session.query(Task).get(int(s))
+        elif self.task:
+            task = self.task
         else:
-            task_id = self.task_ids[int(s)-1]
-            self.task = task = remote_session.query(Task).get(task_id)
+            self.msg = "You didn't provide an id and there was no selected task"
+            return
         self.task_prompt(task)
         self.msg = ""
 
-    def do_view(self, s):
-        if not s:
-            if not self.task:
-                return
+    @get_session
+    def do_view(self, s, remote_session=None):
+        if s:
+            self.task = task = remote_session.query(Task).get(int(s))
+        elif self.task:
             task = self.task
-        elif not s.isdigit():
-            self.msg = self.colorize(
-                f"You need to enter a valid number from 1 to {len(self.task_ids)}",
-                'red')
-            return
         else:
-            task_id = self.task_ids[int(s)-1]
-            self.task = task = remote_session.query(Task).get(task_id)
+            self.msg = "You didn't provide an id and there was no selected task"
+            return
         z = ['./task_display.py']
         z.append(str(task.id))
         # using stderr below because stdout is used by task_display.py
@@ -706,7 +711,7 @@ class Listmanager(Cmd):
         if response.stderr:
             zz = json.loads(response.stderr)
             #print(self.colorize(response.stderr.decode('utf-8'), 'yellow'))
-            self.onecmd_plus_hooks(f"{zz['command']} {' '.join(zz['args'])}")
+            self.onecmd_plus_hooks(f"{zz['command']} {zz['task_id']}")
 
         self.task_prompt(task)
         self.msg = ""
@@ -714,7 +719,7 @@ class Listmanager(Cmd):
     @get_session
     def do_star(self, s, remote_session=None):
         if s:
-            task = remote_session.query(Task).get(int(s))
+            self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
             task = self.task
         else:
@@ -727,9 +732,14 @@ class Listmanager(Cmd):
         self.task_prompt(task)
         self.msg = ''
 
-    def do_html(self, s):
-        task = self.task_id_check(s)
-        if not task:
+    @get_session
+    def do_html(self, s, remote_session=None):
+        if s:
+            self.task = task = remote_session.query(Task).get(int(s))
+        elif self.task:
+            task = self.task
+        else:
+            self.msg = "You didn't provide an id and there was no selected task"
             return
 
         note = task.note if task.note else ''
@@ -744,7 +754,10 @@ class Listmanager(Cmd):
             #call(['chromium', '-new-tab', html_fn])
             call(['chromium', html_fn]) # default is -new-tab
         
+        self.task_prompt(task)
+
     def do_quit(self, s):
+        print("In do_quit")
         self.quit = True
 
     def do_alive(self):
@@ -764,6 +777,7 @@ class Listmanager(Cmd):
 
     def postcmd(self, stop, s):
         if self.quit:
+            print("In postcmd")
             return True
         # the below prints the appropriate message after each command
         print(self.msg)
