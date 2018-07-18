@@ -23,7 +23,8 @@ from functools import wraps
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
-remote_session = None
+#remote_session = None
+remote_session = new_remote_session()
 
 def bold(text):
     return "\033[1m" + text + "\033[0m"
@@ -51,7 +52,7 @@ class Listmanager(Cmd):
         self.msg = ''
         self.task_ids = []
         # below shouldn't change so makes sense to precalculate
-        remote_session = new_remote_session()
+        #remote_session = new_remote_session()
         contexts = remote_session.query(Context).filter(Context.id!=1).all()
         contexts.sort(key=lambda c:str.lower(c.title))
         no_context = remote_session.query(Context).filter_by(id=1).one()
@@ -120,8 +121,8 @@ class Listmanager(Cmd):
         return result
 
     # not in use but did work but introduced session issue
-    @get_session
-    def task_id_check(self, s, remote_session=None):
+    #@get_session
+    def task_id_check(self, s): #remote_session=None
         if s.isdigit(): # works if no s (s = '')
             task = remote_session.query(Task).get(int(s))
             if not task:
@@ -184,8 +185,8 @@ class Listmanager(Cmd):
         else:
             print(self.colorize("there was a problem with the solr update", 'yellow'))
 
-    @get_session
-    def do_open(self, s, remote_session=None):
+    #@get_session
+    def do_open(self, s): #remote_session=None
         '''Retrieve tasks by context'''
 
         if s:
@@ -272,8 +273,8 @@ class Listmanager(Cmd):
             self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
-    @get_session
-    def do_find(self, s, remote_session=None):
+    #@get_session
+    def do_find(self, s): #remote_session=None
         '''Find tasks via seach; ex: find esp32 wifit'''
 
         if not s:
@@ -338,8 +339,8 @@ class Listmanager(Cmd):
             self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
-    @get_session
-    def do_completed(self, s, remote_session=None):
+    #@get_session
+    def do_completed(self, s): #remote_session=None
         if s:
             self.task = task = remote_session().query(Task).get(int(s))
         elif self.task:
@@ -355,8 +356,8 @@ class Listmanager(Cmd):
         remote_session.commit()
         self.msg = self.colorize("Task marked as completed", 'green')
 
-    @get_session
-    def do_note(self, s, remote_session=None):
+    #@get_session
+    def do_note(self, s): #remote_session=None
         '''modify the note of either the currently selected task or task_id; ex: note 4433'''
 
         if s:
@@ -410,8 +411,8 @@ class Listmanager(Cmd):
             
         self.msg = '' # onecmd called methods will also have a self.msg
 
-    @get_session
-    def do_info(self, s, remote_session=None):
+    #@get_session
+    def do_info(self, s): #remote_session=None
         '''Info on the currently selected task or for a task id that you provide'''
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
@@ -438,8 +439,8 @@ class Listmanager(Cmd):
         print(text)
         self.msg = ''
 
-    @get_session
-    def do_new(self, s, remote_session=None):
+    #@get_session
+    def do_new(self, s): #remote_session=None
         task = Task(priority=3, title=s if s else '')
         task.startdate = datetime.datetime.today().date() 
         remote_session.add(task)
@@ -457,8 +458,8 @@ class Listmanager(Cmd):
         self.msg = "New task created"
         self.do_context() # msg = "slkfldsf" so it could then be added to the context msg
 
-    @get_session
-    def do_recent(self, s, remote_session=None):
+    #@get_session
+    def do_recent(self, s): #remote_session=None
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         if not s or s == 'all':
             tasks = tasks.filter(
@@ -507,8 +508,8 @@ class Listmanager(Cmd):
         print(f"argv: {s.argv}")
         print(f"raw: {s.raw}")
 
-    @get_session
-    def do_delete(self, s, remote_session=None):
+    #@get_session
+    def do_delete(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -522,8 +523,8 @@ class Listmanager(Cmd):
         self.task_prompt(task)
         self.msg = f"{task.title} has been {'deleted' if task.deleted else 'restored'}"
 
-    @get_session
-    def do_title(self, s, remote_session=None):
+    #@get_session
+    def do_title(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -555,8 +556,8 @@ class Listmanager(Cmd):
 
         self.task_prompt(task)
 
-    @get_session
-    def do_context(self, s, remote_session=None):
+    #@get_session
+    def do_context(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -624,8 +625,8 @@ class Listmanager(Cmd):
             self.prompt = bold(self.colorize("> ", 'red'))
             self.task = None
 
-    @get_session
-    def do_tags(self, s, remote_session=None):
+    #@get_session
+    def do_tags(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -683,8 +684,8 @@ class Listmanager(Cmd):
         elif s.argv[1] == 'context':
             self.onecmd_plus_hooks(f"context {p}")
 
-    @get_session
-    def do_select(self, s, remote_session=None):
+    #@get_session
+    def do_select(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -695,8 +696,8 @@ class Listmanager(Cmd):
         self.task_prompt(task)
         self.msg = ""
 
-    @get_session
-    def do_view(self, s, remote_session=None):
+    #@get_session
+    def do_view(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -716,8 +717,8 @@ class Listmanager(Cmd):
         self.task_prompt(task)
         self.msg = ""
 
-    @get_session
-    def do_star(self, s, remote_session=None):
+    #@get_session
+    def do_star(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -732,8 +733,8 @@ class Listmanager(Cmd):
         self.task_prompt(task)
         self.msg = ''
 
-    @get_session
-    def do_html(self, s, remote_session=None):
+    #@get_session
+    def do_html(self, s): #remote_session=None
         if s:
             self.task = task = remote_session.query(Task).get(int(s))
         elif self.task:
@@ -760,10 +761,11 @@ class Listmanager(Cmd):
         print("In do_quit")
         self.quit = True
 
-    def do_alive(self):
+    def do_alive(self, s):
         try:
-            alive = remote_session.query(remote_session.query(p_Task).exists()).all()
+            alive = remote_session.query(remote_session.query(Task).exists()).all()
         except Exception as e:
+            print(s)
             self.msg = self.colorize(
                        "Had a problem connecting to postgresql database", 'red')
         else:
