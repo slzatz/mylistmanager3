@@ -187,8 +187,14 @@ mapper(Sync, sync_table)
 
 if internet_accessible():
     try:
-        remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False)
+        # the use of pool_pre_ping doesn't help preserve a connection
+        # that goes unused for a while
+        #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False, pool_pre_ping=True)
+
+        # the use of pool_recycle shouldn't work since this is only used on checkout
         #remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False, pool_recycle=500)
+
+        remote_engine = create_engine(RDS_URI+'/'+REMOTE_DB, echo=False)
         Remote_Session = sessionmaker(bind=remote_engine)
         remote_session = Remote_Session()
 
