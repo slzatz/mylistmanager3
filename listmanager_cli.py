@@ -73,11 +73,13 @@ class Listmanager(Cmd):
             self.prompt = bold(self.colorize(
                 f"[{task.id}: {'*' if task.star else ''}{task.title[:25]}...]> ",
                 'magenta'))
+            self.msg = msg
         else:
             self.prompt = bold(self.colorize("> ", 'red'))
+            # if no task then would expect self.msg to already be set
 
         self.task = task
-        self.msg = msg
+        #self.msg = msg
 
     def select2(self, opts, prompt="Your choice? "):
         local_opts = opts
@@ -108,6 +110,7 @@ class Listmanager(Cmd):
             if not response:
                 return
             ##############################################
+            # below probably doesn't work but was added to help advance pages
             if response == 'q':
                 return -1
             ##############################################
@@ -236,7 +239,7 @@ class Listmanager(Cmd):
                 offset+=40
 
     def do_old_open(self, s):
-        '''Retrive tasks by context'''
+        '''Retrieve tasks by context'''
 
         if s:
             for c_title in self.c_titles:
@@ -264,17 +267,6 @@ class Listmanager(Cmd):
         self.tasks = tasks
         task = self.select_task(tasks)
         self.task_prompt(task)
-
-        #if task:
-        #    self.msg = ""
-        #    self.task_prompt(task)
-        #    #self.task = task
-        #    # not sure I want to do the below automatically
-        #    #self.onecmd_plus_hooks(f"view {task.id}")
-        #else:
-        #    self.msg = ""
-        #    self.prompt = bold(self.colorize("> ", 'red'))
-        #    self.task = None
 
     def do_find(self, s): 
         '''Find tasks via seach; ex: find esp32 wifit'''
@@ -330,50 +322,29 @@ class Listmanager(Cmd):
         task = self.select_task(tasks)
         self.task_prompt(task)
 
-        #if task:
-        #    self.msg = ""
-        #    self.task_prompt(task)
-        #    #self.task = task
-        #    # this works but for now let's not automatically go to the
-        #    # ncurses version of the note
-        #    #self.onecmd_plus_hooks(f"view")
-        #else:
-        #    self.msg = ""
-        #    self.prompt = bold(self.colorize("> ", 'red'))
-        #    self.task = None
-
     def do_completed(self, s): 
-        #if s:
-        #    self.task = task = remote_session().query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task)
             return
 
         if not task.completed:
             task.completed = datetime.datetime.now().date()
+            msg = self.colorize("Task marked as completed", 'green')
         else:
             task.completed = None
+            msg = self.colorize(f"Task is now {bold('not')} ", 'green')\
+                    +self.colorize("completed", 'green')
 
         remote_session.commit()
-        self.msg = self.colorize("Task marked as completed", 'green')
+        self.task_prompt(task, msg=msg)
 
     def do_note(self, s): 
         '''modify the note of either the currently selected task or task_id; ex: note 4433'''
 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task, msg=msg)
             return
 
         EDITOR = os.environ.get('EDITOR','vim') #that easy!
@@ -421,42 +392,32 @@ class Listmanager(Cmd):
 
     def do_info(self, s): 
         '''Info on the currently selected task or for a task id that you provide'''
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "There is no task selected"
-        #    return
         task = self.get_task(s)
-        if not task:
-            return
+        if task:
+            text = f"\nid: {task.id}\n"
+            text+= f"title: {task.title}\n"
+            text+= f"priority: {task.priority}\n"
+            text+= f"star: {task.star}\n"
+            text+= f"context: {task.context.title}\n"
+            text+= f"keywords: {', '.join(k.name for k in task.keywords)}\n"
+            text+= f"tag: {task.tag}\n"
+            text+= f"completed: {task.completed}\n"
+            text+= f"deleted: {task.deleted}\n"
+            text+= f"created: {task.created}\n"
+            text+= f"modified: {task.modified}\n"
+            text+= f"startdate: {task.startdate}\n"
+            text+= f"note: {task.note[:70] if task.note else ''}"
 
-        text = f"\nid: {task.id}\n"
-        text+= f"title: {task.title}\n"
-        text+= f"priority: {task.priority}\n"
-        text+= f"star: {task.star}\n"
-        text+= f"context: {task.context.title}\n"
-        text+= f"keywords: {', '.join(k.name for k in task.keywords)}\n"
-        text+= f"tag: {task.tag}\n"
-        text+= f"completed: {task.completed}\n"
-        text+= f"deleted: {task.deleted}\n"
-        text+= f"created: {task.created}\n"
-        text+= f"modified: {task.modified}\n"
-        text+= f"startdate: {task.startdate}\n"
-        text+= f"note: {task.note[:70] if task.note else ''}"
+            print(text)
 
-        print(text)
-        #self.msg = ''
         self.task_prompt(task)
-        #self.task = task
 
     def do_new(self, s): 
+        '''Create a new entry'''
         task = Task(priority=3, title=s if s else '')
         task.startdate = datetime.datetime.today().date() 
         remote_session.add(task)
         remote_session.commit()
-        self.task = task
         
         if s:
             self.update_solr()
@@ -465,8 +426,7 @@ class Listmanager(Cmd):
             # solr updated in do_title
 
         self.task_prompt(task)
-        #self.update_solr()
-        self.msg = "New task created"
+        #self.msg = "New task created"
         self.do_context(None) # msg = "slkfldsf" so it could then be added to the context msg
 
     def do_recent(self, s): 
@@ -499,17 +459,6 @@ class Listmanager(Cmd):
         task = self.select_task(tasks)
         self.task_prompt(task)
 
-        #if task:
-        #    self.msg = ""
-        #    self.task_prompt(task)
-        #    #self.task = task
-        #    # below should work - just not sure I want it to happen
-        #    #self.onecmd_plus_hooks(f"view {task.id}")
-        #else:
-        #    self.msg = ""
-        #    self.prompt = bold(self.colorize("> ", 'red'))
-        #    self.task = None
-
     def do_test(self, s):
         print(s)
         print(type(s))
@@ -520,32 +469,18 @@ class Listmanager(Cmd):
         print(f"raw: {s.raw}")
 
     def do_delete(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
-        if not task:
-            return
+        if task:
+            task.deleted = not task.deleted
+            remote_session.commit()
+            self.msg = f"{task.title} has been {'deleted' if task.deleted else 'restored'} (but solr not updated)"
 
-        task.deleted = not task.deleted
-        remote_session.commit()
         self.task_prompt(task)
-        self.msg = f"{task.title} has been {'deleted' if task.deleted else 'restored'} (but solr not updated)"
 
     def do_title(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task)
             return
 
         title = task.title
@@ -565,22 +500,16 @@ class Listmanager(Cmd):
             task.title = new_title
             remote_session.commit()
             self.update_solr(task)
-            self.msg = self.colorize("title updated", 'green')
+            msg = self.colorize("title updated", 'green')
         else:
-            self.msg = self.colorize("title was not changed", 'red')
+            msg = self.colorize("title was not changed", 'red')
 
-        self.task_prompt(task)
+        self.task_prompt(task, msg=msg)
 
     def do_context(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task, msg=msg)
             return
 
         # the below should probably be moved into init
@@ -590,11 +519,11 @@ class Listmanager(Cmd):
             task.context = context
             remote_session.commit()
             self.update_solr(task)
-            self.msg = f"{task.id}: {task.title} now has context {context.title}"
+            msg = f"{task.id}: {task.title} now has context {context.title}"
         else:
-            self.msg = self.colorize("You did not select a context", 'red')
+            msg = self.colorize("You did not select a context", 'red')
         
-        self.task_prompt(task)
+        self.task_prompt(task, msg=msg)
 
     def do_colors(self, s):
         text = self.colorize("red\n", 'red')
@@ -628,31 +557,18 @@ class Listmanager(Cmd):
                 tasks = self.tasks.from_self().order_by(desc(getattr(Task, param)))
                 break
         else:
-            self.msg = self.colorize("{s} didn't match a Task attribute", 'red')
+            msg = self.colorize("{s} didn't match a Task attribute", 'red')
+            self.task_prompt(task, msg=msg)
             return
 
         self.task_ids = [task.id for task in tasks]
         task = self.select_task(tasks)
         self.task_prompt(task)
-        #if task:
-        #    self.msg = ""
-        #    self.task_prompt(task)
-        #    self.task = task
-        #else:
-        #    self.msg = ""
-        #    self.prompt = bold(self.colorize("> ", 'red'))
-        #    self.task = None
 
     def do_tags(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task)
             return
 
         # Believe it is better to just look at keywords with a Context
@@ -678,11 +594,11 @@ class Listmanager(Cmd):
             task.tag = ','.join(kwn.name for kwn in task.keywords) #######
             remote_session.commit()
             self.update_solr(task)
-            self.msg = self.colorize(f"You added {keyword.name} to {task.title}", 'green')
+            msg = self.colorize(f"You added {keyword.name} to {task.title}", 'green')
         else:
-            self.msg = self.colorize("You didn't select a keyword", 'red')
+            msg = self.colorize("You didn't select a keyword", 'red')
 
-        self.task_prompt(task)
+        self.task_prompt(task, msg=msg)
 
     # note sure we need do_edit
     def do_edit(self, s):
@@ -705,30 +621,13 @@ class Listmanager(Cmd):
             self.onecmd_plus_hooks(f"context {p}")
 
     def do_select(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
-        #if not task:
-        #    return
         self.task_prompt(task)
-        #self.task = task
-        #self.msg = ""
 
     def do_view(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task)
             return
         z = ['./task_display.py']
         z.append(str(task.id))
@@ -740,37 +639,19 @@ class Listmanager(Cmd):
             self.onecmd_plus_hooks(f"{zz['command']} {zz['task_id']}")
 
         self.task_prompt(task)
-        #self.task = task
-        #self.msg = ""
 
     def do_star(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
-        #if not task:
-        #    return
         if task: 
             task.star = not task.star
             remote_session.commit()
             self.update_solr(task)
         self.task_prompt(task)
-        #self.msg = ''
 
     def do_html(self, s): 
-        #if s:
-        #    self.task = task = remote_session.query(Task).get(int(s))
-        #elif self.task:
-        #    task = self.task
-        #else:
-        #    self.msg = "You didn't provide an id and there was no selected task"
-        #    return
         task = self.get_task(s)
         if not task:
+            self.task_prompt(task)
             return
 
         note = task.note if task.note else ''
