@@ -272,6 +272,7 @@ class Listmanager(Cmd):
         self.task_prompt(task)
 
     def do_completed(self, s): 
+        '''togle completed state'''
         task = self.get_task(s)
         if not task:
             self.task_prompt(task)
@@ -382,6 +383,7 @@ class Listmanager(Cmd):
         self.do_context(None) # msg = "slkfldsf" so it could then be added to the context msg
 
     def do_recent(self, s): 
+        '''show recent tasks'''
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         if not s or s == 'all':
             tasks = tasks.filter(
@@ -412,6 +414,7 @@ class Listmanager(Cmd):
         self.task_prompt(task)
 
     def do_test(self, s):
+        '''shows the value of the various entities that s is parsed to'''
         print(s)
         print(type(s))
         print(dir(s))
@@ -421,6 +424,7 @@ class Listmanager(Cmd):
         print(f"raw: {s.raw}")
 
     def do_delete(self, s): 
+        '''toggle delete'''
         task = self.get_task(s)
         if task:
             task.deleted = not task.deleted
@@ -430,6 +434,7 @@ class Listmanager(Cmd):
         self.task_prompt(task)
 
     def do_title(self, s): 
+        '''edit the title in vim'''
         task = self.get_task(s)
         if not task:
             self.task_prompt(task)
@@ -459,6 +464,7 @@ class Listmanager(Cmd):
         self.task_prompt(task, msg=msg)
 
     def do_context(self, s): 
+        '''add/change an item's context'''
         task = self.get_task(s)
         if not task:
             self.task_prompt(task, msg=msg)
