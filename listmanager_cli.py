@@ -191,82 +191,31 @@ class Listmanager(Cmd):
         else:
             print(self.colorize("there was a problem with the solr update", 'yellow'))
 
-    def do_open(self, s): 
-        '''Retrieve tasks by context'''
-
+    def do_open(self, s):
+        '''Retrieve tasks by context - opens an ncurses script'''
         if s:
             for c_title in self.c_titles:
                 if c_title.startswith(s):
-                    tasks = remote_session.query(Task).join(Context).\
-                            filter(Context.title==c_title, Task.deleted==False).\
-                            order_by(desc(Task.modified))
                     break
             else:
                 self.msg = self.colorize("{s} didn't match a context title", 'red')
+                return
         else:
             # below could be moved into init since it doesn't change
-            z = [(context,f"{context.title.lower()}") for context in self.contexts]
-            context = self.select(z,
+            z = [(context.title,f"{context.title.lower()}") for context in self.contexts]
+            c_title = self.select2(z,
                    self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
 
-            if not context:
+            if not c_title:
                 self.msg = ''
                 return
 
-            tasks = remote_session.query(Task).join(Context).\
-                    filter(Task.context==context, Task.deleted==False).\
-                    order_by(desc(Task.modified))
-
-        offset = 0
-        prompt_msg = "\nSelect a task or ENTER to keep browsing or q+ENTER to quit: "
-        while 1:
-            tasks = tasks.offset(offset).limit(40)
-            self.task_ids = [task.id for task in tasks]
-            self.tasks = tasks
-            task = self.select_task(tasks, prompt_msg)
-
-            if task == -1: ############################################this will go away with curses open
-                self.msg = ""
-                self.prompt = bold(self.colorize("> ", 'red'))
-                self.task = None
-                break
-            elif task:
-                self.msg = ""
-                self.task_prompt(task)
-                #self.task = task
-                break
-            else:
-                offset+=40
-
-    def do_old_open(self, s):
-        '''Retrieve tasks by context'''
-
-        if s:
-            for c_title in self.c_titles:
-                if c_title.startswith(s):
-                    tasks = new_remote_session().query(Task).join(Context).\
-                            filter(Context.title==c_title, Task.deleted==False).\
-                            order_by(desc(Task.modified)).limit(80)
-                    break
-            else:
-                self.msg = self.colorize("{s} didn't match a context title", 'red')
-        else:
-            # below could be moved into init since it doesn't change
-            z = [(context,f"{context.title.lower()}") for context in self.contexts]
-            context = self.select(z, self.colorize("\nSelect a context to open (or ENTER): ", 'cyan'))
-
-            if not context:
-                self.msg = ''
-                return
-
-            tasks = new_remote_session().query(Task).join(Context).\
-                    filter(Task.context==context, Task.deleted==False).\
-                    order_by(desc(Task.modified)).limit(80)
-
-        self.task_ids = [task.id for task in tasks]
-        self.tasks = tasks
-        task = self.select_task(tasks)
-        self.task_prompt(task)
+        z = ['./open_display.py']
+        z.append(c_title)
+        response = run(z, check=True, stderr=PIPE) 
+        if response.stderr:
+            zz = json.loads(response.stderr)
+            self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
 
     def do_find(self, s): 
         '''Find tasks via seach; ex: find esp32 wifit'''
@@ -393,11 +342,13 @@ class Listmanager(Cmd):
     def do_info(self, s): 
         '''Info on the currently selected task or for a task id that you provide'''
         task = self.get_task(s)
+        colorize = self.colorize
         if task:
-            text = f"\nid: {task.id}\n"
-            text+= f"title: {task.title}\n"
-            text+= f"priority: {task.priority}\n"
-            text+= f"star: {task.star}\n"
+            text = "\n"
+            text+= colorize("id", 'underline') + f": {task.id}\n"
+            text+= colorize("title", 'underline') + f": {task.title}\n"
+            text+= colorize("priority", 'underline') + f": {task.priority}\n"
+            text+= colorize("star", 'underline') + f": {task.star}\n"
             text+= f"context: {task.context.title}\n"
             text+= f"keywords: {', '.join(k.name for k in task.keywords)}\n"
             text+= f"tag: {task.tag}\n"
@@ -418,6 +369,7 @@ class Listmanager(Cmd):
         task.startdate = datetime.datetime.today().date() 
         remote_session.add(task)
         remote_session.commit()
+        self.task = task # this is neceeary for update_solr and I am guessing for do_title
         
         if s:
             self.update_solr()
@@ -564,6 +516,9 @@ class Listmanager(Cmd):
         self.task_ids = [task.id for task in tasks]
         task = self.select_task(tasks)
         self.task_prompt(task)
+
+    def do_rtags(self, s):
+        pass
 
     def do_tags(self, s): 
         task = self.get_task(s)

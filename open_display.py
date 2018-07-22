@@ -1,11 +1,12 @@
 #!bin/python
 '''
-python3 script: displays infoboxes with key determing which box is displayed
-See below for mapping from pos (int) to topic of infobox
+curses script that is called by listmanager_cli.py do_open method
+To handle the edge case of the last page, we could add page_max_rows
+which would always be the same as max_rows except for the last page
+Not sure it's worth it so haven't implemented it
 '''
 import sys
 import curses
-import textwrap
 from datetime import datetime
 import time
 import json
@@ -16,11 +17,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('context')
 args = parser.parse_args()
 c_title = args.context
-tasks = []
 tasks = remote_session.query(Task).join(Context).\
             filter(Context.title==c_title, Task.deleted==False).\
                    order_by(desc(Task.modified)).all()
 
+actions = {'n':'note', 't':'title', 's':'select'}
 
 
 screen = curses.initscr()
@@ -40,7 +41,6 @@ font = curses.A_NORMAL
 
 win = curses.newwin(size[0]-2, size[1]-1, 1, 1)
 
-#page_tasks = tasks[page*9:page*9+9]
 page = 0
 row_num = 1
 max_chars_line = size[1] - 10
@@ -58,7 +58,7 @@ def draw():
             break
 
         try:
-            win.addstr(n, 2, f"{i}. {task.title}")  #(y,x)
+            win.addstr(n, 2, f"{i}. {task.title[:max_chars_line]}")  #(y,x)
         except Exception as e:
              pass
 
@@ -67,7 +67,7 @@ def draw():
     win.refresh() 
 
 screen.clear()
-screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows} ", curses.A_BOLD)
+screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows} last_page = {last_page}", curses.A_BOLD)
 
 s = "h:move left l:move right n:edit [n]ote t:edit [t]itle q:quit and return without editing"
 if len(s) > size[1]:
@@ -83,39 +83,23 @@ while 1:
     n = screen.getch()
     if n != -1:
         if n == 10:
-            if accum:
-                accum.reverse()
-                row_num = sum((10**n)*accum[n] for n in range(len(accum)))
-
-                if row_num < len(tasks):
-                    draw(row_num)
-                    task = tasks[row_num]
-                accum = []
-            else:
-                curses.nocbreak()
-                screen.keypad(False)
-                curses.echo()
-                curses.endwin()
-                sys.stderr.write(json.dumps({'action':'ENTER', 'task_id':task.id}))
-                sys.exit()
-            
-        c = chr(n) if n != 10 else '/'
-        if c in ['q', 'n', 't']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
             curses.endwin()
-            task = tasks[row_num]
-
-            if c == 'n':
-                sys.stderr.write(json.dumps({'action':'note', 'task_id':task.id}))
-            elif c == 't':
-                sys.stderr.write(json.dumps({'action':'title', 'task_id':task.id}))
-
+            #sys.stderr.write(json.dumps({'action':'select', 'task_id':task.id}))
+            sys.exit()
+            
+        c = chr(n) if n != 10 else '/'
+        if c in ['s', 'n', 't']:
+            curses.nocbreak()
+            screen.keypad(False)
+            curses.echo()
+            curses.endwin()
+            task = tasks[row_num-1]
+            sys.stderr.write(json.dumps({'action':actions[c], 'task_id':task.id}))
             sys.exit()
 
-        if c.isnumeric():
-            accum.append(int(c))
         elif c == 'k':
             win.addstr(row_num, 1, " ")  #k
             row_num-=1
@@ -123,9 +107,9 @@ while 1:
                 page = (page - 1) if page > 0 else last_page
                 row_num = max_rows
                 draw()  
-            
             win.addstr(row_num, 1, ">")  #k
             win.refresh()
+
         elif c == 'j':
             win.addstr(row_num, 1, " ")  #j
             row_num+=1
@@ -137,18 +121,23 @@ while 1:
             win.refresh()
 
         elif c == 'h':
-                page = (page - 1) if page > 0 else last_page
-                draw()  
-                win.addstr(row_num, 1, ">")  #j
-                win.refresh()
-
-        elif c == 'l':
-            page = (page + 1) if page < last_page else 0
+            win.addstr(row_num, 1, " ")  #j
+            page = (page - 1) if page > 0 else last_page
             draw()  
+            row_num = 1
             win.addstr(row_num, 1, ">")  #j
             win.refresh()
 
-
+        elif c == 'l':
+            win.addstr(row_num, 1, " ")  #j
+            page = (page + 1) if page < last_page else 0
+            # decided at moment not to implement changes that handle last page
+            #if page==last_page:
+            #    page_max_rows = len(tasks)%last_page
+            draw()  
+            row_num = 1
+            win.addstr(row_num, 1, ">")  #j
+            win.refresh()
 
         screen.move(0, size[1]-50)
         screen.clrtoeol()
