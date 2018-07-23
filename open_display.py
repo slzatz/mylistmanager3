@@ -77,7 +77,7 @@ def draw():
 screen.clear()
 screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows} last_page = {last_page}", curses.A_BOLD)
 
-s = "h:move left l:move right n:edit [n]ote t:edit [t]itle q:quit and return without editing"
+s = "j:page down k: page up h:page left l:page right n:edit [n]ote t:edit [t]itle s:[s]elect and ENTER/RETURN no action"
 if len(s) > size[1]:
     s = s[:size[1]-1]
 screen.addstr(size[0]-1, 0, s, curses.color_pair(3)|curses.A_BOLD)
@@ -158,8 +158,8 @@ while 1:
         win.addstr(row_num, 1, ">")  #j
         win.refresh()
 
-    elif n == 0o33:
-        arrow = True
+    #elif n == 0o33:
+    #    arrow = True
 
     screen.move(0, size[1]-50)
     screen.clrtoeol()

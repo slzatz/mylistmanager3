@@ -21,6 +21,8 @@ import requests
 import xml.etree.ElementTree as ET
 from functools import wraps
 import threading
+from task_display2 import task_display2
+from open_display2 import open_display2
 
 def check():
     while 1:
@@ -210,12 +212,12 @@ class Listmanager(Cmd):
                 self.msg = ''
                 return
 
-        z = ['./open_display.py']
-        z.append(c_title)
-        response = run(z, check=True, stderr=PIPE) 
-        if response.stderr:
-            zz = json.loads(response.stderr)
+        zz = open_display2(c_title)
+        if zz:
             self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
+            self.msg = '' # need this
+        else:
+            self.task_prompt(None)
 
     def do_find(self, s): 
         '''Find tasks via seach; ex: find esp32 wifit'''
@@ -262,11 +264,11 @@ class Listmanager(Cmd):
         # note that (unfortunately) some solr ids exist for
         # tasks that have been deleted -- need to fix that
         # important: since we are dealing with server using 'id' not 'tid'
-        self.tasks = remote_session.query(Task).filter(
+        tasks = remote_session.query(Task).filter(
                      Task.deleted==False, Task.id.in_(solr_ids))
 
         order_expressions = [(Task.id==i).desc() for i in solr_ids]
-        tasks = self.tasks.order_by(*order_expressions)
+        self.tasks = tasks = tasks.order_by(*order_expressions).all()
         self.task_ids = [task.id for task in tasks]
         task = self.select_task(tasks)
         self.task_prompt(task)
@@ -340,6 +342,13 @@ class Listmanager(Cmd):
             
         self.msg = '' # onecmd called methods will also have a self.msg
 
+    def do_viewall2(self, s):
+        '''provide task ids or view the current task list; ex: view 4482 4455 4678'''
+        zz = task_display2(self.tasks)
+        if zz:
+            self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
+            
+        self.msg = '' # onecmd called methods will also have a self.msg
     def do_info(self, s): 
         '''Info on the currently selected task or for a task id that you provide'''
         task = self.get_task(s)
