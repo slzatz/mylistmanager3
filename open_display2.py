@@ -11,6 +11,20 @@ Note that when you press an arrow key getch sees three keys in rapid succession 
 [
 A, B, C or D
 
+Below are the basic colors supported by curses expressed as:
+    curses.init_pair(2, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+
+curses.color_pair(2)|curses.A_BOLD
+
+0:black, 1:red, 2:green, 3:yellow, 4:blue, 5:magenta, 6:cyan, and 7:white
+
+Other ways to change text:
+A_BLINK	Blinking text
+A_BOLD	Extra bright or bold text
+A_DIM	Half bright text
+A_REVERSE	Reverse-video text
+A_STANDOUT	The best highlighting mode available
+A_UNDERLINE	Underlined text
 '''
 import sys
 import curses
@@ -27,7 +41,7 @@ def open_display2(c_title):
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
-    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_WHITE)
     curses.init_pair(4, 15, -1)
     color_map = {'{blue}':3, '{red}':1, '{green}':2,'{white}':4}
@@ -60,7 +74,10 @@ def open_display2(c_title):
                 break
 
             try:
-                win.addstr(n, 2, f"{i}. {task.title[:max_chars_line]} {'[c]' if task.completed else ''}")  #(y,x)
+                if task.star:
+                    win.addstr(n, 2, f"{i}. {task.title[:max_chars_line]} {'[c]' if task.completed else ''}", curses.color_pair(2)|curses.A_BOLD)  #(y,x)
+                else:
+                    win.addstr(n, 2, f"{i}. {task.title[:max_chars_line]} {'[c]' if task.completed else ''}")  #(y,x)
             except Exception as e:
                  pass
 
