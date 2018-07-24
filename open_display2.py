@@ -110,7 +110,7 @@ def open_display2(c_title):
             screen.keypad(False)
             curses.echo()
             curses.endwin()
-            task = tasks[row_num-1]
+            task = tasks[(page*max_rows)+row_num-1]
             return {'action':actions[c], 'task_id':task.id}
             #sys.stderr.write(json.dumps({'action':actions[c], 'task_id':task.id}))
             #sys.exit()
