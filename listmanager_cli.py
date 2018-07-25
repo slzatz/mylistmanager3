@@ -213,9 +213,8 @@ class Listmanager(Cmd):
                 self.msg = ''
                 return
 
-        #zz = open_display2(c_title)
         zz = open_display_preview(c_title)
-        if zz:
+        if zz['action']:
             self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
             self.msg = '' # need this
         else:

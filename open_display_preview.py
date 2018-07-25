@@ -34,7 +34,7 @@ import json
 import textwrap
 from lmdb_p import *
 
-actions = {'n':'note', 't':'title', 's':'select'}
+actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
 keys = {'B':'j', 'A':'k', 'C':'l', 'D':'h'}
 
 def open_display_preview(c_title):
@@ -51,7 +51,7 @@ def open_display_preview(c_title):
     curses.noecho()
     size = screen.getmaxyx()
     screen.nodelay(True)
-    font = curses.A_NORMAL
+    #normal = curses.A_NORMAL
     half_width = size[1]//2
     win = curses.newwin(size[0]-2, half_width-1, 1, 1)
     win2 = curses.newwin(size[0]-2, half_width-1, 1, half_width+1)
@@ -105,13 +105,9 @@ def open_display_preview(c_title):
             if n+2 == size[0]:
                 break
 
-            try:
-                if task.star:
-                    win.addstr(n, 2, f"{i}. {task.title[:max_chars_line-7]} {'[c]' if task.completed else ''}", curses.color_pair(2)|curses.A_BOLD)  #(y,x)
-                else:
-                    win.addstr(n, 2, f"{i}. {task.title[:max_chars_line-7]} {'[c]' if task.completed else ''}")  #(y,x)
-            except Exception as e:
-                 pass
+            c = ' [c]' if task.completed else ''
+            font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
+            win.addstr(n, 2, f"{i}. {task.title[:max_chars_line-7]}{c}", font)  #(y,x)
 
             n+=1
 
@@ -150,15 +146,8 @@ def open_display_preview(c_title):
         elif c == '\x1b': #o33:
             arrow = True
             continue
-        elif c == '\n': #10:
-            curses.nocbreak()
-            screen.keypad(False)
-            curses.echo()
-            curses.endwin()
-            #sys.exit()
-            return
             
-        if c in ['s', 'n', 't']:
+        if c in ['s', 'n', 't', 'c', '\n', 'q']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
@@ -182,7 +171,6 @@ def open_display_preview(c_title):
         elif c == 'j':
             win.addstr(row_num, 1, " ")  #j
             row_num+=1
-            #if row_num==max_rows+1:
             if row_num==page_max_rows+1:
                 page = (page + 1) if page < last_page else 0
                 draw()  
@@ -221,8 +209,9 @@ def open_display_preview(c_title):
                       curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
-        size_current = screen.getmaxyx()
-        if size != size_current:
-            size = size_current
-            screen.addstr(0,0, f"screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows}", curses.A_BOLD)
+        #size_current = screen.getmaxyx()
+        #if size != size_current:
+        #    size = size_current
+        #    screen.addstr(0,0, f"screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows}", curses.A_BOLD)
+
         time.sleep(.05)
