@@ -59,11 +59,12 @@ def open_display_preview(c_title):
     page = 0
     row_num = 1
     max_chars_line = half_width - 5
-    max_rows = size[0]-7
+    max_rows = size[0]-4
     tasks = remote_session.query(Task).join(Context).\
                 filter(Context.title==c_title, Task.deleted==False).\
                        order_by(desc(Task.modified)).all()
     last_page = len(tasks)//max_rows
+    last_page_max_rows = len(tasks)%max_rows
 
     def draw_note(task):
         win2.clear()
@@ -72,7 +73,7 @@ def open_display_preview(c_title):
         note = task.note if task.note else ""
         paras = note.splitlines()
 
-        n = 2
+        n = 1
 
         for para in paras:
             # this handles blank lines
@@ -82,7 +83,7 @@ def open_display_preview(c_title):
 
             for line in textwrap.wrap(para, max_chars_line):
 
-                if n+2 == size[0]:
+                if n > max_rows:
                     break
 
                 try:
@@ -133,6 +134,7 @@ def open_display_preview(c_title):
 
     accum = []
     arrow = False
+    page_max_rows = max_rows if last_page else last_page_max_rows
     while 1:
         n = screen.getch()
         if n == -1:
@@ -169,24 +171,25 @@ def open_display_preview(c_title):
             row_num-=1
             if row_num==0:
                 page = (page - 1) if page > 0 else last_page
-                row_num = max_rows
                 draw()  
+                page_max_rows = max_rows if not page==last_page else last_page_max_rows
+                row_num = page_max_rows
             win.addstr(row_num, 1, ">")  #k
             win.refresh()
-            #task = tasks[(page*max_rows)+row_num-1]
             task = tasks[page*max_rows+row_num-1]
             draw_note(task)
 
         elif c == 'j':
             win.addstr(row_num, 1, " ")  #j
             row_num+=1
-            if row_num==max_rows+1:
+            #if row_num==max_rows+1:
+            if row_num==page_max_rows+1:
                 page = (page + 1) if page < last_page else 0
-                row_num = 1
                 draw()  
+                row_num = 1
+                page_max_rows = max_rows if not page==last_page else last_page_max_rows
             win.addstr(row_num, 1, ">")  #j
             win.refresh()
-            #task = tasks[(page*max_rows)+row_num-1]
             task = tasks[page*max_rows+row_num-1]
             draw_note(task)
 
@@ -199,22 +202,18 @@ def open_display_preview(c_title):
             win.refresh()
             task = tasks[page*max_rows]
             draw_note(task)
+            page_max_rows = max_rows if not page==last_page else last_page_max_rows
 
         elif c == 'l':
             win.addstr(row_num, 1, " ")  #j
             page = (page + 1) if page < last_page else 0
-            # decided at moment not to implement changes that handle last page
-            #if page==last_page:
-            #    page_max_rows = len(tasks)%last_page
             draw()  
             row_num = 1
             win.addstr(row_num, 1, ">")  #j
             win.refresh()
             task = tasks[page*max_rows]
             draw_note(task)
-
-        #elif n == 0o33:
-        #    arrow = True
+            page_max_rows = max_rows if not page==last_page else last_page_max_rows
 
         screen.move(0, size[1]-50)
         screen.clrtoeol()

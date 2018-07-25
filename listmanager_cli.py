@@ -22,7 +22,8 @@ import xml.etree.ElementTree as ET
 from functools import wraps
 import threading
 from task_display2 import task_display2
-from open_display2 import open_display2
+#from open_display2 import open_display2
+from open_display_preview import open_display_preview
 
 def check():
     while 1:
@@ -212,7 +213,8 @@ class Listmanager(Cmd):
                 self.msg = ''
                 return
 
-        zz = open_display2(c_title)
+        #zz = open_display2(c_title)
+        zz = open_display_preview(c_title)
         if zz:
             self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
             self.msg = '' # need this
