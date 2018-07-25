@@ -19,7 +19,6 @@ import datetime
 import time
 import requests
 import xml.etree.ElementTree as ET
-from functools import wraps
 import threading
 from task_display2 import task_display2
 #from open_display2 import open_display2
