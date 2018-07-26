@@ -27,6 +27,7 @@ A_STANDOUT	The best highlighting mode available
 A_UNDERLINE	Underlined text
 '''
 import sys
+import os
 import curses
 from datetime import datetime
 import time
@@ -37,8 +38,11 @@ import requests
 from config import SOLR_URI
 from lmdb_p import *
 import xml.etree.ElementTree as ET
+import tempfile
+from subprocess import call, run, PIPE
 
-actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
+#actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
+actions = {'\n':'select', 'q':None}
 keys = {'B':'j', 'A':'k', 'C':'l', 'D':'h'}
 
 solr = SolrClient(SOLR_URI + '/solr')
@@ -190,7 +194,7 @@ def open_display_preview(c_title):
             continue
             
         #if c in ['s', 'n', 't', 'c', '\n', 'q']:
-        if c in ['n', 't', '\n', 'q']:
+        elif c in ['\n', 'q']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
@@ -198,19 +202,74 @@ def open_display_preview(c_title):
             task = tasks[(page*max_rows)+row_num-1]
             return {'action':actions[c], 'task_id':task.id}
 
-        if c in ['s']:
+        # edit note in vim
+        elif c == 'n':
+            task = tasks[(page*max_rows)+row_num-1]
+            note = task.note if task.note else ''  # if you want to set up the file somehow
+            EDITOR = os.environ.get('EDITOR','vim') #that easy!
+
+            note = task.note if task.note else ''  # if you want to set up the file somehow
+
+            with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+                tf.write(note.encode("utf-8"))
+                tf.flush()
+                call([EDITOR, tf.name])
+                # editing in vim and return here
+                tf.seek(0)
+                new_note = tf.read().decode("utf-8")   # self.task.note =
+
+            if new_note != note:
+                task.note = new_note
+                draw_note(task)
+                remote_session.commit()
+                update_solr(task)
+
+        # edit title in vim
+        elif c == 't':
+            task = tasks[(page*max_rows)+row_num-1]
+            title = task.title
+
+            EDITOR = os.environ.get('EDITOR','vim') #that easy!
+
+            with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+                tf.write(title.encode("utf-8"))
+                tf.flush()
+                call([EDITOR, tf.name])
+
+                # editing in vim and return here
+                tf.seek(0)
+                new_title = tf.read().decode("utf-8").strip()   # self.task.note =
+
+            if new_title != title:
+                task.title = new_title
+                comp = ' [c]' if task.completed else ''
+                font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
+                win.move(row_num, 2)
+                win.clrtoeol()
+                win.addstr(row_num, 2, 
+                   f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
+                   font)  #(y,x)
+                win.refresh()
+                remote_session.commit()
+                update_solr(task)
+
+        # toggle star
+        elif c == 's':
             task = tasks[(page*max_rows)+row_num-1]
             task.star = not task.star
             comp = ' [c]' if task.completed else ''
             font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
             win.move(row_num, 2)
             win.clrtoeol()
-            win.addstr(row_num, 2, f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}", font)  #(y,x)
+            win.addstr(row_num, 2, 
+                f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
+                font)  #(y,x)
             win.refresh()
             remote_session.commit()
-            #update_solr(task)
+            update_solr(task)
 
-        if c in ['c']:
+        # toggle completed
+        elif c == 'c':
             task = tasks[(page*max_rows)+row_num-1]
 
             if not task.completed:
@@ -224,12 +283,16 @@ def open_display_preview(c_title):
             font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
             win.move(row_num, 2)
             win.clrtoeol()
-            win.addstr(row_num, 2, f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}", font)  #(y,x)
-            win.addch(row_num, half_width-2, curses.ACS_VLINE) # unfortunately the clrtoeol wipes out the vertical box line character
+            win.addstr(row_num, 2, 
+              f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}", font) #(y,x)
+
+            # unfortunately the clrtoeol wipes out the vertical box line character
+            win.addch(row_num, half_width-2, curses.ACS_VLINE) 
             win.refresh()
             remote_session.commit()
-            #update_solr(task)
+            update_solr(task)
 
+        # using "vim keys" for navigation
         elif c == 'k':
             win.addstr(row_num, 1, " ")  #k
             row_num-=1
