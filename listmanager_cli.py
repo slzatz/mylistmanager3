@@ -21,8 +21,8 @@ import requests
 import xml.etree.ElementTree as ET
 import threading
 from task_display2 import task_display2
-#from open_display2 import open_display2
-from open_display_preview import open_display_preview
+#from open_display_preview import open_display_preview
+from open_display_preview_standalone import open_display_preview
 
 def check():
     while 1:
@@ -212,14 +212,26 @@ class Listmanager(Cmd):
                 self.msg = ''
                 return
 
-        zz = open_display_preview(c_title)
+        zz = open_display_preview({'type':'context', 'param':c_title})
         if zz['action']:
             self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
             self.msg = '' # need this
         else:
             self.task_prompt(None)
 
-    def do_find(self, s): 
+    def do_find(self, s):        
+
+        if not s:
+            self.msg = "You didn't type any search terms"
+            return
+        zz = open_display_preview({'type':'find', 'param': s}) 
+        if zz['action']:
+            self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
+            self.msg = '' # need this
+        else:
+            self.task_prompt(None)
+
+    def do_old_find(self, s): 
         '''Find tasks via seach; ex: find esp32 wifit'''
 
         if not s:
@@ -272,6 +284,7 @@ class Listmanager(Cmd):
         self.task_ids = [task.id for task in tasks]
         task = self.select_task(tasks)
         self.task_prompt(task)
+
 
     def do_completed(self, s): 
         '''togle completed state'''
@@ -359,15 +372,15 @@ class Listmanager(Cmd):
             text+= colorize("title", 'underline') + f": {task.title}\n"
             text+= colorize("priority", 'underline') + f": {task.priority}\n"
             text+= colorize("star", 'underline') + f": {task.star}\n"
-            text+= f"context: {task.context.title}\n"
-            text+= f"keywords: {', '.join(k.name for k in task.keywords)}\n"
-            text+= f"tag: {task.tag}\n"
-            text+= f"completed: {task.completed}\n"
-            text+= f"deleted: {task.deleted}\n"
-            text+= f"created: {task.created}\n"
-            text+= f"modified: {task.modified}\n"
-            text+= f"startdate: {task.startdate}\n"
-            text+= f"note: {task.note[:70] if task.note else ''}"
+            text+= colorize("context", 'underline') + f": {task.context.title}\n"
+            text+= colorize("keywords", 'underline') + f": {', '.join(k.name for k in task.keywords)}\n"
+            text+= colorize("tag", 'underline') + f": {task.tag}\n"
+            text+= colorize("completed", 'underline') + f": {task.completed}\n"
+            text+= colorize("deleted", 'underline') + f": {task.deleted}\n"
+            text+= colorize("created", 'underline') + f": {task.created}\n"
+            text+= colorize("modified", 'underline') + f": {task.modified}\n"
+            text+= colorize("startdate", 'underline') + f": {task.startdate}\n"
+            text+= colorize("note", 'underline') + f": {task.note[:70] if task.note else ''}"
 
             print(text)
 
@@ -392,6 +405,17 @@ class Listmanager(Cmd):
         self.do_context(None) # msg = "slkfldsf" so it could then be added to the context msg
 
     def do_recent(self, s): 
+        '''show recent tasks'''
+
+        s = s if s else 'all'
+        zz = open_display_preview({'type':'recent', 'param': s}) 
+        if zz['action']:
+            self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
+            self.msg = '' # need this
+        else:
+            self.task_prompt(None)
+
+    def do_old_recent(self, s): 
         '''show recent tasks'''
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         if not s or s == 'all':

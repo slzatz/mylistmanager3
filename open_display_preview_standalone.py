@@ -29,7 +29,7 @@ A_UNDERLINE	Underlined text
 import sys
 import os
 import curses
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import json
 import textwrap
@@ -40,11 +40,26 @@ from lmdb_p import *
 import xml.etree.ElementTree as ET
 import tempfile
 from subprocess import call, run, PIPE
+import threading
+
+def check():
+    while 1:
+        c = remote_session.connection() #########
+        try:
+            c.execute("select 1")
+        except (sqla_exc.ResourceClosedError, sqla_exc.StatementError) as e:
+            print(f"{datetime.now()} - {e}")
+        time.sleep(500)
+
+
+remote_session = new_remote_session()
+th = threading.Thread(target=check, daemon=True)
+th.start()
 
 #actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
 actions = {'\n':'select', 'q':None}
 keys = {'B':'j', 'A':'k', 'C':'l', 'D':'h'}
-
+keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
@@ -78,12 +93,14 @@ def update_solr(task=None):
     r = requests.post(url, data={"commit":"true"})
     #print(r.text)
     root = ET.fromstring(r.text)
-    #if root[0][0].text == '0':
-    #    print(self.colorize("solr update successful", 'yellow'))
-    #else:
-    #    print(self.colorize("there was a problem with the solr update", 'yellow'))
+    if root[0][0].text == '0':
+        return f"{task.id} success"
+    else:
+        return f"{task.id} failure"
 
-def open_display_preview(c_title):
+def open_display_preview(query):
+    # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} or {'type':'recent':'param':'all'}
+    # needs to be generalized to handle open context, find and recent queries
     screen = curses.initscr()
     curses.start_color()
     curses.use_default_colors()
@@ -95,6 +112,7 @@ def open_display_preview(c_title):
     curses.curs_set(0)
     curses.cbreak() # respond to keys without needing Enter
     curses.noecho()
+    screen.keypad(True) #claims to catch arrow keys -- we'll see
     size = screen.getmaxyx()
     screen.nodelay(True)
     #normal = curses.A_NORMAL
@@ -106,9 +124,65 @@ def open_display_preview(c_title):
     row_num = 1
     max_chars_line = half_width - 5
     max_rows = size[0]-4
-    tasks = remote_session.query(Task).join(Context).\
-                filter(Context.title==c_title, Task.deleted==False).\
+    
+    type_ = query['type']
+    if type_ == 'context':
+    
+        tasks = remote_session.query(Task).join(Context).\
+                filter(Context.title==query['param'], Task.deleted==False).\
                        order_by(desc(Task.modified)).all()
+
+    elif type_ == 'find':
+
+        s0 = query['param'].split()
+        s1 = 'title:' + ' OR title:'.join(s0)
+        s2 = 'note:' + ' OR note:'.join(s0)
+        s3 = 'tag:' + ' OR tag:'.join(s0)
+        q = s1 + ' OR ' + s2 + ' OR ' + s3
+        #print(q)
+        result = solr.query(collection, {
+                'q':q, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 
+                'context', 'completed'], 'sort':'score desc'})
+        items = result.docs
+        count = result.get_results_count()
+        if count==0:
+            return
+
+        solr_ids = [x['id'] for x in items]
+        tasks = remote_session.query(Task).filter(
+                     Task.deleted==False, Task.id.in_(solr_ids))
+
+        order_expressions = [(Task.id==i).desc() for i in solr_ids]
+        tasks = tasks.order_by(*order_expressions).all()
+
+    elif type_ == 'recent':    
+
+        tasks = remote_session.query(Task).filter(Task.deleted==False)
+        s = query['param']
+        if not s or s == 'all':
+            tasks = tasks.filter(
+                    Task.modified > (datetime.now()
+                    -timedelta(days=2))).order_by(desc(Task.modified)).all()
+
+        elif s == 'created' or s == 'new':
+            tasks = tasks.filter(
+                    Task.created > (datetime.now()
+                    -timedelta(days=2)).date()).order_by(desc(Task.modified)).all()
+
+        elif s == 'completed':
+            tasks = tasks.filter(
+                    Task.completed > (datetime.now()
+                    -timedelta(days=2)).date()).order_by(desc(Task.modified)).all()
+
+        elif s == 'modified':
+            tasks = tasks.filter(
+                    and_(
+                    Task.modified > (datetime.now()
+                    -timedelta(days=2)),
+                    ~(Task.created > (datetime.now()-
+                    timedelta(days=2)).date())
+                    )).order_by(desc(Task.modified)).all()
+
     last_page = len(tasks)//max_rows
     last_page_max_rows = len(tasks)%max_rows
 
@@ -163,7 +237,9 @@ def open_display_preview(c_title):
     screen.clear()
     screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows} last_page = {last_page}", curses.A_BOLD)
 
-    s = "j:page down k: page up h:page left l:page right n:edit [n]ote t:edit [t]itle s:[s]elect and ENTER/RETURN no action"
+    s = "n->edit [n]ote| t->edit [t]itle| ENTER/RETURN-> select item| "\
+        "q->quit without selecting item| j->page down| k->page up| h->page left| l->page right"
+
     if len(s) > size[1]:
         s = s[:size[1]-1]
     screen.addstr(size[0]-1, 0, s, curses.color_pair(3)|curses.A_BOLD)
@@ -174,6 +250,7 @@ def open_display_preview(c_title):
     win.addstr(row_num, 1, ">")  #j
     win.refresh()
 
+    solr_result = ''
     accum = []
     arrow = False
     page_max_rows = max_rows if last_page else last_page_max_rows
@@ -182,24 +259,26 @@ def open_display_preview(c_title):
         if n == -1:
             continue
 
-        c = chr(n)
-        if arrow:
-            accum.append(c)
-            if len(accum) == 2:
-                c = keys.get(accum[-1], 'z')
-                accum = []
-                arrow = False
-        elif c == '\x1b': #o33:
-            arrow = True
-            continue
+        c = keymap.get(n, chr(n))
+
+        #if arrow:
+        #    accum.append(c)
+        #    if len(accum) == 2:
+        #        c = keys.get(accum[-1], 'z')
+        #        accum = []
+        #        arrow = False
+        #elif c == '\x1b': #o33:
+        #    arrow = True
+        #    continue
             
         #if c in ['s', 'n', 't', 'c', '\n', 'q']:
-        elif c in ['\n', 'q']:
+        if c in ['\n', 'q']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
             curses.endwin()
             task = tasks[(page*max_rows)+row_num-1]
+            call(['reset'])
             return {'action':actions[c], 'task_id':task.id}
 
         # edit note in vim
@@ -214,6 +293,9 @@ def open_display_preview(c_title):
                 tf.write(note.encode("utf-8"))
                 tf.flush()
                 call([EDITOR, tf.name])
+
+                screen.keypad(True)
+
                 # editing in vim and return here
                 tf.seek(0)
                 new_note = tf.read().decode("utf-8")   # self.task.note =
@@ -222,19 +304,22 @@ def open_display_preview(c_title):
                 task.note = new_note
                 draw_note(task)
                 remote_session.commit()
-                update_solr(task)
+                solr_result = update_solr(task)
 
         # edit title in vim
         elif c == 't':
             task = tasks[(page*max_rows)+row_num-1]
             title = task.title
 
-            EDITOR = os.environ.get('EDITOR','vim') #that easy!
+            EDITOR = os.environ.get('EDITOR','vim') 
 
             with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
                 tf.write(title.encode("utf-8"))
                 tf.flush()
+
+                # call editor (vim)
                 call([EDITOR, tf.name])
+
 
                 # editing in vim and return here
                 tf.seek(0)
@@ -244,14 +329,26 @@ def open_display_preview(c_title):
                 task.title = new_title
                 comp = ' [c]' if task.completed else ''
                 font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
+
+                # the following refresh redraw update sequence seems to work
+                # ? reason needed is that we are trying to update one line of win
+                # and that seems to cause problems with other windows
+                # if title isn't updated no need to do any of this so that's why under the 'if'
+                win.redrawwin() # this is needed or you don't get a redraw until you 'scroll' with i,j
                 win.move(row_num, 2)
                 win.clrtoeol()
                 win.addstr(row_num, 2, 
                    f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
                    font)  #(y,x)
-                win.refresh()
+                win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+                win.noutrefresh() # update data structure but not screen
+                win2.redrawwin() # this is needed even though win2 isn't touched
+                screen.redrawln(0,1)
+                screen.redrawln(size[0]-1, size[0])
+                screen.keypad(True)
+                curses.doupdate() # update all windows
                 remote_session.commit()
-                update_solr(task)
+                solr_result = update_solr(task)
 
         # toggle star
         elif c == 's':
@@ -264,9 +361,10 @@ def open_display_preview(c_title):
             win.addstr(row_num, 2, 
                 f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
                 font)  #(y,x)
+            win.addch(row_num, half_width-2, curses.ACS_VLINE) 
             win.refresh()
             remote_session.commit()
-            update_solr(task)
+            solr_result = update_solr(task)
 
         # toggle completed
         elif c == 'c':
@@ -290,7 +388,7 @@ def open_display_preview(c_title):
             win.addch(row_num, half_width-2, curses.ACS_VLINE) 
             win.refresh()
             remote_session.commit()
-            update_solr(task)
+            solr_result = update_solr(task)
 
         # using "vim keys" for navigation
         elif c == 'k':
@@ -343,7 +441,7 @@ def open_display_preview(c_title):
 
         screen.move(0, size[1]-50)
         screen.clrtoeol()
-        screen.addstr(0, size[1]-50, f"task num = {row_num}; char = {c}",
+        screen.addstr(0, size[1]-50, f"task num = {row_num}; char = {c} solr = {solr_result}",
                       curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
