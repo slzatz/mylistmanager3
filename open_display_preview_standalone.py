@@ -237,8 +237,8 @@ def open_display_preview(query):
     screen.clear()
     screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows} last_page = {last_page}", curses.A_BOLD)
 
-    s = "n->edit [n]ote| t->edit [t]itle| ENTER/RETURN-> select item| "\
-        "q->quit without selecting item| j->page down| k->page up| h->page left| l->page right"
+    s = "n->edit [n]ote t->edit [t]itle ENTER-> select item w->ne[w]  "\
+        "q->quit without selecting item j->page down k->page up h->page left l->page right"
 
     if len(s) > size[1]:
         s = s[:size[1]-1]
@@ -390,6 +390,30 @@ def open_display_preview(query):
             remote_session.commit()
             solr_result = update_solr(task)
 
+        elif c == 'w':
+
+            task = Task(priority=3, title='<new task>')
+            task.startdate = datetime.today().date() 
+            task.note = '<new task note>'
+            if type_ == 'context':
+                context = remote_session.query(Context).filter_by(title=query['param']).first()
+                task.context = context
+
+            remote_session.add(task)
+            remote_session.commit()
+            tasks.insert(0, task)
+            last_page = len(tasks)//max_rows
+            last_page_max_rows = len(tasks)%max_rows
+            page = 0
+            row_num = 1
+            draw()
+            draw_note(tasks[0])
+            win.addstr(row_num, 1, ">")  #j
+            win.refresh()
+
+            solr_result = ''
+        
+
         # using "vim keys" for navigation
         elif c == 'k':
             win.addstr(row_num, 1, " ")  #k
@@ -441,15 +465,11 @@ def open_display_preview(query):
 
         screen.move(0, size[1]-50)
         screen.clrtoeol()
-        screen.addstr(0, size[1]-50, f"task num = {row_num}; char = {c} solr = {solr_result}",
-                      curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, size[1]-50,
+                f"page:{page} row num:{row_num} char:{c} solr:{solr_result}",
+                curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
-        #size_current = screen.getmaxyx()
-        #if size != size_current:
-        #    size = size_current
-        #    screen.addstr(0,0, f"screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows}", curses.A_BOLD)
-
         time.sleep(.05)
 
 if __name__ == "__main__":
