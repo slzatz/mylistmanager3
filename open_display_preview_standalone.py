@@ -100,7 +100,6 @@ def update_solr(task=None):
 
 def open_display_preview(query):
     # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} or {'type':'recent':'param':'all'}
-    # needs to be generalized to handle open context, find and recent queries
     screen = curses.initscr()
     curses.start_color()
     curses.use_default_colors()
@@ -109,7 +108,7 @@ def open_display_preview(query):
     curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_WHITE)
     curses.init_pair(4, 15, -1)
     color_map = {'{blue}':3, '{red}':1, '{green}':2,'{white}':4}
-    curses.curs_set(0)
+    curses.curs_set(0) # cursor not visible
     curses.cbreak() # respond to keys without needing Enter
     curses.noecho()
     screen.keypad(True) #claims to catch arrow keys -- we'll see
@@ -235,10 +234,15 @@ def open_display_preview(query):
 
 
     screen.clear()
-    screen.addstr(0,0, f"Hello Steve. screen size = x:{size[1]},y:{size[0]} max_rows = {max_rows} last_page = {last_page}", curses.A_BOLD)
+    screen.addstr(0,0,
+                 f"Hello Steve. screen size=x:{size[1]},y:{size[0]} "\
+                 f"max_rows={max_rows} last_page={last_page} "\
+                 f"query={query['type']}-{query['param']}",
+                 curses.A_BOLD)
 
-    s = "n->edit [n]ote t->edit [t]itle ENTER-> select item w->ne[w]  "\
-        "q->quit without selecting item j->page down k->page up h->page left l->page right"
+    s = "e->[e]dit note t->edit [t]itle ENTER-> select item n->[n]ew  "\
+        "q->quit without selecting item d->[d]elete j->page down k->page up "\
+        "h->page left l->page right"
 
     if len(s) > size[1]:
         s = s[:size[1]-1]
@@ -282,7 +286,7 @@ def open_display_preview(query):
             return {'action':actions[c], 'task_id':task.id}
 
         # edit note in vim
-        elif c == 'n':
+        elif c == 'e':
             task = tasks[(page*max_rows)+row_num-1]
             note = task.note if task.note else ''  # if you want to set up the file somehow
             EDITOR = os.environ.get('EDITOR','vim') #that easy!
@@ -345,8 +349,9 @@ def open_display_preview(query):
                 win2.redrawwin() # this is needed even though win2 isn't touched
                 screen.redrawln(0,1)
                 screen.redrawln(size[0]-1, size[0])
-                screen.keypad(True)
-                curses.doupdate() # update all windows
+                screen.keypad(True) # makes keys like arrow into one character (v. sequence of three)
+                curses.curs_set(0) # cursor not visible
+                curses.doupdate() # update all physical windows
                 remote_session.commit()
                 solr_result = update_solr(task)
 
@@ -390,7 +395,8 @@ def open_display_preview(query):
             remote_session.commit()
             solr_result = update_solr(task)
 
-        elif c == 'w':
+        # create new task
+        elif c == 'n':
 
             task = Task(priority=3, title='<new task>')
             task.startdate = datetime.today().date() 
@@ -414,6 +420,21 @@ def open_display_preview(query):
             solr_result = ''
         
 
+        elif c == 'd':
+            task.deleted = True
+            remote_session.commit()
+            del tasks[(page*max_rows)+row_num-1]
+
+            last_page = len(tasks)//max_rows
+            last_page_max_rows = len(tasks)%max_rows
+            page = 0
+            row_num = 1
+            draw()
+            draw_note(tasks[0])
+            win.addstr(row_num, 1, ">")  #j
+            win.refresh()
+
+            solr_result = ''
         # using "vim keys" for navigation
         elif c == 'k':
             win.addstr(row_num, 1, " ")  #k
