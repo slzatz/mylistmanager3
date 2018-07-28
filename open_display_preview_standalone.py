@@ -58,7 +58,6 @@ th.start()
 
 #actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
 actions = {'\n':'select', 'q':None}
-keys = {'B':'j', 'A':'k', 'C':'l', 'D':'h'}
 keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
@@ -118,6 +117,7 @@ def open_display_preview(query):
     half_width = size[1]//2
     win = curses.newwin(size[0]-2, half_width-1, 1, 1)
     win2 = curses.newwin(size[0]-2, half_width-1, 1, half_width+1)
+    win3 = curses.newwin(15, 30, 1, half_width-15)
 
     page = 0
     row_num = 1
@@ -185,6 +185,11 @@ def open_display_preview(query):
     last_page = len(tasks)//max_rows
     last_page_max_rows = len(tasks)%max_rows
 
+    contexts = remote_session.query(Context).filter(Context.id!=1).all()
+    contexts.sort(key=lambda c:str.lower(c.title))
+    no_context = remote_session.query(Context).filter_by(id=1).one()
+    contexts = [no_context] + contexts
+
     def draw_note(task):
         win2.clear()
         win2.box()
@@ -232,7 +237,45 @@ def open_display_preview(query):
 
         win.refresh() 
 
+    def new():
+        task = Task(priority=3, title='<new task>')
+        task.startdate = datetime.today().date() 
+        task.note = '<new task note>'
+        if type_ == 'context':
+            context = remote_session.query(Context).filter_by(title=query['param']).first()
+            task.context = context
 
+        remote_session.add(task)
+        remote_session.commit()
+        tasks.insert(0, task)
+        last_page = len(tasks)//max_rows
+        last_page_max_rows = len(tasks)%max_rows
+        page = 0
+        row_num = 1
+        draw()
+        draw_note(tasks[0])
+        win.addstr(row_num, 1, ">")  #j
+        win.refresh()
+
+        solr_result = ''
+
+    def draw_context():
+        # would not have to draw every time if you didn't want to show what context the current task has
+        #contexts = remote_session.query(Context).filter(Context.id!=1).all()
+        #contexts.sort(key=lambda c:str.lower(c.title))
+        #no_context = remote_session.query(Context).filter_by(id=1).one()
+        #contexts = [no_context] + contexts
+        task = tasks[(page*max_rows)+row_num-1]
+        n = 2
+        for i,context in enumerate(contexts, 1):
+            font = curses.color_pair(2)|curses.A_BOLD if task.context == context else curses.A_NORMAL
+            win3.addstr(n, 2, f"{i}. {context.title}", font)  #(y,x)
+            n+=1
+            
+        win3.box()
+        win3.refresh()
+
+    # draw the surrounding screen text
     screen.clear()
     screen.addstr(0,0,
                  f"Hello Steve. screen size=x:{size[1]},y:{size[0]} "\
@@ -240,7 +283,7 @@ def open_display_preview(query):
                  f"query={query['type']}-{query['param']}",
                  curses.A_BOLD)
 
-    s = "e->[e]dit note t->edit [t]itle ENTER-> select item n->[n]ew  "\
+    s = "n->edit [n]ote t->edit [t]itle ENTER-> select item n->[n]ew  "\
         "q->quit without selecting item d->[d]elete j->page down k->page up "\
         "h->page left l->page right"
 
@@ -255,8 +298,8 @@ def open_display_preview(query):
     win.refresh()
 
     solr_result = ''
-    accum = []
-    arrow = False
+    accum = [] #################
+    command = False ################
     page_max_rows = max_rows if last_page else last_page_max_rows
     while 1:
         n = screen.getch()
@@ -265,18 +308,44 @@ def open_display_preview(query):
 
         c = keymap.get(n, chr(n))
 
-        #if arrow:
-        #    accum.append(c)
-        #    if len(accum) == 2:
-        #        c = keys.get(accum[-1], 'z')
-        #        accum = []
-        #        arrow = False
-        #elif c == '\x1b': #o33:
-        #    arrow = True
-        #    continue
+        if command:
+            #accum.append(c)
+            if c == '\n':
+                action = ''.join(accum)
+                accum = []
+                command = False
+                c = ''
+                #getattr(open_display_preview, action)() #can't do this on functions
+                if 'new'.startswith(action):
+                    new()
+                elif 'context'.startswith(action):
+                    draw_context() # need to redraw to show the current task's context
+                    command = True
+                elif action.isdigit():
+                    task = tasks[(page*max_rows)+row_num-1]
+                    task.context = contexts[int(action)-1]
+                    remote_session.commit()
+                    update_solr(task)
+                    screen.redrawwin()
+                    screen.refresh()
+                    win.redrawwin()
+                    win.refresh()
+                    win2.redrawwin()
+                    win2.refresh()
+                    #curses.doupdate() # am sure it's my fault but this is causing screen to overwrite windows.
+                elif action == 'test':
+                    win3.redrawwin()
+                    win3.refresh()
+                else:
+                    pass
+            else:
+                accum.append(c)
+        elif c == ':':
+            command = True
+           # continue
             
         #if c in ['s', 'n', 't', 'c', '\n', 'q']:
-        if c in ['\n', 'q']:
+        elif c in ['\n', 'q']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
@@ -286,7 +355,7 @@ def open_display_preview(query):
             return {'action':actions[c], 'task_id':task.id}
 
         # edit note in vim
-        elif c == 'e':
+        elif c == 'n':
             task = tasks[(page*max_rows)+row_num-1]
             note = task.note if task.note else ''  # if you want to set up the file somehow
             EDITOR = os.environ.get('EDITOR','vim') #that easy!
@@ -396,7 +465,7 @@ def open_display_preview(query):
             solr_result = update_solr(task)
 
         # create new task
-        elif c == 'n':
+        elif c == 'zzzzzzzzzzzzz':
 
             task = Task(priority=3, title='<new task>')
             task.startdate = datetime.today().date() 
@@ -418,9 +487,9 @@ def open_display_preview(query):
             win.refresh()
 
             solr_result = ''
-        
 
         elif c == 'd':
+            task = tasks[(page*max_rows)+row_num-1]
             task.deleted = True
             remote_session.commit()
             del tasks[(page*max_rows)+row_num-1]
@@ -487,7 +556,7 @@ def open_display_preview(query):
         screen.move(0, size[1]-50)
         screen.clrtoeol()
         screen.addstr(0, size[1]-50,
-                f"page:{page} row num:{row_num} char:{c} solr:{solr_result}",
+                f"page:{page} row num:{row_num} char:{c} command {''.join(accum)} solr:{solr_result}",
                 curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
