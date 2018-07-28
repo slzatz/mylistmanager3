@@ -337,10 +337,10 @@ def open_display_preview(query):
                     win3.redrawwin()
                     win3.refresh()
                 else:
-                    pass
+                    open_display_preview({'type':'find', 'param':action})
             else:
                 accum.append(c)
-        elif c == ':':
+        elif c in [':','/']: #or c == '/':
             command = True
            # continue
             
