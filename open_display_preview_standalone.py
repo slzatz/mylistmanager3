@@ -306,8 +306,8 @@ def open_display_preview(query):
                  f"query={query['type']}-{query['param']}",
                  curses.A_BOLD)
 
-    s = "n->edit [n]ote t->edit [t]itle ENTER-> select item n->[n]ew  "\
-        "q->quit without selecting item d->[d]elete j->page down k->page up "\
+    s = "n->edit [n]ote t->edit [t]itle ENTER-> select item i->[i]nfo  "\
+        "q->[q]uit without selecting item d->[d]elete j->page down k->page up "\
         "h->page left l->page right"
 
     if len(s) > size[1]:
@@ -595,4 +595,4 @@ def open_display_preview(query):
         time.sleep(.05)
 
 if __name__ == "__main__":
-    open_display_preview("not work")
+    open_display_preview({'type':'context', 'param':'todo'})
