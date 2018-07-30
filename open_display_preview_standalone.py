@@ -360,7 +360,9 @@ def open_display_preview(query):
                         win2.refresh()
                         command = None
                         solr_result = update_solr(task)
-                        msg = f"{task.id} was given the context {context.title} and solr was updated {solr_result}"
+                        msg = f"{task.id} was given the context "\
+                              f"{task.context.title} and solr was "\
+                              f"updated {solr_result}"
                     elif command == 'open':
                         context = contexts[int(action)-1]
                         open_display_preview({'type':'context', 'param':context.title})
