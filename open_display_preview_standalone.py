@@ -25,6 +25,9 @@ A_DIM	Half bright text
 A_REVERSE	Reverse-video text
 A_STANDOUT	The best highlighting mode available
 A_UNDERLINE	Underlined text
+
+if I don't want to turn this into a class can use nonlocal to access any variables
+changed by inner functions
 '''
 import sys
 import os
@@ -39,7 +42,7 @@ from config import SOLR_URI
 from lmdb_p import *
 import xml.etree.ElementTree as ET
 import tempfile
-from subprocess import call, run, PIPE
+from subprocess import call
 import threading
 
 def check():
@@ -93,12 +96,13 @@ def update_solr(task=None):
     #print(r.text)
     root = ET.fromstring(r.text)
     if root[0][0].text == '0':
-        return f"{task.id} success"
+        return f"{task.id} updated"
     else:
         return f"{task.id} failure"
 
 def open_display_preview(query):
-    # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} or {'type':'recent':'param':'all'}
+    # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} 
+    # or {'type':'recent':'param':'all'}
     screen = curses.initscr()
     curses.start_color()
     curses.use_default_colors()
@@ -237,34 +241,32 @@ def open_display_preview(query):
 
         win.refresh() 
 
-    def new():
-        task = Task(priority=3, title='<new task>')
-        task.startdate = datetime.today().date() 
-        task.note = '<new task note>'
-        if type_ == 'context':
-            context = remote_session.query(Context).filter_by(title=query['param']).first()
-            task.context = context
+    #def new():
+    #    task = Task(priority=3, title='<new task>')
+    #    task.startdate = datetime.today().date() 
+    #    task.note = '<new task note>'
+    #    if type_ == 'context':
+    #        context = remote_session.query(Context).filter_by(title=query['param']).first()
+    #        task.context = context
 
-        remote_session.add(task)
-        remote_session.commit()
-        tasks.insert(0, task)
-        last_page = len(tasks)//max_rows
-        last_page_max_rows = len(tasks)%max_rows
-        page = 0
-        row_num = 1
-        draw_tasks()
-        draw_note(tasks[0])
-        win.addstr(row_num, 1, ">")  #j
-        win.refresh()
+    #    remote_session.add(task)
+    #    remote_session.commit()
+    #    tasks.insert(0, task)
+    #    # the below have to be in the enclosing function
+    #    last_page = len(tasks)//max_rows
+    #    last_page_max_rows = len(tasks)%max_rows
+    #    page = 0
+    #    row_num = 1
+    #    draw_tasks()
+    #    draw_note(tasks[0])
+    #    win.addstr(row_num, 1, ">")  #j
+    #    win.refresh()
 
-        solr_result = ''
+    #    solr_result = ''
 
     def draw_context():
-        # would not have to draw every time if you didn't want to show what context the current task has
-        #contexts = remote_session.query(Context).filter(Context.id!=1).all()
-        #contexts.sort(key=lambda c:str.lower(c.title))
-        #no_context = remote_session.query(Context).filter_by(id=1).one()
-        #contexts = [no_context] + contexts
+        # would not have to draw every time if you didn't want to show what
+        # context the current task has
         task = tasks[(page*max_rows)+row_num-1]
         n = 2
         for i,context in enumerate(contexts, 1):
@@ -306,7 +308,8 @@ def open_display_preview(query):
                  f"query={query['type']}-{query['param']}",
                  curses.A_BOLD)
 
-    s = "n->edit [n]ote t->edit [t]itle ENTER-> select item i->[i]nfo  "\
+    s = "n->edit note t->edit title x->toggle completed  o->open "\
+        "c->context N->new item ENTER-> select item i->[i]nfo  "\
         "q->[q]uit without selecting item d->[d]elete j->page down k->page up "\
         "h->page left l->page right"
 
@@ -334,23 +337,14 @@ def open_display_preview(query):
 
         if command:
             if c == '\n':
-                action = ''.join(accum)
+                chars = ''.join(accum)
                 accum = []
-                c = ''
-                #getattr(open_display_preview, action)() #can't do this on functions
-                if 'new'.startswith(action):
-                    command = None
-                    new()
-                elif 'context'.startswith(action):
-                    draw_context() # need to redraw to show the current task's context
-                    command = 'context'
-                elif 'open'.startswith(action):
-                    draw_context() # need to redraw to show the current task's context
-                    command = 'open'
-                elif action.isdigit():
+                c = '' # is necessary or you try to print return
+                command = None
+                if chars.isdigit():
                     if command == 'context':
                         task = tasks[(page*max_rows)+row_num-1]
-                        task.context = contexts[int(action)-1]
+                        task.context = contexts[int(chars)-1]
                         remote_session.commit()
                         screen.redrawwin()
                         screen.refresh()
@@ -358,35 +352,30 @@ def open_display_preview(query):
                         win.refresh()
                         win2.redrawwin()
                         win2.refresh()
-                        command = None
+                        #command = None
                         solr_result = update_solr(task)
                         msg = f"{task.id} was given the context "\
                               f"{task.context.title} and solr was "\
                               f"updated {solr_result}"
                     elif command == 'open':
-                        context = contexts[int(action)-1]
+                        context = contexts[int(chars)-1]
                         open_display_preview({'type':'context', 'param':context.title})
-                        command = None
-                        #curses.doupdate() # am sure it's my fault but this is causing screen to overwrite windows.
                     else:
-                        command = None # if someone types :25 - nothing will happen but won't be stuck
-                elif action == 'test':
-                    command = None 
-                    win3.redrawwin()
-                    win3.refresh()
+                        # typing a number will produce a search
+                        # if command != open or context
+                        open_display_preview({'type':'find', 'param':chars})
+
                 # assumes anything else is a find string 
-                # means you can't find 'new' or find 'context' because
-                # they'll match specific commands - this could be fixed
                 else:
-                    command = None 
-                    open_display_preview({'type':'find', 'param':action})
+                    open_display_preview({'type':'find', 'param':chars})
             else:
                 accum.append(c)
+
         elif c == ':':  #in [':','/']: 
             command = True
             
         #if c in ['s', 'n', 't', 'c', '\n', 'q']:
-        elif n == 27:
+        elif n == 27: #escape
             screen.redrawwin()
             screen.refresh()
             win.redrawwin()
@@ -395,17 +384,55 @@ def open_display_preview(query):
             win2.refresh()
             command = None
             c = 'E'
+
         elif c in ['\n', 'q']:
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
             curses.endwin()
             task = tasks[(page*max_rows)+row_num-1]
-            call(['reset'])
-            return {'action':actions[c], 'task_id':task.id}
+            #call(['reset'])
+            action = actions[c]
+            c = ''
+            return {'action':action, 'task_id':task.id}
+
+        elif c == 'o':
+            draw_context() # need to redraw to show the current task's context
+            command = 'open'
+
+        elif c == 'r':
+            open_display_preview({'type':'recent', 'param':'all'})
+
+        elif c == 'c':
+            draw_context() # need to redraw to show the current task's context
+            command = 'context'
 
         elif c == 'i':
             draw_info()
+
+        elif c == 'N':
+            task = Task(priority=3, title='<new task>')
+            task.startdate = datetime.today().date() 
+            task.note = '<new task note>'
+            if type_ == 'context':
+                context = remote_session.query(Context).filter_by(title=query['param']).first()
+                task.context = context
+
+            remote_session.add(task)
+            remote_session.commit()
+            tasks.insert(0, task)
+            #win.addstr(row_num, 1, " ")  #j
+            win.delch(row_num, 1)
+            last_page = len(tasks)//max_rows
+            last_page_max_rows = len(tasks)%max_rows
+            page = 0
+            row_num = 1
+            draw_tasks()
+            draw_note(tasks[0])
+            win.addstr(row_num, 1, ">")  #j
+            win.refresh()
+
+            solr_result = ''
 
         # edit note in vim
         elif c == 'n':
@@ -492,10 +519,11 @@ def open_display_preview(query):
             win.refresh()
             remote_session.commit()
             solr_result = update_solr(task)
-            msg = f"{task.id} is {'starred' if task.star else 'is not starred'} and {solr_result} updated in solr"
+            msg = f"{task.id} is {'starred' if task.star else 'is not starred'} "\
+                  f"and {solr_result} updated in solr"
 
         # toggle completed
-        elif c == 'c':
+        elif c == 'x':
             task = tasks[(page*max_rows)+row_num-1]
 
             if not task.completed:
@@ -589,8 +617,8 @@ def open_display_preview(query):
         screen.move(0, 0)
         screen.clrtoeol()
         screen.addstr(0,0, msg,  curses.A_BOLD)
-        screen.addstr(0, size[1]-50,
-                f"page:{page} row num:{row_num} char:{c} command {''.join(accum)} solr:{solr_result}",
+        screen.addstr(0, size[1]-56,
+                f"page:{page} row num:{row_num} char:{c} command: {''.join(accum)} solr:{solr_result}",
                 curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
