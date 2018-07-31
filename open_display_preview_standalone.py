@@ -340,33 +340,42 @@ def open_display_preview(query):
                 chars = ''.join(accum)
                 accum = []
                 c = '' # is necessary or you try to print return
-                command = None
                 if chars.isdigit():
                     if command == 'context':
                         task = tasks[(page*max_rows)+row_num-1]
                         task.context = contexts[int(chars)-1]
                         remote_session.commit()
-                        screen.redrawwin()
-                        screen.refresh()
+                        #screen.redrawwin()
+                        #screen.refresh()
+                        #win.redrawwin()
+                        #win.refresh()
+                        #win2.redrawwin()
+                        #win2.refresh()
+                        win3.erase()
+                        win3.noutrefresh()
                         win.redrawwin()
-                        win.refresh()
+                        win.noutrefresh()
                         win2.redrawwin()
-                        win2.refresh()
-                        #command = None
+                        win2.noutrefresh()
+                        curses.doupdate()
+                        command = None
                         solr_result = update_solr(task)
                         msg = f"{task.id} was given the context "\
                               f"{task.context.title} and solr was "\
                               f"updated {solr_result}"
                     elif command == 'open':
                         context = contexts[int(chars)-1]
+                        command = None
                         open_display_preview({'type':'context', 'param':context.title})
                     else:
                         # typing a number will produce a search
                         # if command != open or context
+                        command = None
                         open_display_preview({'type':'find', 'param':chars})
 
                 # assumes anything else is a find string 
                 else:
+                    command = None
                     open_display_preview({'type':'find', 'param':chars})
             else:
                 accum.append(c)
