@@ -290,7 +290,7 @@ def open_display_preview(query):
 
         win5.addstr(1, 1, "Keymapping",curses.color_pair(2)|curses.A_BOLD)
         win5.addstr(3, 1, s)  #(y,x)
-        win5.addstr(16, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
+        win5.addstr(19, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
         s = ":help\n :{search string}"
         win5.addstr(21, 1, s)  #(y,x)
         win5.addstr(24, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
@@ -367,7 +367,7 @@ def open_display_preview(query):
             else:
                 accum.append(c)
 
-        elif c == ':':  #in [':','/']: 
+        elif c == ':': 
             command = True
             
         elif n == 27: #escape
@@ -380,7 +380,8 @@ def open_display_preview(query):
             command = None
             c = 'E'
 
-        elif c in ['\n', 'q']:
+        #elif c in ['\n', 'q']:
+        elif c == 'q':  
             curses.nocbreak()
             screen.keypad(False)
             curses.echo()
@@ -419,7 +420,7 @@ def open_display_preview(query):
             remote_session.commit()
             tasks.insert(0, task)
             #win.addstr(row_num, 1, " ")  #j
-            win.delch(row_num, 1)
+            win.addstr(row_num, 1, " ")
             last_page = len(tasks)//max_rows
             last_page_max_rows = len(tasks)%max_rows
             page = 0
@@ -588,7 +589,7 @@ def open_display_preview(query):
         # using "vim keys" for navigation
 
         elif c == 'k':
-            win.delch(row_num, 1)
+            win.addstr(row_num, 1, " ")
             row_num-=1
             if row_num==0:
                 page = (page - 1) if page > 0 else last_page
@@ -601,7 +602,7 @@ def open_display_preview(query):
             draw_note(task)
 
         elif c == 'j':
-            win.delch(row_num, 1)
+            win.addstr(row_num, 1, " ")
             row_num+=1
             if row_num==page_max_rows+1:
                 page = (page + 1) if page < last_page else 0
@@ -614,7 +615,7 @@ def open_display_preview(query):
             draw_note(task)
 
         elif c == 'h':
-            win.delch(row_num, 1)
+            win.addstr(row_num, 1, " ")
             page = (page - 1) if page > 0 else last_page
             draw_tasks()  
             row_num = 1
@@ -625,7 +626,7 @@ def open_display_preview(query):
             page_max_rows = max_rows if not page==last_page else last_page_max_rows
 
         elif c == 'l':
-            win.delch(row_num, 1)
+            win.addstr(row_num, 1, " ")
             page = (page + 1) if page < last_page else 0
             draw_tasks()  
             row_num = 1
@@ -634,6 +635,9 @@ def open_display_preview(query):
             task = tasks[page*max_rows]
             draw_note(task)
             page_max_rows = max_rows if not page==last_page else last_page_max_rows
+
+        elif c == '\n':
+            c = 'N'
 
         screen.move(0, 0)
         screen.clrtoeol()
