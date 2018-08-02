@@ -122,6 +122,7 @@ def open_display_preview(query):
     win3 = curses.newwin(15, 30, 1, half_width-15)
     win4 = curses.newwin(22, 60, 1, half_width-30)
     win5 = curses.newwin(26, 30, 1, half_width-15)
+    win6 = curses.newwin(50, 30, 1, half_width-15)
 
     page = 0
     row_num = 1
@@ -283,6 +284,27 @@ def open_display_preview(query):
         win4.box()
         win4.refresh()
 
+    def draw_keywords():
+        # Believe it is better to just look at keywords with a Context
+        task = tasks[(page*max_rows)+row_num-1]
+        keywords = remote_session.query(Keyword).join(
+            TaskKeyword,Task,Context).filter(
+            Context.title==task.context.title).all()
+        keywords.sort(key=lambda x:str.lower(x.name))
+
+        n = 2
+        for i,keyword in enumerate(keywords, 1):
+            if n > 45:
+                break
+            #font = curses.color_pair(2)|curses.A_BOLD if task.context == context else curses.A_NORMAL
+            font = curses.A_NORMAL
+            win6.addstr(n, 2, f"{i}. {keyword.name}", font)  #(y,x)
+            n+=1
+            
+        win6.box()
+        win6.refresh()
+        return keywords
+
     def draw_help():
         s = "n->edit [n]ote\n t->edit [t]itle\n x->toggle completed\n o->[o]pen\n"\
         " c->[c]ontext\n N->[N]ew item\n i->[i]nfo\n d->[d]elete\n q->[q]uit\n\n"\
@@ -350,6 +372,32 @@ def open_display_preview(query):
                         context = contexts[int(chars)-1]
                         command = None
                         open_display_preview({'type':'context', 'param':context.title})
+                    elif command == 'keywords':
+                        task = tasks[(page*max_rows)+row_num-1]
+                        #task.context = contexts[int(chars)-1]
+                        keyword = keywords[int(chars)-1]
+                        if keyword in task.keywords:
+                            msg = self.colorize(
+                                f"{keyword.name} already attached to {task.title}!",
+                                'red')
+                        else:
+                            taskkeyword = TaskKeyword(task, keyword)
+                            remote_session.add(taskkeyword)
+                            task.tag = ','.join(kwn.name for kwn in task.keywords) #######
+                            remote_session.commit()
+                            solr_result = update_solr(task)
+                            msg = f"{task.id} was given the keyword "\
+                              f"{keyword.name} and solr was "\
+                              f"updated {solr_result}"
+
+                        win6.erase()
+                        win6.noutrefresh()
+                        win.redrawwin()
+                        win.noutrefresh()
+                        win2.redrawwin()
+                        win2.noutrefresh()
+                        curses.doupdate()
+                        command = None
                     else:
                         # typing a number will produce a search
                         # if command != open or context
@@ -403,6 +451,10 @@ def open_display_preview(query):
         elif c == 'c':
             draw_context() # need to redraw to show the current task's context
             command = 'context'
+
+        elif c == 'w':
+            keywords = draw_keywords()
+            command = 'keywords'
 
         elif c == 'i':
             draw_info()

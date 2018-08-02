@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 import threading
 from task_display2 import task_display2
 #from open_display_preview import open_display_preview
-from open_display_preview_standalone import open_display_preview
+from listmanager_term import open_display_preview
 
 def check():
     while 1:
@@ -213,7 +213,8 @@ class Listmanager(Cmd):
                 return
 
         zz = open_display_preview({'type':'context', 'param':c_title})
-        if zz['action']:
+        #if zz['action']:
+        if zz:
             self.onecmd_plus_hooks(f"{zz['action']} {zz['task_id']}")
             self.msg = '' # need this
         else:
