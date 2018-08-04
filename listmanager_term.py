@@ -118,13 +118,13 @@ def open_display_preview(query):
     size = screen.getmaxyx()
     screen.nodelay(True)
     half_width = size[1]//2
-    win = curses.newwin(size[0]-1, half_width-1, 1, 1)
-    win2 = curses.newwin(size[0]-1, half_width-1, 1, half_width+1)
-    win3 = curses.newwin(15, 30, 1, half_width-15)
-    win4 = curses.newwin(22, 60, 1, half_width-30)
-    win5 = curses.newwin(29, 30, 1, half_width-15)
-    win6 = curses.newwin(50, 30, 1, half_width-15)
-    win7 = curses.newwin(size[0]-1, half_width, 1, half_width//2)
+    task_win = curses.newwin(size[0]-1, half_width-1, 1, 1)
+    note_win = curses.newwin(size[0]-1, half_width-1, 1, half_width+1)
+    context_win = curses.newwin(15, 30, 1, half_width-15)
+    info_win = curses.newwin(22, 60, 1, half_width-30)
+    help_win = curses.newwin(32, 30, 1, half_width-15)
+    keywords_win = curses.newwin(50, 30, 1, half_width-15)
+    log_win = curses.newwin(size[0]-1, half_width, 1, half_width//2)
 
     page = 0
     row_num = 1
@@ -197,9 +197,9 @@ def open_display_preview(query):
     no_context = remote_session.query(Context).filter_by(id=1).one()
     contexts = [no_context] + contexts
 
-    def draw_note(task):
-        win2.clear()
-        win2.box()
+    def show_note(task):
+        note_win.clear()
+        note_win.box()
 
         note = task.note if task.note else ""
         paras = note.splitlines()
@@ -218,17 +218,17 @@ def open_display_preview(query):
                     break
 
                 try:
-                    win2.addstr(n, 3, line)  #(y,x)
+                    note_win.addstr(n, 3, line)  #(y,x)
                 except Exception as e:
                      pass
 
                 n+=1
 
-        win2.refresh()
+        note_win.refresh()
 
-    def draw_tasks():
-        win.clear()
-        win.box()
+    def show_tasks():
+        task_win.clear()
+        task_win.box()
         page_tasks = tasks[max_rows*page:max_rows*(page+1)]
         n = 1
         for i,task in enumerate(page_tasks, page*max_rows+1):
@@ -239,29 +239,29 @@ def open_display_preview(query):
             c = ' [c]' if task.completed else ''
             font = curses.color_pair(2)|curses.A_BOLD if task.star else \
                    curses.A_NORMAL
-            win.addstr(n, 2,
+            task_win.addstr(n, 2,
               f"{i}. {task.title[:max_chars_line-14]} ({task.id}){c}",
               font)  #(y,x)
 
             n+=1
 
-        win.refresh() 
+        task_win.refresh() 
 
-    def draw_context():
+    def show_context():
         # would not have to draw every time if you didn't want to show what
         # context the current task has
         #task = tasks[(page*max_rows)+row_num-1]
-        win3.addstr(2, 2, "0. Do nothing")
+        context_win.addstr(2, 2, "0. Do nothing")
         n = 3
         for i,context in enumerate(contexts, 1):
             font = curses.color_pair(2)|curses.A_BOLD if task.context == context else curses.A_NORMAL
-            win3.addstr(n, 2, f"{i}. {context.title}", font)  #(y,x)
+            context_win.addstr(n, 2, f"{i}. {context.title}", font)  #(y,x)
             n+=1
             
-        win3.box()
-        win3.refresh()
+        context_win.box()
+        context_win.refresh()
 
-    def draw_info():
+    def show_info():
         '''Info on the currently selected task''' 
 
         task = tasks[(page*max_rows)+row_num-1]
@@ -280,15 +280,15 @@ def open_display_preview(query):
             s += f" modified: {task.modified}\n"
             s += f" startdate: {task.startdate}\n"
             s += f" note: {task.note[:50] if task.note else ''}"
-            win4.addstr(1, 1, "Item Info",curses.color_pair(2)|curses.A_BOLD)
-            win4.addstr(3, 1, s)  #(y,x)
-            win4.addstr(20, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
+            info_win.addstr(1, 1, "Item Info",curses.color_pair(2)|curses.A_BOLD)
+            info_win.addstr(3, 1, s)  #(y,x)
+            info_win.addstr(20, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
 
-        win4.box()
-        win4.refresh()
-        return win4
+        info_win.box()
+        info_win.refresh()
+        return info_win
 
-    def draw_keywords():
+    def show_keywords():
         # Believe it is better to just look at keywords with a Context
         #task = tasks[(page*max_rows)+row_num-1]
         keywords = remote_session.query(Keyword).join(
@@ -297,23 +297,23 @@ def open_display_preview(query):
         keywords.sort(key=lambda x:str.lower(x.name))
 
         #n = 2
-        win6.addstr(2, 2, "0. Do nothing")
+        keywords_win.addstr(2, 2, "0. Do nothing")
         n = 3
         for i,keyword in enumerate(keywords, 1):
             if n > 45:
                 break
             font = curses.color_pair(2)|curses.A_BOLD if keyword in task.keywords else curses.A_NORMAL
             #font = curses.A_NORMAL
-            win6.addstr(n, 2, f"{i}. {keyword.name}", font)  #(y,x)
+            keywords_win.addstr(n, 2, f"{i}. {keyword.name}", font)  #(y,x)
             n+=1
             
-        win6.box()
-        win6.refresh()
+        keywords_win.box()
+        keywords_win.refresh()
         return keywords
 
     def show_log():
-        win7.clear()
-        win7.box()
+        log_win.clear()
+        log_win.box()
 
         paras = log.splitlines()
 
@@ -331,39 +331,40 @@ def open_display_preview(query):
                     break
 
                 try:
-                    win7.addstr(n, 3, line)  #(y,x)
+                    log_win.addstr(n, 3, line)  #(y,x)
                 except Exception as e:
                      pass
 
                 n+=1
 
-        win7.refresh()
-        return win7
+        log_win.refresh()
+        return log_win
 
-    def draw_help():
+    def show_help():
         s = "n->edit [n]ote\n t->edit [t]itle\n x->toggle completed\n"\
-        " w->key[w]ords\n c->[c]ontext\n d->[d]elete\n N->[N]ew item\n"\
-        " i->[i]nfo\n q->[q]uit\n\n"\
+        " w->key[w]ords\n c->[c]ontext\n d->[d]elete\n i->[i]nfo\n\n"\
+        " N->[N]ew item\n\n"\
         " j->page down\n k->page up\n h->page left\n l->page right\n"
 
-        win5.addstr(1, 1, "Keymapping",curses.color_pair(2)|curses.A_BOLD)
-        win5.addstr(3, 1, s)  #(y,x)
-        win5.addstr(19, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
-        s = ":help->show help screen\n :open [context]\n :solr->update db\n :log->show log\n :find [search string]"
-        win5.addstr(21, 1, s)  #(y,x)
-        win5.addstr(27, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
-        win5.box()
-        win5.refresh()
-        return win5
+        help_win.addstr(1, 1, "Key map",curses.color_pair(2)|curses.A_BOLD)
+        help_win.addstr(3, 1, s)  #(y,x)
+        help_win.addstr(19, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
+        s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
+            " :recent->created or modified\n :refresh->refresh display\n :quit->duh"
+        help_win.addstr(21, 1, s)  #(y,x)
+        help_win.addstr(30, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
+        help_win.box()
+        help_win.refresh()
+        return help_win
 
     def redraw(w):
         if w:
             w.erase()
             w.noutrefresh()
-        win.redrawwin()
-        win.noutrefresh()
-        win2.redrawwin()
-        win2.noutrefresh()
+        task_win.redrawwin()
+        task_win.noutrefresh()
+        note_win.redrawwin()
+        note_win.noutrefresh()
         curses.doupdate()
         
     # draw the surrounding screen text
@@ -376,11 +377,11 @@ def open_display_preview(query):
 
     screen.refresh()
 
-    draw_tasks()
+    show_tasks()
     task = tasks[0]
-    draw_note(task)
-    win.addstr(row_num, 1, ">")  
-    win.refresh()
+    show_note(task)
+    task_win.addstr(row_num, 1, ">")  
+    task_win.refresh()
 
     accum = [] 
     command = None 
@@ -414,13 +415,13 @@ def open_display_preview(query):
                             msg = f"{task.id} new context = {task.context.title}"
                             log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
 
-                        redraw(win3)
+                        redraw(context_win)
                         command = None
                     elif command == 'open':
                         p = int(chars) - 1
                         if p < 0 or p > len(contexts):
                             msg = "do nothing"
-                            redraw(win3)
+                            redraw(context_win)
                             command = None
                         else:
                             context = contexts[p]
@@ -444,18 +445,14 @@ def open_display_preview(query):
                                 msg = f"{task.id} given keyword = {keyword.name}"
                                 log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
 
-                        redraw(win6)
+                        redraw(keywords_win)
                         command = None
                     else:
-                        # typing a number will produce a search
-                        # if command != open or context
                         command = None
-                        open_display_preview({'type':'find', 'param':chars})
+                        msg = f"Typing '{chars}' won't do anything"
 
-                # assumes anything else is a find string 
                 elif "help".startswith(chars):
-                    #win5.refresh()    
-                    cur_win = draw_help()
+                    cur_win = show_help()
                     command = None
                 elif "solr".startswith(chars):
                     result = update_solr()
@@ -463,15 +460,13 @@ def open_display_preview(query):
                     msg = result.split('\n')[0]
                     command = None
                 elif "open".startswith(chars):
-                    draw_context() # need to redraw to show the current task's context
+                    show_context() # need to redraw to show the current task's context
                     command = 'open'
                 elif "log".startswith(chars):
                     curwin = show_log()
                     command = None
                 elif "find".startswith(chars.split(' ', 1)[0]):
                     #command = None
-                    #del win,win2,win3,win4,win5,win6,win7
-                    #c = open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]})
                     run = False
                     open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]})
                 elif "reset".startswith(chars):
@@ -485,7 +480,6 @@ def open_display_preview(query):
                     run = False
                 else:
                     command = None
-                    #open_display_preview({'type':'find', 'param':chars})
                     msg = "I don't know what you typed"
             else:
                 accum.append(c)
@@ -500,15 +494,15 @@ def open_display_preview(query):
             c = 'E'
 
         elif c == 'c':
-            draw_context() # need to redraw to show the current task's context
+            show_context() # need to redraw to show the current task's context
             command = 'context'
 
         elif c == 'w':
-            keywords = draw_keywords()
+            keywords = show_keywords()
             command = 'keywords'
 
         elif c == 'i':
-            cur_win = draw_info()
+            cur_win = show_info()
 
         elif c == 'N':
             task = Task(priority=3, title='<new task>')
@@ -522,16 +516,16 @@ def open_display_preview(query):
             remote_session.add(task)
             remote_session.commit()
             tasks.insert(0, task)
-            #win.addstr(row_num, 1, " ")  #j
-            win.addstr(row_num, 1, " ")
+            #task_win.addstr(row_num, 1, " ")  #j
+            task_win.addstr(row_num, 1, " ")
             last_page = len(tasks)//max_rows
             last_page_max_rows = len(tasks)%max_rows
             page = 0
             row_num = 1
-            draw_tasks()
-            draw_note(tasks[0])
-            win.addstr(row_num, 1, ">")  #j
-            win.refresh()
+            show_tasks()
+            show_note(tasks[0])
+            task_win.addstr(row_num, 1, ">")  #j
+            task_win.refresh()
             log = f"task {task.id} added" + log
 
         # edit note in vim
@@ -562,10 +556,10 @@ def open_display_preview(query):
             if new_note != note:
                 task.note = new_note
                 remote_session.commit()
-                draw_note(task)
+                show_note(task)
 
-            win.noutrefresh() # update data structure but not screen
-            win2.redrawwin() # this is needed even though win2 isn't touched
+            task_win.noutrefresh() # update data structure but not screen
+            note_win.redrawwin() # this is needed even though note_win isn't touched
             screen.redrawln(0,1)
             screen.redrawln(size[0]-1, size[0])
             curses.doupdate() # update all physical windows
@@ -598,16 +592,16 @@ def open_display_preview(query):
                 comp = ' [c]' if task.completed else ''
                 font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
 
-                win.redrawwin() 
-                win.move(row_num, 2)
-                win.clrtoeol()
-                win.addstr(row_num, 2, 
+                task_win.redrawwin() 
+                task_win.move(row_num, 2)
+                task_win.clrtoeol()
+                task_win.addstr(row_num, 2, 
                    f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
                    font)  #(y,x)
-                win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+                task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
 
-            win.noutrefresh() # update data structure but not screen
-            win2.redrawwin() # this is needed even though win2 isn't touched
+            task_win.noutrefresh() # update data structure but not screen
+            note_win.redrawwin() # this is needed even though note_win isn't touched
             screen.redrawln(0,1)
             screen.redrawln(size[0]-1, size[0])
             curses.doupdate() # update all physical windows
@@ -621,13 +615,13 @@ def open_display_preview(query):
             task.star = not task.star
             comp = ' [c]' if task.completed else ''
             font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
-            win.move(row_num, 2)
-            win.clrtoeol()
-            win.addstr(row_num, 2, 
+            task_win.move(row_num, 2)
+            task_win.clrtoeol()
+            task_win.addstr(row_num, 2, 
                 f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
                 font)  #(y,x)
-            win.addch(row_num, half_width-2, curses.ACS_VLINE) 
-            win.refresh()
+            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+            task_win.refresh()
             remote_session.commit()
             msg = f"{task.id} is {'starred' if task.star else 'is not starred'}"
             log = f"{datetime.now().isoformat()}: {msg}" + log
@@ -645,14 +639,14 @@ def open_display_preview(query):
 
             comp = ' [c]' if task.completed else ''
             font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
-            win.move(row_num, 2)
-            win.clrtoeol()
-            win.addstr(row_num, 2, 
+            task_win.move(row_num, 2)
+            task_win.clrtoeol()
+            task_win.addstr(row_num, 2, 
               f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}", font) #(y,x)
 
             # the clrtoeol wipes out the vertical box line character
-            win.addch(row_num, half_width-2, curses.ACS_VLINE) 
-            win.refresh()
+            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+            task_win.refresh()
             remote_session.commit()
             msg = f"{task.id} is {'completed' if task.completed else 'is not completed'} "
             log = f"{datetime.now().isoformat()}: {msg}" + log
@@ -667,10 +661,10 @@ def open_display_preview(query):
             last_page_max_rows = len(tasks)%max_rows
             page = 0
             row_num = 1
-            draw_tasks()
-            draw_note(tasks[0])
-            win.addstr(row_num, 1, ">")  #j
-            win.refresh()
+            show_tasks()
+            show_note(tasks[0])
+            task_win.addstr(row_num, 1, ">")  #j
+            task_win.refresh()
 
             msg = f"{task.id} was marked for deletion"
             log = f"{datetime.now().isoformat()}: {msg}" + log
@@ -692,51 +686,51 @@ def open_display_preview(query):
         # using "vim keys" for navigation
 
         elif c == 'k':
-            win.addstr(row_num, 1, " ")
+            task_win.addstr(row_num, 1, " ")
             row_num-=1
             if row_num==0:
                 page = (page - 1) if page > 0 else last_page
-                draw_tasks()  
+                show_tasks()  
                 page_max_rows = max_rows if not page==last_page else last_page_max_rows
                 row_num = page_max_rows
-            win.addstr(row_num, 1, ">")  #k
-            win.refresh()
+            task_win.addstr(row_num, 1, ">")  #k
+            task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
-            draw_note(task)
+            show_note(task)
 
         elif c == 'j':
-            win.addstr(row_num, 1, " ")
+            task_win.addstr(row_num, 1, " ")
             row_num+=1
             if row_num==page_max_rows+1:
                 page = (page + 1) if page < last_page else 0
-                draw_tasks()  
+                show_tasks()  
                 row_num = 1
                 page_max_rows = max_rows if not page==last_page else last_page_max_rows
-            win.addstr(row_num, 1, ">")  #j
-            win.refresh()
+            task_win.addstr(row_num, 1, ">")  #j
+            task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
-            draw_note(task)
+            show_note(task)
 
         elif c == 'h':
-            win.addstr(row_num, 1, " ")
+            task_win.addstr(row_num, 1, " ")
             page = (page - 1) if page > 0 else last_page
-            draw_tasks()  
+            show_tasks()  
             row_num = 1
-            win.addstr(row_num, 1, ">")  #j
-            win.refresh()
+            task_win.addstr(row_num, 1, ">")  #j
+            task_win.refresh()
             task = tasks[page*max_rows]
-            draw_note(task)
+            show_note(task)
             page_max_rows = max_rows if not page==last_page else last_page_max_rows
 
         elif c == 'l':
-            win.addstr(row_num, 1, " ")
+            task_win.addstr(row_num, 1, " ")
             page = (page + 1) if page < last_page else 0
-            draw_tasks()  
+            show_tasks()  
             row_num = 1
-            win.addstr(row_num, 1, ">")  #j
-            win.refresh()
+            task_win.addstr(row_num, 1, ">")  #j
+            task_win.refresh()
             task = tasks[page*max_rows]
-            draw_note(task)
+            show_note(task)
             page_max_rows = max_rows if not page==last_page else last_page_max_rows
 
         elif c == '\n':
