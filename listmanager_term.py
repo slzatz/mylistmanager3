@@ -388,7 +388,9 @@ def open_display_preview(query):
     msg = ''
     log = ''
     cur_win = None
-    while 1:
+    run = True
+    #while 1:
+    while run:
         n = screen.getch()
         if n == -1:
             continue
@@ -423,6 +425,7 @@ def open_display_preview(query):
                         else:
                             context = contexts[p]
                             command = None
+                            run = False
                             open_display_preview({'type':'context', 'param':context.title})
 
                     elif command == 'keywords':
@@ -466,8 +469,20 @@ def open_display_preview(query):
                     curwin = show_log()
                     command = None
                 elif "find".startswith(chars.split(' ', 1)[0]):
-                    command = None
+                    #command = None
+                    #del win,win2,win3,win4,win5,win6,win7
+                    #c = open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]})
+                    run = False
                     open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]})
+                elif "reset".startswith(chars):
+                    #command = None
+                    run = False
+                    open_display_preview({'type':type_, 'param':query['param']})
+                elif "recent".startswith(chars):
+                    run = False
+                    open_display_preview({'type':'recent', 'param':'all'})
+                elif "quit".startswith(chars):
+                    run = False
                 else:
                     command = None
                     #open_display_preview({'type':'find', 'param':chars})
@@ -480,35 +495,9 @@ def open_display_preview(query):
             
         elif n == 27: #escape
             redraw(cur_win)
-            #screen.redrawwin()
-            #screen.refresh()
-            #win.redrawwin()
-            #win.refresh()
-            #win2.redrawwin()
-            #win2.refresh()
             command = None
             cur_win = None
             c = 'E'
-
-        #elif c in ['\n', 'q']:
-        elif c == 'q':  
-            curses.nocbreak()
-            screen.keypad(False)
-            curses.echo()
-            curses.endwin()
-            #task = tasks[(page*max_rows)+row_num-1]
-            call(['reset'])
-            #action = actions[c]
-            #c = ''
-            #return {'action':action, 'task_id':task.id}
-            return
-
-        #elif c == 'o':
-        #    draw_context() # need to redraw to show the current task's context
-        #    command = 'open'
-
-        elif c == 'r':
-            open_display_preview({'type':'recent', 'param':'all'})
 
         elif c == 'c':
             draw_context() # need to redraw to show the current task's context
@@ -763,6 +752,13 @@ def open_display_preview(query):
         screen.refresh()
             
         time.sleep(.05)
+
+    curses.nocbreak()
+    screen.keypad(False)
+    curses.echo()
+    curses.endwin()
+    #task = tasks[(page*max_rows)+row_num-1]
+    #call(['reset'])
 
 if __name__ == "__main__":
     open_display_preview({'type':'context', 'param':'todo'})
