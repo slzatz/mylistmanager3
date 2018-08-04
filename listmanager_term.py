@@ -122,7 +122,7 @@ def open_display_preview(query):
     win2 = curses.newwin(size[0]-1, half_width-1, 1, half_width+1)
     win3 = curses.newwin(15, 30, 1, half_width-15)
     win4 = curses.newwin(22, 60, 1, half_width-30)
-    win5 = curses.newwin(26, 30, 1, half_width-15)
+    win5 = curses.newwin(29, 30, 1, half_width-15)
     win6 = curses.newwin(50, 30, 1, half_width-15)
     win7 = curses.newwin(size[0]-1, half_width, 1, half_width//2)
 
@@ -250,8 +250,9 @@ def open_display_preview(query):
     def draw_context():
         # would not have to draw every time if you didn't want to show what
         # context the current task has
-        task = tasks[(page*max_rows)+row_num-1]
-        n = 2
+        #task = tasks[(page*max_rows)+row_num-1]
+        win3.addstr(2, 2, "0. Do nothing")
+        n = 3
         for i,context in enumerate(contexts, 1):
             font = curses.color_pair(2)|curses.A_BOLD if task.context == context else curses.A_NORMAL
             win3.addstr(n, 2, f"{i}. {context.title}", font)  #(y,x)
@@ -289,18 +290,20 @@ def open_display_preview(query):
 
     def draw_keywords():
         # Believe it is better to just look at keywords with a Context
-        task = tasks[(page*max_rows)+row_num-1]
+        #task = tasks[(page*max_rows)+row_num-1]
         keywords = remote_session.query(Keyword).join(
             TaskKeyword,Task,Context).filter(
             Context.title==task.context.title).all()
         keywords.sort(key=lambda x:str.lower(x.name))
 
-        n = 2
+        #n = 2
+        win6.addstr(2, 2, "0. Do nothing")
+        n = 3
         for i,keyword in enumerate(keywords, 1):
             if n > 45:
                 break
-            #font = curses.color_pair(2)|curses.A_BOLD if task.context == context else curses.A_NORMAL
-            font = curses.A_NORMAL
+            font = curses.color_pair(2)|curses.A_BOLD if keyword in task.keywords else curses.A_NORMAL
+            #font = curses.A_NORMAL
             win6.addstr(n, 2, f"{i}. {keyword.name}", font)  #(y,x)
             n+=1
             
@@ -338,16 +341,17 @@ def open_display_preview(query):
         return win7
 
     def draw_help():
-        s = "n->edit [n]ote\n t->edit [t]itle\n x->toggle completed\n o->[o]pen\n"\
-        " c->[c]ontext\n N->[N]ew item\n i->[i]nfo\n d->[d]elete\n q->[q]uit\n\n"\
+        s = "n->edit [n]ote\n t->edit [t]itle\n x->toggle completed\n"\
+        " w->key[w]ords\n c->[c]ontext\n d->[d]elete\n N->[N]ew item\n"\
+        " i->[i]nfo\n q->[q]uit\n\n"\
         " j->page down\n k->page up\n h->page left\n l->page right\n"
 
         win5.addstr(1, 1, "Keymapping",curses.color_pair(2)|curses.A_BOLD)
         win5.addstr(3, 1, s)  #(y,x)
         win5.addstr(19, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
-        s = ":help\n :{search string}"
+        s = ":help->show help screen\n :open [context]\n :solr->update db\n :log->show log\n :find [search string]"
         win5.addstr(21, 1, s)  #(y,x)
-        win5.addstr(24, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
+        win5.addstr(27, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         win5.box()
         win5.refresh()
         return win5
@@ -399,28 +403,43 @@ def open_display_preview(query):
                 if chars.isdigit():
                     if command == 'context':
                         #task = tasks[(page*max_rows)+row_num-1]
-                        task.context = contexts[int(chars)-1]
-                        remote_session.commit()
+                        p = int(chars) - 1
+                        if p < 0 or p > len(contexts):
+                            msg = "do nothing"
+                        else:
+                            task.context = contexts[p]
+                            remote_session.commit()
+                            msg = f"{task.id} new context = {task.context.title}"
+                            log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
+
                         redraw(win3)
                         command = None
-                        msg = f"{task.id} new context = {task.context.title}"
-                        log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
                     elif command == 'open':
-                        context = contexts[int(chars)-1]
-                        command = None
-                        open_display_preview({'type':'context', 'param':context.title})
-                    elif command == 'keywords':
-                        #task = tasks[(page*max_rows)+row_num-1]
-                        keyword = keywords[int(chars)-1]
-                        if keyword in task.keywords:
-                            msg = f"{keyword.name} already attached to {task.title}!"
+                        p = int(chars) - 1
+                        if p < 0 or p > len(contexts):
+                            msg = "do nothing"
+                            redraw(win3)
+                            command = None
                         else:
-                            taskkeyword = TaskKeyword(task, keyword)
-                            remote_session.add(taskkeyword)
-                            task.tag = ','.join(kwn.name for kwn in task.keywords) #######
-                            remote_session.commit()
-                            msg = f"{task.id} given keyword = {keyword.name}"
-                            log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
+                            context = contexts[p]
+                            command = None
+                            open_display_preview({'type':'context', 'param':context.title})
+
+                    elif command == 'keywords':
+                        p = int(chars) - 1
+                        if p < 0 or p > len(keywords):
+                            msg = "do nothing"
+                        else:
+                            keyword = keywords[p]
+                            if keyword in task.keywords:
+                                msg = f"{keyword.name} already attached to {task.title}!"
+                            else:
+                                taskkeyword = TaskKeyword(task, keyword)
+                                remote_session.add(taskkeyword)
+                                task.tag = ','.join(kwn.name for kwn in task.keywords) #######
+                                remote_session.commit()
+                                msg = f"{task.id} given keyword = {keyword.name}"
+                                log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
 
                         redraw(win6)
                         command = None
@@ -446,9 +465,13 @@ def open_display_preview(query):
                 elif "log".startswith(chars):
                     curwin = show_log()
                     command = None
+                elif "find".startswith(chars.split(' ', 1)[0]):
+                    command = None
+                    open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]})
                 else:
                     command = None
-                    open_display_preview({'type':'find', 'param':chars})
+                    #open_display_preview({'type':'find', 'param':chars})
+                    msg = "I don't know what you typed"
             else:
                 accum.append(c)
 
@@ -480,9 +503,9 @@ def open_display_preview(query):
             #return {'action':action, 'task_id':task.id}
             return
 
-        elif c == 'o':
-            draw_context() # need to redraw to show the current task's context
-            command = 'open'
+        #elif c == 'o':
+        #    draw_context() # need to redraw to show the current task's context
+        #    command = 'open'
 
         elif c == 'r':
             open_display_preview({'type':'recent', 'param':'all'})
