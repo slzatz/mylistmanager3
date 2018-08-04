@@ -17,11 +17,12 @@ def update_solr():
     log = f"{datetime.now().isoformat(' ')}: number of tasks modified since "\
           f"last sync = {str(tasks.count())}\n" + log
     max = round(tasks.count(), -2) + 200
+    i = -1
     s = 0
     for n in range(100, max, 100):
 
         documents = []
-        for task in tasks[s:n]:
+        for i,task in enumerate(tasks[s:n]):
             document = {}
             document['id'] = task.id
             document['title'] = task.title
@@ -53,7 +54,7 @@ def update_solr():
     remote_session.commit()
     log = f"{datetime.now().isoformat(' ')}: new Solr sync = "\
            f"{solr_sync.timestamp.isoformat(' ')}\n" + log
-    return log
+    return log,i
 
 if __name__ == "__main__":
     log = update_solr()

@@ -455,9 +455,9 @@ def open_display_preview(query):
                     cur_win = show_help()
                     command = None
                 elif "solr".startswith(chars):
-                    result = update_solr()
+                    result,num_tasks = update_solr()
                     log =  result + log
-                    msg = result.split('\n')[0]
+                    msg = f"{num_tasks+1} updated in solr"
                     command = None
                 elif "open".startswith(chars):
                     show_context() # need to redraw to show the current task's context
