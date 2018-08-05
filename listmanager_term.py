@@ -75,9 +75,7 @@ def open_display_preview(query, hide_completed=False):
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_WHITE)
-    #curses.init_pair(4, 15, -1)# no idea what this is
     curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-    color_map = {'{blue}':3, '{red}':1, '{green}':2,'{white}':4}
     curses.curs_set(0) # cursor not visible
     curses.cbreak() # respond to keys without needing Enter
     curses.noecho()
@@ -218,9 +216,6 @@ def open_display_preview(query, hide_completed=False):
         task_win.refresh() 
 
     def show_context():
-        # would not have to draw every time if you didn't want to show what
-        # context the current task has
-        #task = tasks[(page*max_rows)+row_num-1]
         context_win.addstr(2, 2, "0. Do nothing")
         n = 3
         for i,context in enumerate(contexts, 1):
@@ -260,7 +255,6 @@ def open_display_preview(query, hide_completed=False):
 
     def show_keywords():
         # Believe it is better to just look at keywords with a Context
-        #task = tasks[(page*max_rows)+row_num-1]
         keywords = remote_session.query(Keyword).join(
             TaskKeyword,Task,Context).filter(
             Context.title==task.context.title).all()
@@ -314,14 +308,14 @@ def open_display_preview(query, hide_completed=False):
         s = "n->edit [n]ote\n t->edit [t]itle\n x->toggle completed\n"\
         " w->key[w]ords\n c->[c]ontext\n d->[d]elete\n i->[i]nfo\n\n"\
         " N->[N]ew item\n\n"\
-        " j->page down\n k->page up\n h->page left\n l->page right\n"
+        " j->page down\n k->page up\n h->page left\n l->page right"
 
         help_win.addstr(1, 1, "Key map",curses.color_pair(2)|curses.A_BOLD)
         help_win.addstr(3, 1, s)  #(y,x)
-        help_win.addstr(19, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
+        help_win.addstr(18, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
         s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
-            " :recent->created or modified\n :refresh->refresh display\n :quit->duh"
-        help_win.addstr(21, 1, s)  #(y,x)
+            " :recent->created or modified\n :refresh->refresh display\n :hide->hide completed\n :quit->duh"
+        help_win.addstr(20, 1, s)  #(y,x)
         help_win.addstr(30, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         help_win.box()
         help_win.refresh()
@@ -491,7 +485,6 @@ def open_display_preview(query, hide_completed=False):
             remote_session.add(task)
             remote_session.commit()
             tasks.insert(0, task)
-            #task_win.addstr(row_num, 1, " ")  #j
             task_win.addstr(row_num, 1, " ")
             last_page = len(tasks)//max_rows
             last_page_max_rows = len(tasks)%max_rows
@@ -505,7 +498,6 @@ def open_display_preview(query, hide_completed=False):
 
         # edit note in vim
         elif c == 'n':
-            #task = tasks[(page*max_rows)+row_num-1]
             note = task.note if task.note else ''  # if you want to set up the file somehow
             EDITOR = os.environ.get('EDITOR','vim') #that easy!
 
@@ -544,7 +536,6 @@ def open_display_preview(query, hide_completed=False):
 
         # edit title in vim
         elif c == 't':
-            #task = tasks[(page*max_rows)+row_num-1]
             title = task.title
 
             EDITOR = os.environ.get('EDITOR','vim') 
@@ -567,7 +558,6 @@ def open_display_preview(query, hide_completed=False):
                 comp = ' [c]' if task.completed else ''
                 font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
 
-                #task_win.redrawwin() 
                 task_win.move(row_num, 2)
                 task_win.clrtoeol()
                 task_win.addstr(row_num, 2, 
@@ -586,7 +576,6 @@ def open_display_preview(query, hide_completed=False):
 
         # toggle star
         elif c == 's':
-            #task = tasks[(page*max_rows)+row_num-1]
             task.star = not task.star
             comp = ' [c]' if task.completed else ''
             font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
@@ -603,8 +592,6 @@ def open_display_preview(query, hide_completed=False):
 
         # toggle completed
         elif c == 'x':
-            #task = tasks[(page*max_rows)+row_num-1]
-
             if not task.completed:
                 task.completed = datetime.now().date()
             else:
@@ -650,8 +637,6 @@ def open_display_preview(query, hide_completed=False):
             log = f"{datetime.now().isoformat()}: {msg}" + log
 
         elif c == 'v':
-            #task = tasks[(page*max_rows)+row_num-1]
-
             note = task.note if task.note else ''
             with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
                 tf.write(note.encode("utf-8"))
@@ -731,7 +716,6 @@ def open_display_preview(query, hide_completed=False):
     screen.keypad(False)
     curses.echo()
     curses.endwin()
-    #task = tasks[(page*max_rows)+row_num-1]
     #call(['reset'])
 
 if __name__ == "__main__":
