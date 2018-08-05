@@ -15,6 +15,7 @@ Below are the basic colors supported by curses expressed as:
     curses.init_pair(2, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
 
 curses.color_pair(2)|curses.A_BOLD
+color pair 0 is hard-wired to white on black and on my terminal is different than curses.COLOR_WHITE, curese.COLOR_BLACK
 
 0:black, 1:red, 2:green, 3:yellow, 4:blue, 5:magenta, 6:cyan, and 7:white
 
@@ -66,7 +67,7 @@ keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
-def open_display_preview(query, hide_completed=False):
+def open_display_preview(query, hide_completed=False, hide_deleted=True):
     # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} 
     # or {'type':'recent':'param':'all'}
     screen = curses.initscr()
@@ -100,8 +101,9 @@ def open_display_preview(query, hide_completed=False):
     if type_ == 'context':
     
         tasks = remote_session.query(Task).join(Context).\
-                filter(Context.title==query['param'], Task.deleted==False).\
+                filter(Context.title==query['param']).\
                        order_by(desc(Task.modified))
+                #filter(Context.title==query['param'], Task.deleted==False).\
 
     elif type_ == 'find':
 
@@ -121,7 +123,8 @@ def open_display_preview(query, hide_completed=False):
 
         solr_ids = [x['id'] for x in items]
         tasks = remote_session.query(Task).filter(
-                     Task.deleted==False, Task.id.in_(solr_ids))
+                     Task.id.in_(solr_ids))
+                     #Task.deleted==False, Task.id.in_(solr_ids))
 
         order_expressions = [(Task.id==i).desc() for i in solr_ids]
         tasks = tasks.order_by(*order_expressions)
@@ -156,6 +159,8 @@ def open_display_preview(query, hide_completed=False):
 
     if hide_completed:
         tasks = tasks.filter(Task.completed==None)
+    if hide_deleted:
+        tasks = tasks.filter(Task.deleted==False)
     tasks = tasks.all()
     last_page = len(tasks)//max_rows
     last_page_max_rows = len(tasks)%max_rows
@@ -194,6 +199,20 @@ def open_display_preview(query, hide_completed=False):
 
         note_win.refresh()
 
+    def redraw_task():
+            cp = 1 if task.deleted else 4 if task.completed else 0
+            font = curses.color_pair(cp)|curses.A_BOLD if task.star else \
+                   curses.color_pair(cp)
+            task_win.move(row_num, 2)
+            task_win.clrtoeol()
+            task_win.addstr(row_num, 2, 
+                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  f"({task.id})", font)  
+
+            # the clrtoeol wipes out the vertical box line character
+            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+            task_win.refresh()
+         
     def show_tasks():
         task_win.clear()
         task_win.box()
@@ -204,11 +223,12 @@ def open_display_preview(query, hide_completed=False):
             if n > max_rows:
                 break
 
-            c = ' [c]' if task.completed else ''
-            font = curses.color_pair(2)|curses.A_BOLD if task.star else \
-                   curses.A_NORMAL
+            cp = 1 if task.deleted else 4 if task.completed else 0
+            font = curses.color_pair(cp)|curses.A_BOLD if task.star else \
+                   curses.color_pair(cp)
             task_win.addstr(n, 2,
-              f"{i}. {task.title[:max_chars_line-14]} ({task.id}){c}",
+              #f"{i}. {task.title[:max_chars_line-14]} ({task.id}){c}",
+              f"{i}. {task.title[:max_chars_line-14]} ({task.id})",
               font)  #(y,x)
 
             n+=1
@@ -314,7 +334,7 @@ def open_display_preview(query, hide_completed=False):
         help_win.addstr(3, 1, s)  #(y,x)
         help_win.addstr(18, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
         s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
-            " :recent->created or modified\n :refresh->refresh display\n :hide->hide completed\n :quit->duh"
+            " :recent->created or modified\n :refresh->refresh display\n :show/hide->{completed|delected}\n :quit->duh"
         help_win.addstr(20, 1, s)  #(y,x)
         help_win.addstr(30, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         help_win.box()
@@ -423,6 +443,7 @@ def open_display_preview(query, hide_completed=False):
                     log =  result + log
                     msg = f"{num_tasks+1} updated in solr"
                     command = None
+                # may want to use chars.split so can go open work and default to showing list
                 elif "open".startswith(chars):
                     show_context() # need to redraw to show the current task's context
                     command = 'open'
@@ -440,11 +461,22 @@ def open_display_preview(query, hide_completed=False):
                 elif "recent".startswith(chars):
                     run = False
                     open_display_preview({'type':'recent', 'param':'all'})
-                elif "hide".startswith(chars):
-                    #command = None
+                elif "hide".startswith(chars.split(' ', 1)[0]):
                     run = False
-                    open_display_preview({'type':type_, 'param':query['param']},
+                    if "completed".startswith(chars.split(' ', 1)[1]):
+                        open_display_preview({'type':type_, 'param':query['param']},
                                          hide_completed=True)
+                    else:
+                        open_display_preview({'type':type_, 'param':query['param']},
+                                         hide_deleted=True)
+                elif "show".startswith(chars.split(' ', 1)[0]):
+                    run = False
+                    if "completed".startswith(chars.split(' ', 1)[1]):
+                        open_display_preview({'type':type_, 'param':query['param']},
+                                         hide_completed=False)
+                    else:
+                        open_display_preview({'type':type_, 'param':query['param']},
+                                         hide_deleted=False)
                 elif "quit".startswith(chars):
                     run = False
                 else:
@@ -546,8 +578,6 @@ def open_display_preview(query, hide_completed=False):
 
                 # call editor (vim)
                 call([EDITOR, tf.name])
-
-
                 # editing in vim and return here
                 tf.seek(0)
                 new_title = tf.read().decode("utf-8").strip()   # self.task.note =
@@ -555,16 +585,9 @@ def open_display_preview(query, hide_completed=False):
             if new_title != title:
                 task.title = new_title
                 remote_session.commit()
-                comp = ' [c]' if task.completed else ''
-                font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
+                redraw_task()
 
-                task_win.move(row_num, 2)
-                task_win.clrtoeol()
-                task_win.addstr(row_num, 2, 
-                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
-                  f"({task.id}){comp}", font)  
-                task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
-
+            task_win.redrawwin() # this is needed 
             task_win.noutrefresh() # update data structure but not screen
             note_win.redrawwin() # this is needed even though note_win isn't touched
             screen.redrawln(0,1)
@@ -577,62 +600,23 @@ def open_display_preview(query, hide_completed=False):
         # toggle star
         elif c == 's':
             task.star = not task.star
-            comp = ' [c]' if task.completed else ''
-            font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
-            task_win.move(row_num, 2)
-            task_win.clrtoeol()
-            task_win.addstr(row_num, 2, 
-                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
-                  f"({task.id}){comp}", font)  
-            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
-            task_win.refresh()
             remote_session.commit()
+            redraw_task()
             msg = f"{task.id} is {'starred' if task.star else 'is not starred'}"
             log = f"{datetime.now().isoformat()}: {msg}" + log
 
         # toggle completed
         elif c == 'x':
-            if not task.completed:
-                task.completed = datetime.now().date()
-            else:
-                task.completed = None
-
+            task.completed = None if task.completed else datetime.now().date()
             remote_session.commit()
-
-            comp = ' [c]' if task.completed else ''
-            font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
-            task_win.move(row_num, 2)
-            task_win.clrtoeol()
-            task_win.addstr(row_num, 2, 
-                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
-                  f"({task.id}){comp}", font)  
-
-            # the clrtoeol wipes out the vertical box line character
-            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
-            task_win.refresh()
+            redraw_task()
             msg = f"{task.id} is {'completed' if task.completed else 'is not completed'} "
             log = f"{datetime.now().isoformat()}: {msg}" + log
 
         elif c == 'd':
             task.deleted = not task.deleted
             remote_session.commit()
-            if task.deleted:
-                font = curses.color_pair(4)|curses.A_BOLD if task.star \
-                       else curses.color_pair(4)
-            else:
-                font = curses.color_pair(2)|curses.A_BOLD if task.star \
-                       else curses.A_NORMAL
-            comp = ' [c]' if task.completed else ''
-            task_win.move(row_num, 2)
-            task_win.clrtoeol()
-            task_win.addstr(row_num, 2, 
-                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
-                  f"({task.id}){comp}", font)  
-
-            # the clrtoeol wipes out the vertical box line character
-            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
-            task_win.refresh()
-
+            redraw_task()
             msg = f"{task.id} was {'deleted' if task.deleted else 'undeleted'}"
             log = f"{datetime.now().isoformat()}: {msg}" + log
 
@@ -712,11 +696,12 @@ def open_display_preview(query, hide_completed=False):
             
         time.sleep(.05)
 
+    # could any of these be moved below - somehow we initscr muliple times
     curses.nocbreak()
     screen.keypad(False)
     curses.echo()
     curses.endwin()
-    #call(['reset'])
 
 if __name__ == "__main__":
     open_display_preview({'type':'context', 'param':'todo'})
+    call(['reset'])
