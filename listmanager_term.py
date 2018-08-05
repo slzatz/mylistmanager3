@@ -66,41 +66,7 @@ keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
-def update_solr_(task=None):
-    solr = SolrClient(SOLR_URI + '/solr/')
-    collection = 'listmanager'
-
-    if not task:
-        return
-
-    document = {}
-    document['id'] = task.id
-    document['title'] = task.title
-    document['note'] = task.note if task.note else ''
-    #document['tag'] =[t for t in task.tag.split(',')] if task.tag else []
-    document['tag'] =[k.name for k in task.keywords] # better this than relying on tag
-
-    document['completed'] = task.completed != None
-    document['star'] = task.star # haven't used this yet; schema doesn't currently reflect it
-
-    #note that I didn't there was any value in indexing or storing context and folder
-    document['context'] = task.context.title
-    document['folder'] = task.folder.title
-
-    json_docs = json.dumps([document])
-    response = solr.index_json(collection, json_docs)
-
-    # response = solr.commit(collection, waitSearcher=False) # doesn't actually seem to work
-    # Since solr.commit didn't seem to work, substituted the below, which works
-    url = SOLR_URI + '/solr/' + collection + '/update'
-    r = requests.post(url, data={"commit":"true"})
-    root = ET.fromstring(r.text)
-    if root[0][0].text == '0':
-        return f"{task.id} updated"
-    else:
-        return f"{task.id} failure"
-
-def open_display_preview(query):
+def open_display_preview(query, hide_completed=False):
     # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} 
     # or {'type':'recent':'param':'all'}
     screen = curses.initscr()
@@ -109,7 +75,8 @@ def open_display_preview(query):
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_WHITE)
-    curses.init_pair(4, 15, -1)
+    #curses.init_pair(4, 15, -1)# no idea what this is
+    curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
     color_map = {'{blue}':3, '{red}':1, '{green}':2,'{white}':4}
     curses.curs_set(0) # cursor not visible
     curses.cbreak() # respond to keys without needing Enter
@@ -136,7 +103,7 @@ def open_display_preview(query):
     
         tasks = remote_session.query(Task).join(Context).\
                 filter(Context.title==query['param'], Task.deleted==False).\
-                       order_by(desc(Task.modified)).all()
+                       order_by(desc(Task.modified))
 
     elif type_ == 'find':
 
@@ -159,7 +126,7 @@ def open_display_preview(query):
                      Task.deleted==False, Task.id.in_(solr_ids))
 
         order_expressions = [(Task.id==i).desc() for i in solr_ids]
-        tasks = tasks.order_by(*order_expressions).all()
+        tasks = tasks.order_by(*order_expressions)
 
     elif type_ == 'recent':    
 
@@ -168,17 +135,17 @@ def open_display_preview(query):
         if not s or s == 'all':
             tasks = tasks.filter(
                     Task.modified > (datetime.now()
-                    -timedelta(days=2))).order_by(desc(Task.modified)).all()
+                    -timedelta(days=2))).order_by(desc(Task.modified))
 
         elif s == 'created' or s == 'new':
             tasks = tasks.filter(
                     Task.created > (datetime.now()
-                    -timedelta(days=2)).date()).order_by(desc(Task.modified)).all()
+                    -timedelta(days=2)).date()).order_by(desc(Task.modified))
 
         elif s == 'completed':
             tasks = tasks.filter(
                     Task.completed > (datetime.now()
-                    -timedelta(days=2)).date()).order_by(desc(Task.modified)).all()
+                    -timedelta(days=2)).date()).order_by(desc(Task.modified))
 
         elif s == 'modified':
             tasks = tasks.filter(
@@ -187,8 +154,11 @@ def open_display_preview(query):
                     -timedelta(days=2)),
                     ~(Task.created > (datetime.now()-
                     timedelta(days=2)).date())
-                    )).order_by(desc(Task.modified)).all()
+                    )).order_by(desc(Task.modified))
 
+    if hide_completed:
+        tasks = tasks.filter(Task.completed==None)
+    tasks = tasks.all()
     last_page = len(tasks)//max_rows
     last_page_max_rows = len(tasks)%max_rows
 
@@ -476,6 +446,11 @@ def open_display_preview(query):
                 elif "recent".startswith(chars):
                     run = False
                     open_display_preview({'type':'recent', 'param':'all'})
+                elif "hide".startswith(chars):
+                    #command = None
+                    run = False
+                    open_display_preview({'type':type_, 'param':query['param']},
+                                         hide_completed=True)
                 elif "quit".startswith(chars):
                     run = False
                 else:
@@ -592,12 +567,12 @@ def open_display_preview(query):
                 comp = ' [c]' if task.completed else ''
                 font = curses.color_pair(2)|curses.A_BOLD if task.star else curses.A_NORMAL
 
-                task_win.redrawwin() 
+                #task_win.redrawwin() 
                 task_win.move(row_num, 2)
                 task_win.clrtoeol()
                 task_win.addstr(row_num, 2, 
-                   f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
-                   font)  #(y,x)
+                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  f"({task.id}){comp}", font)  
                 task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
 
             task_win.noutrefresh() # update data structure but not screen
@@ -618,8 +593,8 @@ def open_display_preview(query):
             task_win.move(row_num, 2)
             task_win.clrtoeol()
             task_win.addstr(row_num, 2, 
-                f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}",
-                font)  #(y,x)
+                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  f"({task.id}){comp}", font)  
             task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
             task_win.refresh()
             remote_session.commit()
@@ -642,31 +617,36 @@ def open_display_preview(query):
             task_win.move(row_num, 2)
             task_win.clrtoeol()
             task_win.addstr(row_num, 2, 
-              f"{page*max_rows+row_num}. {task.title[:max_chars_line-7]}{comp}", font) #(y,x)
+                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  f"({task.id}){comp}", font)  
 
             # the clrtoeol wipes out the vertical box line character
             task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
             task_win.refresh()
-            remote_session.commit()
             msg = f"{task.id} is {'completed' if task.completed else 'is not completed'} "
             log = f"{datetime.now().isoformat()}: {msg}" + log
 
         elif c == 'd':
-            #task = tasks[(page*max_rows)+row_num-1]
-            task.deleted = True
+            task.deleted = not task.deleted
             remote_session.commit()
-            del tasks[(page*max_rows)+row_num-1]
+            if task.deleted:
+                font = curses.color_pair(4)|curses.A_BOLD if task.star \
+                       else curses.color_pair(4)
+            else:
+                font = curses.color_pair(2)|curses.A_BOLD if task.star \
+                       else curses.A_NORMAL
+            comp = ' [c]' if task.completed else ''
+            task_win.move(row_num, 2)
+            task_win.clrtoeol()
+            task_win.addstr(row_num, 2, 
+                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  f"({task.id}){comp}", font)  
 
-            last_page = len(tasks)//max_rows
-            last_page_max_rows = len(tasks)%max_rows
-            page = 0
-            row_num = 1
-            show_tasks()
-            show_note(tasks[0])
-            task_win.addstr(row_num, 1, ">")  #j
+            # the clrtoeol wipes out the vertical box line character
+            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
             task_win.refresh()
 
-            msg = f"{task.id} was marked for deletion"
+            msg = f"{task.id} was {'deleted' if task.deleted else 'undeleted'}"
             log = f"{datetime.now().isoformat()}: {msg}" + log
 
         elif c == 'v':
