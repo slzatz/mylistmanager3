@@ -47,6 +47,9 @@ from subprocess import call
 import threading
 from update_solr import update_solr
 
+def now():
+    return datetime.now().isoformat(' ').split('.')[0]
+
 def check():
     while 1:
         c = remote_session.connection() 
@@ -90,7 +93,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
     info_win = curses.newwin(22, 60, 1, half_width-30)
     help_win = curses.newwin(34, 34, 1, half_width-15)
     keywords_win = curses.newwin(50, 30, 1, half_width-15)
-    log_win = curses.newwin(size[0]-1, half_width, 1, half_width//2)
+    log_win = curses.newwin(size[0]-1, half_width+20, 1, -10+half_width//2)
 
     page = 0
     row_num = 1
@@ -209,7 +212,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             task_win.move(row_num, 2)
             task_win.clrtoeol()
             task_win.addstr(row_num, 2, 
-                  f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  #f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+                  f"{task.title[:max_chars_line-6]}"\
                   f"({task.id})", font)  
 
             # the clrtoeol wipes out the vertical box line character
@@ -231,7 +235,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                    curses.color_pair(cp)
             task_win.addstr(n, 2,
               #f"{i}. {task.title[:max_chars_line-14]} ({task.id}){c}",
-              f"{i}. {task.title[:max_chars_line-14]} ({task.id})",
+              #f"{i}. {task.title[:max_chars_line-14]} ({task.id})",
+              f"{task.title[:max_chars_line-6]} ({task.id})",
               font)  #(y,x)
 
             n+=1
@@ -312,7 +317,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 n+=1
                 continue
 
-            for line in textwrap.wrap(para, max_chars_line):
+            #for line in textwrap.wrap(para, max_chars_line):
+            for line in textwrap.wrap(para, 60):
 
                 if n > max_rows:
                     break
@@ -357,10 +363,10 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
     # draw the surrounding screen text
     screen.clear()
     screen.addstr(0,0,
-                 f"Hello Steve. screen size=x:{size[1]},y:{size[0]} "\
+                 f"screen=x:{size[1]},y:{size[0]} "\
                  f"max_rows={max_rows} last_page={last_page} "\
-                 f"query={query['type']}-{query['param']} "\
-                 f"sort={sort} hide_completed={hide_completed} hide_deleted={hide_deleted}",
+                 f"q={query['type']}-{query['param']} "\
+                 f"sort={sort} hide_c={hide_completed} hide_d={hide_deleted}",
                  curses.A_BOLD)
 
     screen.refresh()
@@ -401,7 +407,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                             task.context = contexts[p]
                             remote_session.commit()
                             msg = f"{task.id} new context = {task.context.title}"
-                            log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
+                            log = f"{now()}: {msg}\n" + log
 
                         redraw(context_win)
                         command = None
@@ -431,7 +437,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                                 task.tag = ','.join(kwn.name for kwn in task.keywords) #######
                                 remote_session.commit()
                                 msg = f"{task.id} given keyword = {keyword.name}"
-                                log = f"{datetime.now().isoformat(' ')}: {msg}\n" + log
+                                log = f"{now()}: {msg}\n" + log
 
                         redraw(keywords_win)
                         command = None
@@ -452,8 +458,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     show_context() # need to redraw to show the current task's context
                     command = 'open'
                 elif "log".startswith(chars):
-                    curwin = show_log()
                     command = None
+                    curwin = show_log()
                 elif "find".startswith(chars.split(' ', 1)[0]):
                     #command = None
                     run = False
@@ -616,7 +622,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             remote_session.commit()
             redraw_task()
             msg = f"{task.id} is {'starred' if task.star else 'is not starred'}"
-            log = f"{datetime.now().isoformat()}: {msg}" + log
+            log = f"{now()}: {msg}\n" + log
 
         # toggle completed
         elif c == 'x':
@@ -624,14 +630,14 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             remote_session.commit()
             redraw_task()
             msg = f"{task.id} is {'completed' if task.completed else 'is not completed'} "
-            log = f"{datetime.now().isoformat()}: {msg}" + log
+            log = f"{now()}: {msg}\n" + log
 
         elif c == 'd':
             task.deleted = not task.deleted
             remote_session.commit()
             redraw_task()
             msg = f"{task.id} was {'deleted' if task.deleted else 'undeleted'}"
-            log = f"{datetime.now().isoformat()}: {msg}" + log
+            log = f"{now()}: {msg}\n" + log
 
         elif c == 'v':
             note = task.note if task.note else ''

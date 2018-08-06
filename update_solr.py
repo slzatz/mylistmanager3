@@ -8,13 +8,16 @@ from lmdb_p import *
 remote_session = new_remote_session()
 def update_solr():
 
+    def now():
+        return datetime.now().isoformat(' ').split('.')[0]
+
     solr = SolrClient(SOLR_URI + '/solr/')
     collection = 'listmanager'
     solr_sync = remote_session.query(Sync).get('solr')
     last_solr_sync = solr_sync.timestamp
-    log = f"{datetime.now().isoformat(' ')}: last Solr sync = {last_solr_sync.isoformat(' ')}\n"
+    log = f"{now()}: last Solr sync = {last_solr_sync.isoformat(' ').split('.')[0]}\n"
     tasks = remote_session.query(Task).filter(Task.modified > last_solr_sync)
-    log = f"{datetime.now().isoformat(' ')}: number of tasks modified since "\
+    log = f"{now()}: number of tasks modified since "\
           f"last sync = {str(tasks.count())}\n" + log
     max = round(tasks.count(), -2) + 200
     i = -1
@@ -52,8 +55,8 @@ def update_solr():
 
     solr_sync.timestamp = datetime.now() + timedelta(seconds=2)
     remote_session.commit()
-    log = f"{datetime.now().isoformat(' ')}: new Solr sync = "\
-           f"{solr_sync.timestamp.isoformat(' ')}\n" + log
+    log = f"{now()}: new Solr sync = "\
+           f"{solr_sync.timestamp.isoformat(' ').split('.')[0]}\n" + log
     return log,i
 
 if __name__ == "__main__":
