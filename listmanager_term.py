@@ -67,7 +67,7 @@ keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
-def open_display_preview(query, hide_completed=False, hide_deleted=True):
+def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='modified'):
     # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} 
     # or {'type':'recent':'param':'all'}
     screen = curses.initscr()
@@ -88,7 +88,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
     note_win = curses.newwin(size[0]-1, half_width-1, 1, half_width+1)
     context_win = curses.newwin(15, 30, 1, half_width-15)
     info_win = curses.newwin(22, 60, 1, half_width-30)
-    help_win = curses.newwin(32, 30, 1, half_width-15)
+    help_win = curses.newwin(34, 34, 1, half_width-15)
     keywords_win = curses.newwin(50, 30, 1, half_width-15)
     log_win = curses.newwin(size[0]-1, half_width, 1, half_width//2)
 
@@ -101,8 +101,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
     if type_ == 'context':
     
         tasks = remote_session.query(Task).join(Context).\
-                filter(Context.title==query['param']).\
-                       order_by(desc(Task.modified))
+                filter(Context.title==query['param']) #.\
+                       #order_by(desc(Task.modified))
                 #filter(Context.title==query['param'], Task.deleted==False).\
 
     elif type_ == 'find':
@@ -126,8 +126,9 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
                      Task.id.in_(solr_ids))
                      #Task.deleted==False, Task.id.in_(solr_ids))
 
-        order_expressions = [(Task.id==i).desc() for i in solr_ids]
-        tasks = tasks.order_by(*order_expressions)
+        if not sort:
+            order_expressions = [(Task.id==i).desc() for i in solr_ids]
+            tasks = tasks.order_by(*order_expressions)
 
     elif type_ == 'recent':    
 
@@ -161,6 +162,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
         tasks = tasks.filter(Task.completed==None)
     if hide_deleted:
         tasks = tasks.filter(Task.deleted==False)
+    if sort:
+        tasks = tasks.order_by(desc(getattr(Task, sort)))
     tasks = tasks.all()
     last_page = len(tasks)//max_rows
     last_page_max_rows = len(tasks)%max_rows
@@ -334,9 +337,9 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
         help_win.addstr(3, 1, s)  #(y,x)
         help_win.addstr(18, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
         s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
-            " :recent->created or modified\n :refresh->refresh display\n :show/hide->{completed|delected}\n :quit->duh"
+            " :recent->created or modified\n :refresh->refresh display\n :show/hide [completed|deleted]\n :sort [modified|startdate]\n :quit->duh"
         help_win.addstr(20, 1, s)  #(y,x)
-        help_win.addstr(30, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
+        help_win.addstr(32, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         help_win.box()
         help_win.refresh()
         return help_win
@@ -356,7 +359,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
     screen.addstr(0,0,
                  f"Hello Steve. screen size=x:{size[1]},y:{size[0]} "\
                  f"max_rows={max_rows} last_page={last_page} "\
-                 f"query={query['type']}-{query['param']}",
+                 f"query={query['type']}-{query['param']} "\
+                 f"sort={sort} hide_completed={hide_completed} hide_deleted={hide_deleted}",
                  curses.A_BOLD)
 
     screen.refresh()
@@ -453,14 +457,23 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True):
                 elif "find".startswith(chars.split(' ', 1)[0]):
                     #command = None
                     run = False
-                    open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]})
-                elif "reset".startswith(chars):
+                    open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]}, sort=None)
+                elif "refresh".startswith(chars):
                     #command = None
                     run = False
                     open_display_preview({'type':type_, 'param':query['param']})
                 elif "recent".startswith(chars):
                     run = False
                     open_display_preview({'type':'recent', 'param':'all'})
+                elif "sort".startswith(chars.split(' ', 1)[0]):
+                    run = False
+                    if "modified".startswith(chars.split(' ', 1)[1]):
+                        open_display_preview({'type':type_, 'param':query['param']},
+                                          sort = 'modified')
+                    else:
+                        open_display_preview({'type':type_, 'param':query['param']},
+                                          sort = 'startdate')
+                        
                 elif "hide".startswith(chars.split(' ', 1)[0]):
                     run = False
                     if "completed".startswith(chars.split(' ', 1)[1]):
