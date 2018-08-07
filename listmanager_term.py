@@ -90,7 +90,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
     note_win = curses.newwin(size[0]-1, half_width-1, 1, half_width+1)
     context_win = curses.newwin(15, 30, 1, half_width-15)
     info_win = curses.newwin(22, 60, 1, half_width-30)
-    help_win = curses.newwin(34, 34, 1, half_width-15)
+    help_win = curses.newwin(34, 40, 1, half_width-20)
     keywords_win = curses.newwin(50, 30, 1, half_width-15)
     log_win = curses.newwin(size[0]-1, half_width+20, 1, -10+half_width//2)
 
@@ -338,7 +338,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         help_win.addstr(3, 1, s)  #(y,x)
         help_win.addstr(18, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
         s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
-            " :recent->created or modified\n :refresh->refresh display\n :show/hide [completed|deleted]\n :sort [modified|startdate]\n :quit->duh"
+            " :recent [all|new|completed|modified]\n :refresh->refresh display\n :show/hide [completed|deleted]\n :sort [modified|startdate]\n :quit->duh"
         help_win.addstr(20, 1, s)  #(y,x)
         help_win.addstr(32, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         help_win.box()
@@ -477,17 +477,27 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     #command = None
                     run = False
                     open_display_preview({'type':type_, 'param':query['param']})
-                elif "recent".startswith(chars):
+                elif "recent".startswith(words[0]):
+                    if len(words) == 1:
+                        param = 'all'
+                    else:
+                        param = words[1]
                     run = False
-                    open_display_preview({'type':'recent', 'param':'all'})
+                    open_display_preview({'type':'recent', 'param':param})
                 elif "sort".startswith(words[0]):
                     run = False
                     if "modified".startswith(words[1]):
-                        open_display_preview({'type':type_, 'param':query['param']},
-                                          sort = 'modified')
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              sort = 'modified',
+                                              hide_completed=hide_completed,
+                                              hide_deleted=hide_deleted)
                     else:
-                        open_display_preview({'type':type_, 'param':query['param']},
-                                          sort = 'startdate')
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              sort = 'startdate',
+                                              hide_completed=hide_completed,
+                                              hide_deleted=hide_deleted)
                         
                 elif "hide".startswith(words[0]):
                     run = False
@@ -500,11 +510,15 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 elif "show".startswith(words[0]):
                     run = False
                     if "completed".startswith(words[1]):
-                        open_display_preview({'type':type_, 'param':query['param']},
-                                    hide_completed=False, hide_deleted=hide_deleted)
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              hide_completed=False,
+                                              hide_deleted=hide_deleted)
                     else:
-                        open_display_preview({'type':type_, 'param':query['param']},
-                                  hide_deleted=False, hide_completed=hide_completed)
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              hide_deleted=False,
+                                              hide_completed=hide_completed)
                 elif "quit".startswith(chars):
                     run = False
                 else:
@@ -521,6 +535,9 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             command = None
             cur_win = None
             c = 'E'
+
+        elif cur_win: # of there is a cur_win then it's modal
+            pass
 
         elif c == 'c':
             show_context() # need to redraw to show the current task's context
