@@ -11,11 +11,14 @@ Note that when you press an arrow key getch sees three keys in rapid succession 
 [
 A, B, C or D
 
+unless screen.keypad(True) is set.
+
 Below are the basic colors supported by curses expressed as:
     curses.init_pair(2, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
 
 curses.color_pair(2)|curses.A_BOLD
-color pair 0 is hard-wired to white on black and on my terminal is different than curses.COLOR_WHITE, curese.COLOR_BLACK
+color pair 0 is hard-wired to white on black and on my terminal is
+different than curses.COLOR_WHITE, curese.COLOR_BLACK
 
 0:black, 1:red, 2:green, 3:yellow, 4:blue, 5:magenta, 6:cyan, and 7:white
 
@@ -27,8 +30,8 @@ A_REVERSE	Reverse-video text
 A_STANDOUT	The best highlighting mode available
 A_UNDERLINE	Underlined text
 
-if I don't want to turn this into a class can use nonlocal to access any variables
-changed by inner functions
+if I don't want to turn this into a class can use nonlocal to access 
+any variables changed by inner functions
 '''
 import sys
 import os
@@ -69,7 +72,7 @@ keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
-def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='modified'):
+def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='modified'):
     # {'type':'context':'param':'not work'} or {'type':find':'param':'esp32'} 
     # or {'type':'recent':'param':'all'}
     screen = curses.initscr()
@@ -536,11 +539,11 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             cur_win = None
             c = 'E'
 
-        elif cur_win: # of there is a cur_win then it's modal
+        elif cur_win: # if there is a cur_win then it's modal
             pass
 
         elif c == 'c':
-            show_context() # need to redraw to show the current task's context
+            show_context() 
             command = 'context'
 
         elif c == 'w':
@@ -568,17 +571,18 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             page = 0
             row_num = 1
             show_tasks()
-            show_note(tasks[0])
+            #show_note(tasks[0])
+            show_note(task)
             task_win.addstr(row_num, 1, ">")  #j
             task_win.refresh()
             log = f"task {task.id} added" + log
+            curses.napms(10000)
+            curses.ungetch('t')
 
         # edit note in vim
         elif c == 'n':
-            note = task.note if task.note else ''  # if you want to set up the file somehow
-            EDITOR = os.environ.get('EDITOR','vim') #that easy!
-
-            note = task.note if task.note else ''  # if you want to set up the file somehow
+            note = task.note if task.note else ''
+            EDITOR = os.environ.get('EDITOR','vim')
 
             with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
                 tf.write(note.encode("utf-8"))
@@ -605,7 +609,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             task_win.noutrefresh() # update data structure but not screen
             note_win.redrawwin() # this is needed even though note_win isn't touched
             screen.redrawln(0,1)
-            screen.redrawln(size[0]-1, size[0])
+            #screen.redrawln(size[0]-1, size[0])
             curses.doupdate() # update all physical windows
 
             screen.keypad(True)
@@ -625,7 +629,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 call([EDITOR, tf.name])
                 # editing in vim and return here
                 tf.seek(0)
-                new_title = tf.read().decode("utf-8").strip()   # self.task.note =
+                new_title = tf.read().decode("utf-8").strip()
 
             if new_title != title:
                 task.title = new_title
@@ -636,7 +640,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             task_win.noutrefresh() # update data structure but not screen
             note_win.redrawwin() # this is needed even though note_win isn't touched
             screen.redrawln(0,1)
-            screen.redrawln(size[0]-1, size[0])
+            #screen.redrawln(size[0]-1, size[0])
             curses.doupdate() # update all physical windows
 
             screen.keypad(True)
@@ -684,7 +688,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             if row_num==0:
                 page = (page - 1) if page > 0 else last_page
                 show_tasks()  
-                page_max_rows = max_rows if not page==last_page else last_page_max_rows
+                page_max_rows = max_rows if not page==last_page else \
+                                last_page_max_rows
                 row_num = page_max_rows
             task_win.addstr(row_num, 1, ">")  #k
             task_win.refresh()
@@ -698,7 +703,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 page = (page + 1) if page < last_page else 0
                 show_tasks()  
                 row_num = 1
-                page_max_rows = max_rows if not page==last_page else last_page_max_rows
+                page_max_rows = max_rows if not page==last_page else \
+                                last_page_max_rows
             task_win.addstr(row_num, 1, ">")  #j
             task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
@@ -713,7 +719,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             task_win.refresh()
             task = tasks[page*max_rows]
             show_note(task)
-            page_max_rows = max_rows if not page==last_page else last_page_max_rows
+            page_max_rows = max_rows if not page==last_page else \
+                            last_page_max_rows
 
         elif c == 'l':
             task_win.addstr(row_num, 1, " ")
@@ -724,7 +731,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             task_win.refresh()
             task = tasks[page*max_rows]
             show_note(task)
-            page_max_rows = max_rows if not page==last_page else last_page_max_rows
+            page_max_rows = max_rows if not page==last_page else \
+                            last_page_max_rows
 
         elif c == '\n':
             c = 'N'
