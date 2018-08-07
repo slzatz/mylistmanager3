@@ -135,17 +135,17 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         if not s or s == 'all':
             tasks = tasks.filter(
                     Task.modified > (datetime.now()
-                    -timedelta(days=2))).order_by(desc(Task.modified))
+                    -timedelta(days=2))) #.order_by(desc(Task.modified))
 
         elif s == 'created' or s == 'new':
             tasks = tasks.filter(
                     Task.created > (datetime.now()
-                    -timedelta(days=2)).date()).order_by(desc(Task.modified))
+                    -timedelta(days=2)).date()) #.order_by(desc(Task.modified))
 
         elif s == 'completed':
             tasks = tasks.filter(
                     Task.completed > (datetime.now()
-                    -timedelta(days=2)).date()).order_by(desc(Task.modified))
+                    -timedelta(days=2)).date()) #.order_by(desc(Task.modified))
 
         elif s == 'modified':
             tasks = tasks.filter(
@@ -153,8 +153,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     Task.modified > (datetime.now()
                     -timedelta(days=2)),
                     ~(Task.created > (datetime.now()-
-                    timedelta(days=2)).date())
-                    )).order_by(desc(Task.modified))
+                    timedelta(days=2)).date())))
+                    # )).order_by(desc(Task.modified))
 
     if hide_completed:
         tasks = tasks.filter(Task.completed==None)
@@ -493,18 +493,18 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     run = False
                     if "completed".startswith(words[1]):
                         open_display_preview({'type':type_, 'param':query['param']},
-                                         hide_completed=True)
+                                     hide_completed=True, hide_deleted=hide_deleted)
                     else:
                         open_display_preview({'type':type_, 'param':query['param']},
-                                         hide_deleted=True)
+                                   hide_deleted=True, hide_completed=hide_completed)
                 elif "show".startswith(words[0]):
                     run = False
                     if "completed".startswith(words[1]):
                         open_display_preview({'type':type_, 'param':query['param']},
-                                         hide_completed=False)
+                                    hide_completed=False, hide_deleted=hide_deleted)
                     else:
                         open_display_preview({'type':type_, 'param':query['param']},
-                                         hide_deleted=False)
+                                  hide_deleted=False, hide_completed=hide_completed)
                 elif "quit".startswith(chars):
                     run = False
                 else:
