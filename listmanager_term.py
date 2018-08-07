@@ -391,6 +391,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             if c == '\n':
                 chars = ''.join(accum)
                 accum = []
+                words = chars.split(None, 1)
                 c = '' # is necessary or you try to print return
                 if chars.isdigit():
                     if command == 'context':
@@ -438,7 +439,6 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     else:
                         command = None
                         msg = f"Typing '{chars}' won't do anything"
-
                 elif "help".startswith(chars):
                     cur_win = show_help()
                     command = None
@@ -447,18 +447,32 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     log =  result + log
                     msg = f"{num_tasks+1} updated in solr"
                     command = None
-                # may want to use chars.split so can go open work and default to showing list
-                elif "open".startswith(chars):
-                    show_context() # need to redraw to show the current task's context
-                    command = 'open'
+                elif "open".startswith(words[0]):
+                    if len(words) == 1:
+                        show_context() # need to redraw to show the current task's context
+                        command = 'open'
+                    else:
+                        user_input = words[1]
+                        for context in contexts:
+                            if context.title.startswith(user_input):
+                                break
+                        else:
+                            context = None
+                        if context:
+                            #command = None
+                            run = False
+                            open_display_preview({'type':'context', 'param':context.title})
+                        else:
+                            command = None
+                            msg = "Did not recognize that context {user_input}"
                 elif "log".startswith(chars):
                     command = None
                     cur_win = show_log()
-                elif "find".startswith(chars.split(' ', 1)[0]):
+                elif "find".startswith(words[0]):
                     #command = None
                     run = False
                     open_display_preview({'type':'find', 
-                                   'param':chars.split(' ', 1)[1]}, sort=None)
+                                   'param':words[1]}, sort=None)
                 elif "refresh".startswith(chars):
                     #command = None
                     run = False
@@ -466,26 +480,26 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 elif "recent".startswith(chars):
                     run = False
                     open_display_preview({'type':'recent', 'param':'all'})
-                elif "sort".startswith(chars.split(' ', 1)[0]):
+                elif "sort".startswith(words[0]):
                     run = False
-                    if "modified".startswith(chars.split(' ', 1)[1]):
+                    if "modified".startswith(words[1]):
                         open_display_preview({'type':type_, 'param':query['param']},
                                           sort = 'modified')
                     else:
                         open_display_preview({'type':type_, 'param':query['param']},
                                           sort = 'startdate')
                         
-                elif "hide".startswith(chars.split(' ', 1)[0]):
+                elif "hide".startswith(words[0]):
                     run = False
-                    if "completed".startswith(chars.split(' ', 1)[1]):
+                    if "completed".startswith(words[1]):
                         open_display_preview({'type':type_, 'param':query['param']},
                                          hide_completed=True)
                     else:
                         open_display_preview({'type':type_, 'param':query['param']},
                                          hide_deleted=True)
-                elif "show".startswith(chars.split(' ', 1)[0]):
+                elif "show".startswith(words[0]):
                     run = False
-                    if "completed".startswith(chars.split(' ', 1)[1]):
+                    if "completed".startswith(words[1]):
                         open_display_preview({'type':type_, 'param':query['param']},
                                          hide_completed=False)
                     else:
