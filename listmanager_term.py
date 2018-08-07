@@ -65,7 +65,6 @@ th = threading.Thread(target=check, daemon=True)
 th.start()
 
 #actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
-#actions = {'\n':'select', 'q':None}
 keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
@@ -83,7 +82,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
     curses.curs_set(0) # cursor not visible
     curses.cbreak() # respond to keys without needing Enter
     curses.noecho()
-    screen.keypad(True) #claims to catch arrow keys -- we'll see
+    screen.keypad(True) #arrow keys captured as one character
     size = screen.getmaxyx()
     screen.nodelay(True)
     half_width = size[1]//2
@@ -105,8 +104,6 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
     
         tasks = remote_session.query(Task).join(Context).\
                 filter(Context.title==query['param']) #.\
-                       #order_by(desc(Task.modified))
-                #filter(Context.title==query['param'], Task.deleted==False).\
 
     elif type_ == 'find':
 
@@ -115,7 +112,6 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         s2 = 'note:' + ' OR note:'.join(s0)
         s3 = 'tag:' + ' OR tag:'.join(s0)
         q = s1 + ' OR ' + s2 + ' OR ' + s3
-        #print(q)
         result = solr.query(collection, {
                 'q':q, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 
                 'context', 'completed'], 'sort':'score desc'})
@@ -127,7 +123,6 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         solr_ids = [x['id'] for x in items]
         tasks = remote_session.query(Task).filter(
                      Task.id.in_(solr_ids))
-                     #Task.deleted==False, Task.id.in_(solr_ids))
 
         if not sort:
             order_expressions = [(Task.id==i).desc() for i in solr_ids]
@@ -197,7 +192,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     break
 
                 try:
-                    note_win.addstr(n, 3, line)  #(y,x)
+                    note_win.addstr(n, 2, line)  #(y,x)
                 except Exception as e:
                      pass
 
@@ -247,7 +242,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         context_win.addstr(2, 2, "0. Do nothing")
         n = 3
         for i,context in enumerate(contexts, 1):
-            font = curses.color_pair(2)|curses.A_BOLD if task.context == context else curses.A_NORMAL
+            font = curses.color_pair(2)|curses.A_BOLD if \
+                   task.context == context else curses.A_NORMAL
             context_win.addstr(n, 2, f"{i}. {context.title}", font)  #(y,x)
             n+=1
             
@@ -282,20 +278,19 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         return info_win
 
     def show_keywords():
-        # Believe it is better to just look at keywords with a Context
+        # Believe it is better to just look at keywords within a Context
         keywords = remote_session.query(Keyword).join(
             TaskKeyword,Task,Context).filter(
             Context.title==task.context.title).all()
         keywords.sort(key=lambda x:str.lower(x.name))
 
-        #n = 2
         keywords_win.addstr(2, 2, "0. Do nothing")
         n = 3
         for i,keyword in enumerate(keywords, 1):
             if n > 45:
                 break
-            font = curses.color_pair(2)|curses.A_BOLD if keyword in task.keywords else curses.A_NORMAL
-            #font = curses.A_NORMAL
+            font = curses.color_pair(2)|curses.A_BOLD if keyword in \
+                   task.keywords else curses.A_NORMAL
             keywords_win.addstr(n, 2, f"{i}. {keyword.name}", font)  #(y,x)
             n+=1
             
@@ -304,9 +299,8 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         return keywords
 
     def show_log():
-        log_win.clear()
-        log_win.box()
 
+        y,x = log_win.getmaxyx()
         paras = log.splitlines()
 
         n = 1
@@ -318,9 +312,9 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 continue
 
             #for line in textwrap.wrap(para, max_chars_line):
-            for line in textwrap.wrap(para, 60):
+            for line in textwrap.wrap(para, x-4): #60):
 
-                if n > max_rows:
+                if n > y-2: #max_rows:
                     break
 
                 try:
@@ -330,6 +324,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
 
                 n+=1
 
+        log_win.box()
         log_win.refresh()
         return log_win
 
@@ -362,12 +357,13 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
         
     # draw the surrounding screen text
     screen.clear()
-    screen.addstr(0,0,
-                 f"screen=x:{size[1]},y:{size[0]} "\
-                 f"max_rows={max_rows} last_page={last_page} "\
-                 f"q={query['type']}-{query['param']} "\
-                 f"sort={sort} hide_c={hide_completed} hide_d={hide_deleted}",
-                 curses.A_BOLD)
+
+    msg = f"screen=x:{size[1]},y:{size[0]} "\
+          f"max_rows={max_rows} last_page={last_page} "\
+          f"q={query['type']}-{query['param']} "\
+          f"sort={sort} hide_c={hide_completed} hide_d={hide_deleted}"
+
+    screen.addstr(0,0, msg[:size[1]-1], curses.A_BOLD)
 
     screen.refresh()
 
@@ -384,7 +380,6 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
     log = ''
     cur_win = None
     run = True
-    #while 1:
     while run:
         n = screen.getch()
         if n == -1:
@@ -399,7 +394,6 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 c = '' # is necessary or you try to print return
                 if chars.isdigit():
                     if command == 'context':
-                        #task = tasks[(page*max_rows)+row_num-1]
                         p = int(chars) - 1
                         if p < 0 or p > len(contexts):
                             msg = "do nothing"
@@ -459,11 +453,12 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                     command = 'open'
                 elif "log".startswith(chars):
                     command = None
-                    curwin = show_log()
+                    cur_win = show_log()
                 elif "find".startswith(chars.split(' ', 1)[0]):
                     #command = None
                     run = False
-                    open_display_preview({'type':'find', 'param':chars.split(' ', 1)[1]}, sort=None)
+                    open_display_preview({'type':'find', 
+                                   'param':chars.split(' ', 1)[1]}, sort=None)
                 elif "refresh".startswith(chars):
                     #command = None
                     run = False
@@ -564,7 +559,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
 
                 #curses.resetty()
                 screen.keypad(True)
-                curses.curs_set(0) # cursor not visible
+                curses.curs_set(0)
                 #curses.noecho()
 
                 # editing in vim and return here
@@ -583,7 +578,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             curses.doupdate() # update all physical windows
 
             screen.keypad(True)
-            curses.curs_set(0) # cursor not visible
+            curses.curs_set(0) 
 
         # edit title in vim
         elif c == 't':
@@ -614,7 +609,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
             curses.doupdate() # update all physical windows
 
             screen.keypad(True)
-            curses.curs_set(0) # cursor not visible
+            curses.curs_set(0)
 
         # toggle star
         elif c == 's':
@@ -647,8 +642,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
                 fn = tf.name
                 call(['mkd2html', fn])
                 html_fn  = fn[:fn.find('.')] + '.html'
-                # below doesn't work so not sure how to eliminate error message
-                #call(['chromium', '--single-process', html_fn]) # default is -new-tab
+                # not sure how to eliminate error message
                 call(['chromium', '--single-process', html_fn]) # default is -new-tab
 
         # using "vim keys" for navigation
@@ -706,7 +700,7 @@ def open_display_preview(query, hide_completed=False, hide_deleted=True, sort='m
 
         screen.move(0, 0)
         screen.clrtoeol()
-        screen.addstr(0,0, msg,  curses.A_BOLD)
+        screen.addstr(0,0, msg[:size[1]-1], curses.A_BOLD)
         screen.addstr(0, size[1]-56,
                 f"page:{page} row num:{row_num} char:{c} command: "\
                 f"{''.join(accum)}",
