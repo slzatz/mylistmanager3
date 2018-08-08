@@ -174,7 +174,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
     no_context = remote_session.query(Context).filter_by(id=1).one()
     contexts = [no_context] + contexts
 
-    def show_note(task):
+    def show_note(refresh=True):
         note_win.clear()
         note_win.box()
 
@@ -201,21 +201,23 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
                 n+=1
 
-        note_win.refresh()
+        if refresh:
+            note_win.refresh()
 
-    def redraw_task():
-            cp = 1 if task.deleted else 4 if task.completed else 0
-            font = curses.color_pair(cp)|curses.A_BOLD if task.star else \
-                   curses.color_pair(cp)
-            task_win.move(row_num, 2)
-            task_win.clrtoeol()
-            task_win.addstr(row_num, 2, 
-                  #f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
-                  f"{task.title[:max_chars_line-6]}"\
-                  f"({task.id})", font)  
+    def redraw_task(refresh=True):
+        cp = 1 if task.deleted else 4 if task.completed else 0
+        font = curses.color_pair(cp)|curses.A_BOLD if task.star else \
+               curses.color_pair(cp)
+        task_win.move(row_num, 2)
+        task_win.clrtoeol()
+        task_win.addstr(row_num, 2, 
+              #f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
+              f"{task.title[:max_chars_line-6]}"\
+              f"({task.id})", font)  
 
-            # the clrtoeol wipes out the vertical box line character
-            task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+        # the clrtoeol wipes out the vertical box line character
+        task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
+        if refresh:
             task_win.refresh()
          
     def show_tasks():
@@ -372,7 +374,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
     show_tasks()
     task = tasks[0]
-    show_note(task)
+    show_note()
     task_win.addstr(row_num, 1, ">")  
     task_win.refresh()
 
@@ -573,12 +575,11 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             page = 0
             row_num = 1
             show_tasks()
-            #show_note(tasks[0])
-            show_note(task)
-            task_win.addstr(row_num, 1, ">")  #j
-            task_win.refresh()
+            show_note()
+            task_win.addstr(1, 1, ">")  #j
+            #task_win.refresh()
             log = f"task {task.id} added" + log
-            curses.napms(10000)
+            #curses.napms(10000) # was pausing in testing
             curses.ungetch('t')
 
         # edit note in vim
@@ -606,12 +607,15 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             if new_note != note:
                 task.note = new_note
                 remote_session.commit()
-                show_note(task)
+                show_note(refresh=False)
+                msg = f"note updated for {task.id}"
 
+            screen.clear() #erase doesn't work but clear does here
+            screen.noutrefresh() # needed? - yes
+            task_win.redrawwin() # this is needed 
             task_win.noutrefresh() # update data structure but not screen
-            note_win.redrawwin() # this is needed even though note_win isn't touched
-            screen.redrawln(0,1)
-            #screen.redrawln(size[0]-1, size[0])
+            note_win.redrawwin() # ? need - yes
+            note_win.noutrefresh() # ? needed - yes
             curses.doupdate() # update all physical windows
 
             screen.keypad(True)
@@ -636,13 +640,15 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             if new_title != title:
                 task.title = new_title
                 remote_session.commit()
-                redraw_task()
+                redraw_task(refresh=False)
+                msg = f"title updated for {task.id}"
 
+            screen.clear() #erase doesn't work but clear does here
+            screen.noutrefresh() # needed? - yes
             task_win.redrawwin() # this is needed 
             task_win.noutrefresh() # update data structure but not screen
             note_win.redrawwin() # this is needed even though note_win isn't touched
-            screen.redrawln(0,1)
-            #screen.redrawln(size[0]-1, size[0])
+            note_win.noutrefresh() # ? needed
             curses.doupdate() # update all physical windows
 
             screen.keypad(True)
@@ -696,7 +702,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task_win.addstr(row_num, 1, ">")  #k
             task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
-            show_note(task)
+            show_note()
 
         elif c == 'j':
             task_win.addstr(row_num, 1, " ")
@@ -710,7 +716,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task_win.addstr(row_num, 1, ">")  #j
             task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
-            show_note(task)
+            show_note()
 
         elif c == 'h':
             task_win.addstr(row_num, 1, " ")
@@ -720,7 +726,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task_win.addstr(row_num, 1, ">")  #j
             task_win.refresh()
             task = tasks[page*max_rows]
-            show_note(task)
+            show_note()
             page_max_rows = max_rows if not page==last_page else \
                             last_page_max_rows
 
@@ -732,7 +738,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task_win.addstr(row_num, 1, ">")  #j
             task_win.refresh()
             task = tasks[page*max_rows]
-            show_note(task)
+            show_note()
             page_max_rows = max_rows if not page==last_page else \
                             last_page_max_rows
 
@@ -741,7 +747,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
         screen.move(0, 0)
         screen.clrtoeol()
-        screen.addstr(0,0, msg[:size[1]-1], curses.A_BOLD)
+        screen.addstr(0,1, msg[:size[1]-1], curses.A_BOLD)
         screen.addstr(0, size[1]-56,
                 f"page:{page} row num:{row_num} char:{c} command: "\
                 f"{''.join(accum)}",
