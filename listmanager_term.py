@@ -396,51 +396,53 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 accum = []
                 words = chars.split(None, 1)
                 c = '' # is necessary or you try to print return
-                if chars.isdigit():
-                    if command == 'context':
-                        p = int(chars) - 1
-                        if p < 0 or p > len(contexts):
-                            msg = "do nothing"
-                        else:
-                            task.context = contexts[p]
-                            remote_session.commit()
-                            msg = f"{task.id} new context = {task.context.title}"
-                            log = f"{now()}: {msg}\n" + log
-
-                        redraw(context_win)
-                        command = None
-                    elif command == 'open':
-                        p = int(chars) - 1
-                        if p < 0 or p > len(contexts):
-                            msg = "do nothing"
-                            redraw(context_win)
-                            command = None
-                        else:
-                            context = contexts[p]
-                            command = None
-                            run = False
-                            open_display_preview({'type':'context', 'param':context.title})
-
-                    elif command == 'keywords':
-                        p = int(chars) - 1
-                        if p < 0 or p > len(keywords):
-                            msg = "do nothing"
-                        else:
-                            keyword = keywords[p]
-                            if keyword in task.keywords:
-                                msg = f"{keyword.name} already attached to {task.title}!"
+                #if chars.isdigit():
+                if command is not True:
+                    if chars.isdigit():
+                        if command == 'context':
+                            p = int(chars) - 1
+                            if p < 0 or p > len(contexts):
+                                msg = "do nothing"
                             else:
-                                taskkeyword = TaskKeyword(task, keyword)
-                                remote_session.add(taskkeyword)
-                                task.tag = ','.join(kwn.name for kwn in task.keywords) #######
+                                task.context = contexts[p]
                                 remote_session.commit()
-                                msg = f"{task.id} given keyword = {keyword.name}"
+                                msg = f"{task.id} new context = {task.context.title}"
                                 log = f"{now()}: {msg}\n" + log
 
-                        redraw(keywords_win)
-                        command = None
+                            redraw(context_win)
+                            command = None
+                        elif command == 'open':
+                            p = int(chars) - 1
+                            if p < 0 or p > len(contexts):
+                                msg = "do nothing"
+                                redraw(context_win)
+                                command = None
+                            else:
+                                context = contexts[p]
+                                command = None
+                                run = False
+                                open_display_preview({'type':'context', 'param':context.title})
+
+                        elif command == 'keywords':
+                            p = int(chars) - 1
+                            if p < 0 or p > len(keywords):
+                                msg = "do nothing"
+                            else:
+                                keyword = keywords[p]
+                                if keyword in task.keywords:
+                                    msg = f"{keyword.name} already attached to {task.title}!"
+                                else:
+                                    taskkeyword = TaskKeyword(task, keyword)
+                                    remote_session.add(taskkeyword)
+                                    task.tag = ','.join(kwn.name for kwn in task.keywords) #######
+                                    remote_session.commit()
+                                    msg = f"{task.id} given keyword = {keyword.name}"
+                                    log = f"{now()}: {msg}\n" + log
+
+                            redraw(keywords_win)
+                            command = None
                     else:
-                        command = None
+                        #command = None
                         msg = f"Typing '{chars}' won't do anything"
                 elif "help".startswith(chars):
                     cur_win = show_help()
