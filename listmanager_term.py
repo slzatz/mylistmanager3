@@ -343,7 +343,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         help_win.addstr(3, 1, s)  #(y,x)
         help_win.addstr(18, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
         s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
-            " :recent [all|new|completed|modified]\n :refresh->refresh display\n :show/hide [completed|deleted]\n :sort [modified|startdate]\n :quit->duh"
+            " :recent [all|new|completed|modified]\n :refresh->refresh display\n :show/hide [completed|deleted]\n :sort [modified|created|star]\n :quit->duh"
         help_win.addstr(20, 1, s)  #(y,x)
         help_win.addstr(32, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         help_win.box()
@@ -492,19 +492,30 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                     run = False
                     open_display_preview({'type':'recent', 'param':param})
                 elif "sort".startswith(words[0]):
-                    run = False
                     if "modified".startswith(words[1]):
+                        run = False
                         open_display_preview({'type':type_,
                                               'param':query['param']},
                                               sort = 'modified',
                                               hide_completed=hide_completed,
                                               hide_deleted=hide_deleted)
-                    else:
+                    elif "created".startswith(words[1]):
+                        run = False
                         open_display_preview({'type':type_,
                                               'param':query['param']},
                                               sort = 'startdate',
                                               hide_completed=hide_completed,
                                               hide_deleted=hide_deleted)
+                    elif "star".startswith(words[1]):
+                        run = False
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              sort = 'star',
+                                              hide_completed=hide_completed,
+                                              hide_deleted=hide_deleted)
+                    else:
+                        command = None
+                        msg = f"{words[1]} is not a sort parameter"
                         
                 elif "hide".startswith(words[0]):
                     run = False
@@ -578,7 +589,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             show_note()
             task_win.addstr(1, 1, ">")  #j
             #task_win.refresh()
-            log = f"task {task.id} added" + log
+            log = f"task {task.id} added\n" + log
             #curses.napms(10000) # was pausing in testing
             curses.ungetch('t')
 
