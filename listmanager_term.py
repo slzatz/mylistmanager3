@@ -397,8 +397,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 chars = ''.join(accum)
                 accum = []
                 words = chars.split(None, 1)
-                c = '' # is necessary or you try to print return
-                #if chars.isdigit():
+                c = 'LF' # is necessary or you try to print return
                 if command is not True:
                     if chars.isdigit():
                         if command == 'context':
@@ -443,17 +442,59 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
                             redraw(keywords_win)
                             command = None
+                    elif command == 'context':
+                        for context in contexts:
+                            if context.title.startswith(chars):
+                                break
+                        else:
+                            context = None
+                        if context:
+                            task.context = context
+                            remote_session.commit()
+                            msg = f"{task.id} new context = {context.title}"
+                            log = f"{now()}: {msg}\n" + log
+                        else:
+                            msg = "Did not recognize that context {chars}"
+                        command = None
+                        redraw(context_win)
+                    elif command == 'find':
+                        run = False
+                        open_display_preview({'type':'find', 
+                                   'param':chars}, sort=None)
+                    elif command == 'title':
+                        task.title = chars
+                        remote_session.commit()
+                        command = None
+                        redraw_task()
+                    elif command == 'open2':
+                        for context in contexts:
+                            if context.title.startswith(chars):
+                                break
+                        else:
+                            context = None
+                        if context:
+                            run = False
+                            open_display_preview({'type':'context', 'param':context.title})
+                        else:
+                            command = None
+                            msg = "Did not recognize that context {chars}"
                     else:
-                        #command = None
+                        # wiwth accum = [] another chance to type digits
                         msg = f"Typing '{chars}' won't do anything"
-                elif "help".startswith(chars):
-                    cur_win = show_help()
-                    command = None
+                #elif "help".startswith(chars):
+                #    cur_win = show_help()
+                #    command = None
                 elif "solr".startswith(chars):
                     result,num_tasks = update_solr()
                     log =  result + log
                     msg = f"{num_tasks+1} updated in solr"
                     command = None
+                #elif "title".startswith(words[0]):
+                #    task.title = words[1]
+                #    remote_session.commit()
+                #    command = None
+                #    redraw_task()
+
                 elif "open".startswith(words[0]):
                     if len(words) == 1:
                         show_context() # need to redraw to show the current task's context
@@ -472,14 +513,14 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                         else:
                             command = None
                             msg = "Did not recognize that context {user_input}"
-                elif "log".startswith(chars):
-                    command = None
-                    cur_win = show_log()
-                elif "find".startswith(words[0]):
-                    #command = None
-                    run = False
-                    open_display_preview({'type':'find', 
-                                   'param':words[1]}, sort=None)
+                #elif "log".startswith(chars):
+                #    command = None
+                #    cur_win = show_log()
+                #elif "find".startswith(words[0]):
+                #    #command = None
+                #    run = False
+                #    open_display_preview({'type':'find', 
+                #                   'param':words[1]}, sort=None)
                 elif "refresh".startswith(chars):
                     #command = None
                     run = False
@@ -542,6 +583,9 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 else:
                     command = None
                     msg = "I don't know what you typed"
+            elif n == 263:
+                accum.pop()
+                c = 'BS'
             else:
                 accum.append(c)
 
@@ -552,7 +596,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             redraw(cur_win)
             command = None
             cur_win = None
-            c = 'E'
+            c = 'ESC'
 
         elif cur_win: # if there is a cur_win then it's modal
             pass
@@ -567,6 +611,12 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
         elif c == 'i':
             cur_win = show_info()
+
+        elif c == 'o':
+            command = 'open2'
+
+        elif c == 'f':
+            command = 'find'
 
         elif c == 'N':
             task = Task(priority=3, title='<new task>')
@@ -591,7 +641,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             #task_win.refresh()
             log = f"task {task.id} added\n" + log
             #curses.napms(10000) # was pausing in testing
-            curses.ungetch('t')
+            #curses.ungetch('t')
+            command = 'title'
 
         # edit note in vim
         elif c == 'n':
@@ -632,8 +683,13 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             screen.keypad(True)
             curses.curs_set(0) 
 
-        # edit title in vim
+        # edit title directly (not using vim)
         elif c == 't':
+            accum = list(task.title)
+            command = 'title'
+
+        # edit title in vim
+        elif c == '*':
             title = task.title
 
             EDITOR = os.environ.get('EDITOR','vim') 
@@ -730,6 +786,9 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             show_note()
 
         elif c == 'h':
+            cur_win = show_help()
+
+        elif c == 'hh':
             task_win.addstr(row_num, 1, " ")
             page = (page - 1) if page > 0 else last_page
             show_tasks()  
@@ -742,6 +801,9 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                             last_page_max_rows
 
         elif c == 'l':
+            cur_win = show_log()
+
+        elif c == 'll':
             task_win.addstr(row_num, 1, " ")
             page = (page + 1) if page < last_page else 0
             show_tasks()  
@@ -754,14 +816,22 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                             last_page_max_rows
 
         elif c == '\n':
-            c = 'N'
+            c = 'LF'
 
         screen.move(0, 0)
         screen.clrtoeol()
-        screen.addstr(0,1, msg[:size[1]-1], curses.A_BOLD)
-        screen.addstr(0, size[1]-56,
-                f"page:{page} row num:{row_num} char:{c} command: "\
-                f"{''.join(accum)}",
+        #screen.addstr(0,1, msg[:size[1]-1], curses.A_BOLD)
+        screen.addstr(size[0]-1,1, msg[:size[1]-1], curses.A_BOLD)
+        #screen.addstr(0, size[1]-56,
+        s0 = {'title':'enter title->',
+              'open2':'enter context to open->',
+              'find':'find->',
+              'context':'context->'}.get(command, 'command->')
+        screen.addstr(0, 1,
+                f"{s0}{''.join(accum)}",
+                #f"command->{''.join(accum)}",
+                #f"command->{''.join(accum)}   char:{c} n:{n} "\
+                #f"page:{page} row num:{row_num}",
                 curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
