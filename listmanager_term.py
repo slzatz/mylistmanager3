@@ -33,12 +33,10 @@ A_UNDERLINE	Underlined text
 if I don't want to turn this into a class can use nonlocal to access 
 any variables changed by inner functions
 '''
-import sys
 import os
 import curses
 from datetime import datetime, timedelta
 import time
-import json
 import textwrap
 from SolrClient import SolrClient
 import requests
@@ -67,8 +65,31 @@ remote_session = new_remote_session()
 th = threading.Thread(target=check, daemon=True)
 th.start()
 
-#actions = {'n':'note', 't':'title', 's':'star', 'c':'completed', '\n':'select', 'q':None}
-keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
+actions = {
+           '*':'star',
+           'c':'select <context|##>',
+           'd':'toggle deleted',
+           'f':'find',
+           'h':'hide <completed|deleted>',
+           'H':'Help',
+           'i':'info',
+           'k':'select <keywords|##>',
+           'l':'log',
+           'n':'note',
+           'N':'New',
+           'o':'open <context|##>',
+           'q':'quit',
+           'r':'refresh',
+           'R':'Recent',
+           's':'show <completed|deleted>',
+           'S':'Sort <modified|created|star>',
+           't':'title',
+           'T':'Title (vim)',
+           'U':'Update solr',
+           'v':'view html',
+           'x':'toggle completed'
+           }
+#keymap = {258:'j', 259:'k', 260:'h', 261:'l'}
 solr = SolrClient(SOLR_URI + '/solr')
 collection = 'listmanager'
 
@@ -138,17 +159,17 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         if not s or s == 'all':
             tasks = tasks.filter(
                     Task.modified > (datetime.now()
-                    -timedelta(days=2))) #.order_by(desc(Task.modified))
+                    -timedelta(days=2))) 
 
         elif s == 'created' or s == 'new':
             tasks = tasks.filter(
                     Task.created > (datetime.now()
-                    -timedelta(days=2)).date()) #.order_by(desc(Task.modified))
+                    -timedelta(days=2)).date()) 
 
         elif s == 'completed':
             tasks = tasks.filter(
                     Task.completed > (datetime.now()
-                    -timedelta(days=2)).date()) #.order_by(desc(Task.modified))
+                    -timedelta(days=2)).date()) 
 
         elif s == 'modified':
             tasks = tasks.filter(
@@ -157,7 +178,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                     -timedelta(days=2)),
                     ~(Task.created > (datetime.now()-
                     timedelta(days=2)).date())))
-                    # )).order_by(desc(Task.modified))
 
     if hide_completed:
         tasks = tasks.filter(Task.completed==None)
@@ -211,7 +231,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         task_win.move(row_num, 2)
         task_win.clrtoeol()
         task_win.addstr(row_num, 2, 
-              #f"{page*max_rows+row_num}. {task.title[:max_chars_line-14]}"\
               f"{task.title[:max_chars_line-6]}"\
               f"({task.id})", font)  
 
@@ -234,7 +253,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             font = curses.color_pair(cp)|curses.A_BOLD if task.star else \
                    curses.color_pair(cp)
             task_win.addstr(n, 2,
-              #f"{i}. {task.title[:max_chars_line-14]} ({task.id}){c}",
               #f"{i}. {task.title[:max_chars_line-14]} ({task.id})",
               f"{task.title[:max_chars_line-6]} ({task.id})",
               font)  #(y,x)
@@ -316,10 +334,9 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 n+=1
                 continue
 
-            #for line in textwrap.wrap(para, max_chars_line):
             for line in textwrap.wrap(para, x-4): #60):
 
-                if n > y-2: #max_rows:
+                if n > y-2: 
                     break
 
                 try:
@@ -334,17 +351,11 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         return log_win
 
     def show_help():
-        s = "n->edit [n]ote\n t->edit [t]itle\n x->toggle completed\n"\
-        " w->key[w]ords\n c->[c]ontext\n d->[d]elete\n i->[i]nfo\n\n"\
-        " N->[N]ew item\n\n"\
-        " j->page down\n k->page up\n h->page left\n l->page right"
 
         help_win.addstr(1, 1, "Key map",curses.color_pair(2)|curses.A_BOLD)
-        help_win.addstr(3, 1, s)  #(y,x)
-        help_win.addstr(18, 1, "Commands\n",curses.color_pair(2)|curses.A_BOLD)
-        s = ":help->show this window\n :open [context]\n :solr->update solr db\n :log->show log\n :find [search string]\n"\
-            " :recent [all|new|completed|modified]\n :refresh->refresh display\n :show/hide [completed|deleted]\n :sort [modified|created|star]\n :quit->duh"
-        help_win.addstr(20, 1, s)  #(y,x)
+        for n,(x,y) in enumerate(actions.items()):
+            help_win.addstr(n+3, 1, f"{x}: {y}")  #(y,x)
+            
         help_win.addstr(32, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
         help_win.box()
         help_win.refresh()
@@ -398,7 +409,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 accum = []
                 words = chars.split(None, 1)
                 c = 'LF' # is necessary or you try to print return
-                #if command is not True:
                 if chars.isdigit():
                     if command == 'context':
                         p = int(chars) - 1
@@ -569,7 +579,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                     run = False
                     open_display_preview({'type':'recent', 'param':param})
                 else:
-                    # wiwth accum = [] another chance to type digits
                     command = None
                     msg = f"Typing '{chars}' won't do anything"
             elif n == 263:
@@ -577,6 +586,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 c = 'BS'
             else:
                 accum.append(c)
+                c = ''
 
         elif n == 27: #escape
             redraw(cur_win)
@@ -584,7 +594,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             cur_win = None
             c = 'ESC'
 
-        elif cur_win: # if there is a cur_win then it's modal
+        elif cur_win: 
             pass
 
         elif c == 'c':
@@ -650,7 +660,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             show_tasks()
             show_note()
             task_win.addstr(1, 1, ">")  #j
-            #task_win.refresh()
             log = f"task {task.id} added\n" + log
             #curses.napms(10000) # was pausing in testing
             #curses.ungetch('t')
@@ -701,7 +710,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             command = 'title'
 
         # edit title in vim
-        elif c == 'tt':
+        elif c == 'T':
             title = task.title
 
             EDITOR = os.environ.get('EDITOR','vim') 
@@ -741,6 +750,14 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             msg = f"{task.id} is {'starred' if task.star else 'is not starred'}"
             log = f"{now()}: {msg}\n" + log
 
+        # Help window
+        elif c == 'H':
+            cur_win = show_help()
+
+        # show log
+        elif c == 'l':
+            cur_win = show_log()
+
         # toggle completed
         elif c == 'x':
             task.completed = None if task.completed else datetime.now().date()
@@ -767,9 +784,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 # not sure how to eliminate error message
                 call(['chromium', '--single-process', html_fn]) # default is -new-tab
 
-        # using "vim keys" for navigation
-
-        #elif c == 'k':
+        # arrow keys
         elif n == 259:
             task_win.addstr(row_num, 1, " ")
             row_num-=1
@@ -784,7 +799,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task = tasks[page*max_rows+row_num-1]
             show_note()
 
-        #elif c == 'j':
         elif n == 258:
             task_win.addstr(row_num, 1, " ")
             row_num+=1
@@ -799,11 +813,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task = tasks[page*max_rows+row_num-1]
             show_note()
 
-        elif c == 'H':
-            cur_win = show_help()
-
         elif n == 260:
-        #elif c == 'h':
             task_win.addstr(row_num, 1, " ")
             page = (page - 1) if page > 0 else last_page
             show_tasks()  
@@ -815,10 +825,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             page_max_rows = max_rows if not page==last_page else \
                             last_page_max_rows
 
-        elif c == 'l':
-            cur_win = show_log()
-
-        #elif c == 'l':
         elif n == 261:
             task_win.addstr(row_num, 1, " ")
             page = (page + 1) if page < last_page else 0
@@ -836,25 +842,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
         screen.move(0, 0)
         screen.clrtoeol()
-        #screen.addstr(0,1, msg[:size[1]-1], curses.A_BOLD)
         screen.addstr(size[0]-1,1, msg[:size[1]-1], curses.A_BOLD)
-        #screen.addstr(0, size[1]-56,
-        s0 = {'title':'title->',
-              'open':'open {context|##}->',
-              'find':'find->',
-              'sort':'sort {modified|created|star} ->',
-              'show':'show {completed|deleted} ->',
-              'hide':'hide {completed|deleted} ->',
-              'recent':'recent->',
-              None:'<>',
-              'keywords':'select {keyword|##} ->',
-              'context':'select {context|##} ->'}.get(command, 'missing->')
-        screen.addstr(0, 1,
-                f"{s0}{''.join(accum)}",
-                #f"command->{''.join(accum)}",
-                #f"command->{''.join(accum)}   char:{c} n:{n} "\
-                #f"page:{page} row num:{row_num}",
-                curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, 1, f"{actions.get(c, '-> ')}{''.join(accum)}", curses.color_pair(3)|curses.A_BOLD)
         screen.addstr(0, size[1]-12, f"c:{c} n:{n}", curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
