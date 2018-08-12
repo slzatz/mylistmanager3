@@ -390,7 +390,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         if n == -1:
             continue
 
-        c = keymap.get(n, chr(n))
+        c = chr(n)
 
         if command:
             if c == '\n':
@@ -398,156 +398,116 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 accum = []
                 words = chars.split(None, 1)
                 c = 'LF' # is necessary or you try to print return
-                if command is not True:
-                    if chars.isdigit():
-                        if command == 'context':
-                            p = int(chars) - 1
-                            if p < 0 or p > len(contexts):
-                                msg = "do nothing"
-                            else:
-                                task.context = contexts[p]
-                                remote_session.commit()
-                                msg = f"{task.id} new context = {task.context.title}"
-                                log = f"{now()}: {msg}\n" + log
-
-                            redraw(context_win)
-                            command = None
-                        elif command == 'open':
-                            p = int(chars) - 1
-                            if p < 0 or p > len(contexts):
-                                msg = "do nothing"
-                                redraw(context_win)
-                                command = None
-                            else:
-                                context = contexts[p]
-                                command = None
-                                run = False
-                                open_display_preview({'type':'context', 'param':context.title})
-
-                        elif command == 'keywords':
-                            p = int(chars) - 1
-                            if p < 0 or p > len(keywords):
-                                msg = "do nothing"
-                            else:
-                                keyword = keywords[p]
-                                if keyword in task.keywords:
-                                    msg = f"{keyword.name} already attached to {task.title}!"
-                                else:
-                                    taskkeyword = TaskKeyword(task, keyword)
-                                    remote_session.add(taskkeyword)
-                                    task.tag = ','.join(kwn.name for kwn in task.keywords) #######
-                                    remote_session.commit()
-                                    msg = f"{task.id} given keyword = {keyword.name}"
-                                    log = f"{now()}: {msg}\n" + log
-
-                            redraw(keywords_win)
-                            command = None
-                    elif command == 'context':
-                        for context in contexts:
-                            if context.title.startswith(chars):
-                                break
+                #if command is not True:
+                if chars.isdigit():
+                    if command == 'context':
+                        p = int(chars) - 1
+                        if p < 0 or p > len(contexts):
+                            msg = "do nothing"
                         else:
-                            context = None
-                        if context:
-                            task.context = context
+                            task.context = contexts[p]
                             remote_session.commit()
-                            msg = f"{task.id} new context = {context.title}"
+                            msg = f"{task.id} new context = {task.context.title}"
                             log = f"{now()}: {msg}\n" + log
-                        else:
-                            msg = "Did not recognize that context {chars}"
-                        command = None
-                        redraw(context_win)
-                    elif command == 'find':
-                        run = False
-                        open_display_preview({'type':'find', 
-                                   'param':chars}, sort=None)
-                    elif command == 'title':
-                        task.title = chars
-                        remote_session.commit()
-                        command = None
-                        redraw_task()
-                    elif command == 'open2':
-                        for context in contexts:
-                            if context.title.startswith(chars):
-                                break
-                        else:
-                            context = None
-                        if context:
-                            run = False
-                            open_display_preview({'type':'context', 'param':context.title})
-                        else:
-                            command = None
-                            msg = "Did not recognize that context {chars}"
-                    else:
-                        # wiwth accum = [] another chance to type digits
-                        msg = f"Typing '{chars}' won't do anything"
-                #elif "help".startswith(chars):
-                #    cur_win = show_help()
-                #    command = None
-                elif "solr".startswith(chars):
-                    result,num_tasks = update_solr()
-                    log =  result + log
-                    msg = f"{num_tasks+1} updated in solr"
-                    command = None
-                #elif "title".startswith(words[0]):
-                #    task.title = words[1]
-                #    remote_session.commit()
-                #    command = None
-                #    redraw_task()
 
-                elif "open".startswith(words[0]):
-                    if len(words) == 1:
-                        show_context() # need to redraw to show the current task's context
-                        command = 'open'
-                    else:
-                        user_input = words[1]
-                        for context in contexts:
-                            if context.title.startswith(user_input):
-                                break
+                        redraw(context_win)
+                        command = None
+                    elif command == 'open':
+                        command = None
+                        p = int(chars) - 1
+                        if p < 0 or p > len(contexts):
+                            msg = "do nothing"
+                            redraw(context_win)
+                            #command = None
                         else:
-                            context = None
-                        if context:
+                            context = contexts[p]
                             #command = None
                             run = False
                             open_display_preview({'type':'context', 'param':context.title})
+
+                    elif command == 'keywords':
+                        p = int(chars) - 1
+                        if p < 0 or p > len(keywords):
+                            msg = "do nothing"
                         else:
-                            command = None
-                            msg = "Did not recognize that context {user_input}"
-                #elif "log".startswith(chars):
-                #    command = None
-                #    cur_win = show_log()
-                #elif "find".startswith(words[0]):
-                #    #command = None
-                #    run = False
-                #    open_display_preview({'type':'find', 
-                #                   'param':words[1]}, sort=None)
-                elif "refresh".startswith(chars):
-                    #command = None
-                    run = False
-                    open_display_preview({'type':type_, 'param':query['param']})
-                elif "recent".startswith(words[0]):
-                    if len(words) == 1:
-                        param = 'all'
+                            keyword = keywords[p]
+                            if keyword in task.keywords:
+                                msg = f"{keyword.name} already attached to {task.title}!"
+                            else:
+                                taskkeyword = TaskKeyword(task, keyword)
+                                remote_session.add(taskkeyword)
+                                task.tag = ','.join(kwn.name for kwn in task.keywords) #######
+                                remote_session.commit()
+                                msg = f"{task.id} given keyword = {keyword.name}"
+                                log = f"{now()}: {msg}\n" + log
+
+                        redraw(keywords_win)
+                        command = None
                     else:
-                        param = words[1]
+                        command = None
+                        msg = "I am not sure why you typed a number"
+                elif command == 'keywords':
+                    for keyword in keywords:
+                        if keyword.name.startswith(chars):
+                            break
+                    else:
+                        keyword = None
+                    if keyword:
+                        if keyword in task.keywords:
+                            msg = f"{keyword.name} already attached to {task.title}!"
+                        else:
+                            taskkeyword = TaskKeyword(task, keyword)
+                            remote_session.add(taskkeyword)
+                            task.tag = ','.join(kwn.name for kwn in task.keywords) #######
+                            remote_session.commit()
+                            msg = f"{task.id} given keyword = {keyword.name}"
+                            log = f"{now()}: {msg}\n" + log
+
+                    else:
+                        msg = "Did not recognize that keyword {chars}"
+
+                    command = None
+                    redraw(keywords_win)
+                elif command == 'context':
+                    for context in contexts:
+                        if context.title.startswith(chars):
+                            break
+                    else:
+                        context = None
+                    if context:
+                        task.context = context
+                        remote_session.commit()
+                        msg = f"{task.id} new context = {context.title}"
+                        log = f"{now()}: {msg}\n" + log
+                    else:
+                        msg = "Did not recognize that context {chars}"
+                    command = None
+                    redraw(context_win)
+                elif command == 'find':
                     run = False
-                    open_display_preview({'type':'recent', 'param':param})
-                elif "sort".startswith(words[0]):
-                    if "modified".startswith(words[1]):
+                    open_display_preview({'type':'find', 
+                               'param':chars}, sort=None)
+                elif command == 'title':
+                    task.title = chars
+                    remote_session.commit()
+                    command = None
+                    redraw_task()
+                elif command == 'sort':
+                    if "modified".startswith(chars):
                         run = False
                         open_display_preview({'type':type_,
                                               'param':query['param']},
                                               sort = 'modified',
                                               hide_completed=hide_completed,
                                               hide_deleted=hide_deleted)
-                    elif "created".startswith(words[1]):
+                    elif "created".startswith(chars):
                         run = False
                         open_display_preview({'type':type_,
                                               'param':query['param']},
                                               sort = 'startdate',
                                               hide_completed=hide_completed,
                                               hide_deleted=hide_deleted)
-                    elif "star".startswith(words[1]):
+                    elif "star".startswith(chars) or '*' == chars:
                         run = False
                         open_display_preview({'type':type_,
                                               'param':query['param']},
@@ -556,42 +516,68 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                                               hide_deleted=hide_deleted)
                     else:
                         command = None
-                        msg = f"{words[1]} is not a sort parameter"
-                        
-                elif "hide".startswith(words[0]):
-                    run = False
-                    if "completed".startswith(words[1]):
-                        open_display_preview({'type':type_, 'param':query['param']},
-                                     hide_completed=True, hide_deleted=hide_deleted)
+                        msg = f"{chars} is not a sort parameter"
+                elif command == 'open':
+                    for context in contexts:
+                        if context.title.startswith(chars):
+                            break
                     else:
-                        open_display_preview({'type':type_, 'param':query['param']},
-                                   hide_deleted=True, hide_completed=hide_completed)
-                elif "show".startswith(words[0]):
-                    run = False
-                    if "completed".startswith(words[1]):
+                        context = None
+                    if context:
+                        run = False
+                        open_display_preview({'type':'context', 'param':context.title})
+                    else:
+                        command = None
+                        msg = "Did not recognize that context {chars}"
+                elif command == 'show':
+                    if "completed".startswith(chars):
                         open_display_preview({'type':type_,
                                               'param':query['param']},
                                               hide_completed=False,
                                               hide_deleted=hide_deleted)
-                    else:
+                        run = False
+                    elif "deleted".startswith(chars):
                         open_display_preview({'type':type_,
                                               'param':query['param']},
                                               hide_deleted=False,
                                               hide_completed=hide_completed)
-                elif "quit".startswith(chars):
+                        run = False
+                    else:
+                        command = None
+                        msg = "Did not recognize that hide {chars}"
+                elif command == 'hide':
+                    if "completed".startswith(chars):
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              hide_completed=True,
+                                              hide_deleted=hide_deleted)
+                        run = False
+                    elif "deleted".startswith(chars):
+                        open_display_preview({'type':type_,
+                                              'param':query['param']},
+                                              hide_deleted=True,
+                                              hide_completed=hide_completed)
+                        run = False
+                    else:
+                        command = None
+                        msg = "Did not recognize that show {chars}"
+                elif command == 'recent':
+                    if len(chars) == 0:
+                        param = 'all'
+                    else:
+                        param = chars
                     run = False
+                    open_display_preview({'type':'recent', 'param':param})
                 else:
+                    # wiwth accum = [] another chance to type digits
                     command = None
-                    msg = "I don't know what you typed"
+                    msg = f"Typing '{chars}' won't do anything"
             elif n == 263:
                 accum.pop()
                 c = 'BS'
             else:
                 accum.append(c)
 
-        elif c == ':': 
-            command = True
-            
         elif n == 27: #escape
             redraw(cur_win)
             command = None
@@ -605,7 +591,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             show_context() 
             command = 'context'
 
-        elif c == 'w':
+        elif c == 'k':
             keywords = show_keywords()
             command = 'keywords'
 
@@ -613,10 +599,36 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             cur_win = show_info()
 
         elif c == 'o':
-            command = 'open2'
+            show_context() 
+            command = 'open'
+
+        elif c == 'r':
+            run = False
+            open_display_preview({'type':type_, 'param':query['param']})
+
+        elif c == 'R':
+            command = 'recent'
 
         elif c == 'f':
             command = 'find'
+
+        elif c == 'S':
+            command = 'sort'
+
+        elif c == 's':
+            command = 'show'
+
+        elif c == 'h':
+            command = 'hide'
+
+        elif c == 'q':
+            run = False
+
+        elif c == 'U':
+            result,num_tasks = update_solr()
+            log =  result + log
+            msg = f"{num_tasks+1} updated in solr"
+            command = None
 
         elif c == 'N':
             task = Task(priority=3, title='<new task>')
@@ -689,7 +701,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             command = 'title'
 
         # edit title in vim
-        elif c == '*':
+        elif c == 'tt':
             title = task.title
 
             EDITOR = os.environ.get('EDITOR','vim') 
@@ -722,7 +734,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             curses.curs_set(0)
 
         # toggle star
-        elif c == 's':
+        elif c == '*':
             task.star = not task.star
             remote_session.commit()
             redraw_task()
@@ -757,7 +769,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
         # using "vim keys" for navigation
 
-        elif c == 'k':
+        #elif c == 'k':
+        elif n == 259:
             task_win.addstr(row_num, 1, " ")
             row_num-=1
             if row_num==0:
@@ -771,7 +784,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task = tasks[page*max_rows+row_num-1]
             show_note()
 
-        elif c == 'j':
+        #elif c == 'j':
+        elif n == 258:
             task_win.addstr(row_num, 1, " ")
             row_num+=1
             if row_num==page_max_rows+1:
@@ -785,10 +799,11 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             task = tasks[page*max_rows+row_num-1]
             show_note()
 
-        elif c == 'h':
+        elif c == 'H':
             cur_win = show_help()
 
-        elif c == 'hh':
+        elif n == 260:
+        #elif c == 'h':
             task_win.addstr(row_num, 1, " ")
             page = (page - 1) if page > 0 else last_page
             show_tasks()  
@@ -803,7 +818,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         elif c == 'l':
             cur_win = show_log()
 
-        elif c == 'll':
+        #elif c == 'l':
+        elif n == 261:
             task_win.addstr(row_num, 1, " ")
             page = (page + 1) if page < last_page else 0
             show_tasks()  
@@ -823,16 +839,23 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         #screen.addstr(0,1, msg[:size[1]-1], curses.A_BOLD)
         screen.addstr(size[0]-1,1, msg[:size[1]-1], curses.A_BOLD)
         #screen.addstr(0, size[1]-56,
-        s0 = {'title':'enter title->',
-              'open2':'enter context to open->',
+        s0 = {'title':'title->',
+              'open':'open {context|##}->',
               'find':'find->',
-              'context':'context->'}.get(command, 'command->')
+              'sort':'sort {modified|created|star} ->',
+              'show':'show {completed|deleted} ->',
+              'hide':'hide {completed|deleted} ->',
+              'recent':'recent->',
+              None:'<>',
+              'keywords':'select {keyword|##} ->',
+              'context':'select {context|##} ->'}.get(command, 'missing->')
         screen.addstr(0, 1,
                 f"{s0}{''.join(accum)}",
                 #f"command->{''.join(accum)}",
                 #f"command->{''.join(accum)}   char:{c} n:{n} "\
                 #f"page:{page} row num:{row_num}",
                 curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, size[1]-12, f"c:{c} n:{n}", curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
         time.sleep(.05)
