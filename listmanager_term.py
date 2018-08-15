@@ -47,6 +47,28 @@ import tempfile
 from subprocess import call
 import threading
 from update_solr import update_solr
+from bs4 import BeautifulSoup #########
+
+meta_html = '''<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/home/slzatz/Documents/github-markdown.css">
+<style>
+    .markdown-body {
+        box-sizing: border-box;
+        min-width: 200px;
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 45px;
+    }
+
+    @media (max-width: 767px) {
+        .markdown-body {
+            padding: 15px;
+        }
+}
+</style>
+'''
+# Calculating this here doesn't work - can't figure out why
+#new_meta = BeautifulSoup(meta_html, 'html.parser') ####
 
 def now():
     return datetime.now().isoformat(' ').split('.')[0]
@@ -775,14 +797,33 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
         elif c == 'v':
             note = task.note if task.note else ''
+
             with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
                 tf.write(note.encode("utf-8"))
                 tf.flush()
                 fn = tf.name
                 call(['mkd2html', fn])
                 html_fn  = fn[:fn.find('.')] + '.html'
-                # not sure how to eliminate error message
-                call(['chromium', '--single-process', html_fn]) # default is -new-tab
+
+            with open(html_fn, 'r+') as f:
+                html_doc = f.read()
+                soup = BeautifulSoup(html_doc, 'html.parser')
+                meta = soup.head.meta
+                meta.extract()
+                meta = soup.head.meta
+                meta.extract()
+                # for some reason new meta needs to be calculated here
+                new_meta = BeautifulSoup(meta_html, 'html.parser')
+                soup.head.append(new_meta)
+                tag = soup.body
+                tag.name = 'article'
+                tag ["class"] = 'markdown-body'
+                f.seek(0)
+                f.write(str(soup))
+                f.truncate()
+
+            # not sure how to eliminate error message
+            call(['chromium', '--single-process', html_fn]) # default is -new-tab
 
         # arrow keys
         elif n == 259:
