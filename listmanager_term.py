@@ -67,7 +67,7 @@ meta_html = '''<meta name="viewport" content="width=device-width, initial-scale=
 }
 </style>
 '''
-# Calculating this here doesn't work - can't figure out why
+# Calculating this here doesn't work - not sure why
 #new_meta = BeautifulSoup(meta_html, 'html.parser') ####
 
 def now():
@@ -808,10 +808,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             with open(html_fn, 'r+') as f:
                 html_doc = f.read()
                 soup = BeautifulSoup(html_doc, 'html.parser')
-                meta = soup.head.meta
-                meta.extract()
-                meta = soup.head.meta
-                meta.extract()
+                while soup.head.meta:
+                    soup.head.meta.extract()
                 # for some reason new meta needs to be calculated here
                 new_meta = BeautifulSoup(meta_html, 'html.parser')
                 soup.head.append(new_meta)
