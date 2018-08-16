@@ -102,7 +102,7 @@ actions = {
            'o':'open <context|##>',
            'q':'quit',
            'r':'refresh',
-           'R':'Recent',
+           'R':'Recent <all|created/new|completed|modified>',
            's':'show <completed|deleted>',
            'S':'Sort <modified|created|star>',
            't':'title',
@@ -175,7 +175,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             tasks = tasks.order_by(*order_expressions)
 
     elif type_ == 'recent':    
-
+        hide_completed = False
         tasks = remote_session.query(Task).filter(Task.deleted==False)
         s = query['param']
         if not s or s == 'all':
@@ -524,6 +524,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                     remote_session.commit()
                     command = None
                     redraw_task()
+                    msg = f"Title for {task.id} updated"
+                    log = f"{now()}: {msg}\n" + log
                 elif command == 'sort':
                     if "modified".startswith(chars):
                         run = False
@@ -576,7 +578,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                         run = False
                     else:
                         command = None
-                        msg = "Did not recognize that hide {chars}"
+                        msg = f"Did not recognize that hide {chars}"
                 elif command == 'hide':
                     if "completed".startswith(chars):
                         open_display_preview({'type':type_,
@@ -592,14 +594,21 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                         run = False
                     else:
                         command = None
-                        msg = "Did not recognize that show {chars}"
+                        msg = f"Did not recognize that show {chars}"
                 elif command == 'recent':
                     if len(chars) == 0:
                         param = 'all'
+                        run = False
                     else:
-                        param = chars
-                    run = False
-                    open_display_preview({'type':'recent', 'param':param})
+                        for param in ['all', 'created', 'new', 'completed', 'modified']:
+                            if param.startswith(chars):
+                                run = False
+                                break
+                        else:
+                            msg = f"I don't know what 'recent' {chars} means"
+                            param = None
+                    if param:
+                        open_display_preview({'type':'recent', 'param':param})
                 else:
                     command = None
                     msg = f"Typing '{chars}' won't do anything"
@@ -882,7 +891,13 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         screen.move(0, 0)
         screen.clrtoeol()
         screen.addstr(size[0]-1,1, msg[:size[1]-1], curses.A_BOLD)
-        screen.addstr(0, 1, f"{actions.get(c, '-> ')}{''.join(accum)}", curses.color_pair(3)|curses.A_BOLD)
+        if c not in actions and len(accum) == 0:
+            header = task.title
+        else:
+            header = f"{actions.get(c, '-> ')}{''.join(accum)}"
+        #screen.addstr(0, 1, f"{actions.get(c, '-> ')}{''.join(accum)}",
+        #              curses.color_pair(3)|curses.A_BOLD)
+        screen.addstr(0, 1, header, curses.color_pair(3)|curses.A_BOLD)
         screen.addstr(0, size[1]-12, f"c:{c} n:{n}", curses.color_pair(3)|curses.A_BOLD)
         screen.refresh()
             
