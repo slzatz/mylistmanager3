@@ -253,8 +253,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
         task_win.move(row_num, 2)
         task_win.clrtoeol()
         task_win.addstr(row_num, 2, 
-              f"{task.title[:max_chars_line-6]}"\
-              f"({task.id})", font)  
+              f"{task.title[:max_chars_line-6]} ({task.id})", font)  
 
         # the clrtoeol wipes out the vertical box line character
         task_win.addch(row_num, half_width-2, curses.ACS_VLINE) 
@@ -276,8 +275,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                    curses.color_pair(cp)
             task_win.addstr(n, 2,
               #f"{i}. {task.title[:max_chars_line-14]} ({task.id})",
-              f"{task.title[:max_chars_line-6]} ({task.id})",
-              font)  #(y,x)
+              f"{task.title[:max_chars_line-6]} ({task.id})", font)  #(y,x)
 
             n+=1
 
@@ -408,7 +406,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
     show_tasks()
     task = tasks[0]
     show_note()
-    task_win.addstr(row_num, 1, ">")  
+    #task_win.addstr(row_num, 1, ">")  
+    task_win.addstr(row_num, 1, ">",curses.color_pair(2)|curses.A_BOLD)
     task_win.refresh()
 
     accum = [] 
@@ -831,6 +830,13 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
 
             # not sure how to eliminate error message
             call(['chromium', '--single-process', html_fn]) # default is -new-tab
+            screen.clear() #erase doesn't work but clear does here
+            screen.noutrefresh() # needed? - yes
+            task_win.redrawwin() # this is needed 
+            task_win.noutrefresh() # update data structure but not screen
+            note_win.redrawwin() # this is needed even though note_win isn't touched
+            note_win.noutrefresh() # ? needed
+            curses.doupdate() # update all physical windows
 
         # arrow keys
         elif n == 259:
@@ -842,7 +848,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 page_max_rows = max_rows if not page==last_page else \
                                 last_page_max_rows
                 row_num = page_max_rows
-            task_win.addstr(row_num, 1, ">")  #k
+            #task_win.addstr(row_num, 1, ">")  #k
+            task_win.addstr(row_num, 1, ">",curses.color_pair(2)|curses.A_BOLD)
             task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
             show_note()
@@ -856,7 +863,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 row_num = 1
                 page_max_rows = max_rows if not page==last_page else \
                                 last_page_max_rows
-            task_win.addstr(row_num, 1, ">")  #j
+            #task_win.addstr(row_num, 1, ">")  #j
+            task_win.addstr(row_num, 1, ">",curses.color_pair(2)|curses.A_BOLD)
             task_win.refresh()
             task = tasks[page*max_rows+row_num-1]
             show_note()
@@ -866,7 +874,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             page = (page - 1) if page > 0 else last_page
             show_tasks()  
             row_num = 1
-            task_win.addstr(row_num, 1, ">")  #j
+            #task_win.addstr(row_num, 1, ">")  #j
+            task_win.addstr(row_num, 1, ">",curses.color_pair(2)|curses.A_BOLD)
             task_win.refresh()
             task = tasks[page*max_rows]
             show_note()
@@ -878,7 +887,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             page = (page + 1) if page < last_page else 0
             show_tasks()  
             row_num = 1
-            task_win.addstr(row_num, 1, ">")  #j
+            #task_win.addstr(row_num, 1, ">")  #j
+            task_win.addstr(row_num, 1, ">",curses.color_pair(2)|curses.A_BOLD)
             task_win.refresh()
             task = tasks[page*max_rows]
             show_note()
