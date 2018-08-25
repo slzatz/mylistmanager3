@@ -1,21 +1,11 @@
 '''
 Creates the sqlalchemy objects necessary for the remote postgreSQL database
 '''
-
-import sys
-import os
 import datetime
-
-#Need to put sqlalchemy on the sys.path
-home = os.path.split(os.getcwd())[0]
-sqla_dir = os.path.join(home,'sqlalchemy','lib')
-sys.path = [sqla_dir] + sys.path 
-
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import sqlalchemy.orm.exc as sqla_orm_exc
 import sqlalchemy.exc as sqla_exc
-
 from config import RDS_URI ### should change to PG_URI
 from lmglobals_p import REMOTE_DB, internet_accessible #, LOCAL_DB_FILE
 
