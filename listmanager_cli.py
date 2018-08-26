@@ -84,6 +84,7 @@ class Listmanager(Cmd):
         #self.msg = msg
 
     def select2(self, opts, prompt="Your choice? "):
+        '''modifies cmd2 select method - see #####... below'''
         local_opts = opts
         if isinstance(opts, str):
             local_opts = list(zip(opts.split(), opts.split()))
