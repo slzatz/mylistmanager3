@@ -162,10 +162,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 'q':q, 'rows':50, 'fl':['score', 'id', 'title', 'tag', 'star', 
                 'context', 'completed'], 'sort':'score desc'})
         items = result.docs
-        count = result.get_results_count()
-        if count==0:
-            return
-
         solr_ids = [x['id'] for x in items]
         tasks = remote_session.query(Task).filter(
                      Task.id.in_(solr_ids))
@@ -208,6 +204,11 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
     if sort:
         tasks = tasks.order_by(desc(getattr(Task, sort)))
     tasks = tasks.all()
+
+    # might be no tasks from a find that came up with nothing
+    if not tasks:
+       tasks = [remote_session.query(Task).get(1001)] #special task that says no results
+
     last_page = len(tasks)//max_rows
     last_page_max_rows = len(tasks)%max_rows
 
@@ -406,10 +407,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
     show_tasks()
     task = tasks[0]
     show_note()
-    #task_win.addstr(row_num, 1, ">")  
     task_win.addstr(row_num, 1, ">",curses.color_pair(2)|curses.A_BOLD)
     task_win.refresh()
-
     accum = [] 
     command = None 
     page_max_rows = max_rows if last_page else last_page_max_rows
@@ -691,8 +690,6 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             show_note()
             task_win.addstr(1, 1, ">")  #j
             log = f"task {task.id} added\n" + log
-            #curses.napms(10000) # was pausing in testing
-            #curses.ungetch('t')
             command = 'title'
 
         # edit note in vim
@@ -704,11 +701,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 tf.write(note.encode("utf-8"))
                 tf.flush()
 
-                #curses.savetty()
-
                 call([EDITOR, tf.name])
 
-                #curses.resetty()
                 screen.keypad(True)
                 curses.curs_set(0)
                 #curses.noecho()
