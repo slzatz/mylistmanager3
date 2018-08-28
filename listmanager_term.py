@@ -144,6 +144,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
     row_num = 1
     max_chars_line = half_width - 5
     max_rows = size[0]-3
+    remote_session.expire_all()
 
     type_ = query['type']
     if type_ == 'context':
