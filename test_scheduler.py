@@ -1,3 +1,4 @@
+#!bin/python
 '''
 Python 3 only
 Uses Sendgrid to send email, CloudMailin to receive mail as HTTP posts, Twitter to send direct messages
@@ -8,10 +9,10 @@ import sys
 import os
 import json
 import re 
-from os.path import expanduser
-home = expanduser('~')
+#from os.path import expanduser
+#home = expanduser('~')
 import config as c
-sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
+#sys.path =  [os.path.join(home,'sqlalchemy','lib')] + [os.path.join(home, 'twitter')] + sys.path #sqlalchemy is imported by apscheduler
 from flask import Flask, request, Response, render_template
 from twitter import *
 from lmdb_aws import *

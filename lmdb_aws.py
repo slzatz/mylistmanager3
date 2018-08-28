@@ -3,14 +3,14 @@ Creates the sqlalchemy objects necessary for the remote postgreSQL database
 This _aws only exists because the time zone can be different for aws than eastern time
 '''
 
-import sys
+#import sys
 import os
 import datetime
 
 #Need to put sqlalchemy on the sys.path
-home = os.path.split(os.getcwd())[0]
-sqla_dir = os.path.join(home,'sqlalchemy','lib')
-sys.path = [sqla_dir] + sys.path 
+#home = os.path.split(os.getcwd())[0]
+#sqla_dir = os.path.join(home,'sqlalchemy','lib')
+#sys.path = [sqla_dir] + sys.path 
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
