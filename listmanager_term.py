@@ -67,6 +67,7 @@ meta_html = '''<meta name="viewport" content="width=device-width, initial-scale=
 }
 </style>
 '''
+
 # Calculating this here doesn't work - not sure why
 #new_meta = BeautifulSoup(meta_html, 'html.parser') ####
 
@@ -108,6 +109,7 @@ actions = {
            't':'title',
            'T':'Title (vim)',
            'U':'Update solr',
+           'V':'Use regular vim',
            'v':'view html',
            'x':'toggle completed'
            }
@@ -313,6 +315,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             s += f" created: {task.created}\n"
             s += f" modified: {task.modified}\n"
             s += f" startdate: {task.startdate}\n"
+            s += f" alert: {task.remind}\n"
             s += f" note: {task.note[:50] if task.note else ''}"
             info_win.addstr(1, 1, "Item Info",curses.color_pair(2)|curses.A_BOLD)
             info_win.addstr(3, 1, s)  #(y,x)
@@ -693,16 +696,21 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             log = f"task {task.id} added\n" + log
             command = 'title'
 
-        # edit note in vim
-        elif c == 'n':
+        # edit note in myvim or regular vim
+        elif c == 'n' or c == 'V':
+            editor = './kilo' if c == 'n' else 'vim'
             note = task.note if task.note else ''
-            EDITOR = os.environ.get('EDITOR','vim')
+            #EDITOR = os.environ.get('EDITOR','vim')
 
             with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
                 tf.write(note.encode("utf-8"))
                 tf.flush()
 
-                call([EDITOR, tf.name])
+                #arrow keys captured as one character - need to turn this off for kilo
+                # and vim doesn't seem to mind turning it off
+                screen.keypad(False) 
+                #call(['./kilo', tf.name])
+                call([editor, tf.name])
 
                 screen.keypad(True)
                 curses.curs_set(0)
