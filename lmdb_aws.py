@@ -1,3 +1,4 @@
+#!bin/python
 '''
 Creates the sqlalchemy objects necessary for the remote postgreSQL database
 This _aws only exists because the time zone can be different for aws than eastern time

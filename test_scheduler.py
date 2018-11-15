@@ -84,6 +84,8 @@ app = Flask(__name__)
 app.config.from_pyfile('flask_settings.py')
 HOST = app.config['HOST'] 
 DEBUG = app.config['DEBUG']
+PORT = app.config['PORT']
+#PORT = 5000
 
 def check_auth(username, password):
     """This function is called to check if a username /
@@ -142,12 +144,120 @@ def starred_work_todos():
     data = {"header":"To Do", "text":titles, "pos":3} #text value is a list
     mqtt_publish.single('esp_tft', json.dumps(data), hostname='localhost', retain=False, port=1883, keepalive=60)
     return "\n".join(titles)
+#testin
+
+@app.route("/test", methods=['GET', 'POST'])
+def test():
+    if request.method == 'POST':
+        subject = request.form.get('thisIsA')
+        print(subject)
+        return "OK"
 
 # emails coming in from cloudmailin
 @app.route("/incoming", methods=['GET', 'POST'])
 def incoming():
+    '''This works for email2http which allows us to let a specific ip address in'''
+    if request.method == 'POST':
+        subject = request.form.get('subject')
+        #subject = request.form.get('thisIsA')
+        #print(subject)
+        #return "OK"
+        if subject[:3].lower() in ('re:', 'fw:'):
+            subject = subject[3:].strip()
+        elif subject[:4].lower() == 'fwd:': 
+            subject = subject[4:].strip()
+        body = request.form.get('body')
+        id_ = None
+        p = re.compile('{{[^"]*}}')  
+        m = p.search(subject)
+        if m:
+            begin,end = m.span()
+            id_ = int(subject[begin+2:end-2])
+            subject = subject[:begin] + subject[end:]
+        
+        #pos = subject.find('|')
+        pos = subject.find('@') #the start of the task mods is the context flag
+        if pos != -1:
+            mods = subject[pos:].strip().split()
+            subject = subject[:pos].strip()
+        elif body.find("Maryellen Wiess") != -1:
+            pos = body.find("Maryellen Wiess, 64 Sixth Street, Wood Ridge, NJ 07075")
+            body = body[:pos if pos!=-1 else len(body)+1] 
+            pos = body.find(subject)
+            if pos != -1:
+                pos = body.find(subject, pos+len(subject))
+                if pos != -1:
+                    body = body[pos+len(subject):]
+            mods = ['@industry', '!!!', '*'] 
+        else:
+            #mods = []
+            # if no @context then assume work, priority 3 and a star
+            mods = ['@work', '!!!', '*'] 
+        print("subject =",subject) 
+        if id_:
+            task = session.query(Task).get(id_)
+            task.title = subject
+            print("There was an id: {} so assuming this is a modification of an existing task: {}".format(id_,subject))
+        else:
+            print("There was no id so assuming this is a new task: {}".format(subject))
+            task = Task(title=subject)
+            task.startdate = datetime.today().date() 
+            session.add(task)
+            session.commit()
+
+        #body = request.form.get('plain')
+        pattern = "================="
+        pos = body.rfind(pattern)
+        note = body[1+pos+len(pattern):] if pos!=-1 else body
+        #print(body) 
+        task.note = note.strip()
+
+        for m in mods:
+            if '!' in m:
+                task.priority = len(m) if len(m) < 4 else 3
+            if m in ('0', 'zero'):
+                task.priority = 0
+            if m == 'nostar':
+                task.star = False
+            if m in ('*', 'star'):
+                task.star = True
+            if m in ('off', 'noremind', 'noalarm'):
+                task.remind = 0
+            if m in ('on', 'remind', 'alarm'):
+                task.remind = 1
+                task.duedate = task.duetime = datetime.now() + timedelta(days=1)
+            if m.startswith('@'):
+                context_title = m[1:].replace('_', ' ') # allows you to 'not work' as 'not_work'
+                context = session.query(Context).filter_by(title=context_title).first()
+                if context:
+                    task.context = context
+            if m.startswith('*') and len(m) > 1:
+                folder_title = m[1:].replace('_', ' ')
+                folder = session.query(Folder).filter_by(title=folder_title).first()
+                if folder:
+                    task.folder = folder
+
+        session.commit()
+
+        #update_alarms() # added that alarms should be updated when new or modified tasks are received by email 02012017
+        if task.star and task.remind:
+            j = scheduler.add_job(alarm, 'date', id=str(task.id), run_date=datetime.now()+timedelta(days=1), name=task.title[:15], args=[task.id], replace_existing=True) # shouldn't need replace_existing 
+            print("Incoming email was starred and remind so task was scheduled")
+            print('Task id:{}; star: {}; title:{}'.format(task.id, task.star, task.title))
+            print("Alarm scheduled: {}".format(repr(j)))
+
+    else:
+        print("It was not a post method")
+
+    return "OK"
+
+def incoming_old():
+    '''This worked for cloudmailin which did not have the option to let a single ip address in'''
     if request.method == 'POST':
         subject = request.form.get('headers[Subject]')
+        #subject = request.form.get('thisIsA')
+        #print(subject)
+        #return "OK"
         if subject[:3].lower() in ('re:', 'fw:'):
             subject = subject[3:].strip()
         elif subject[:4].lower() == 'fwd:': 
@@ -242,4 +352,4 @@ update_alarms()
 scheduler.start()
 
 if __name__ == '__main__':
-    app.run(host=HOST, debug=DEBUG, use_reloader=False)
+    app.run(host=HOST, debug=DEBUG, port=PORT, use_reloader=False)
