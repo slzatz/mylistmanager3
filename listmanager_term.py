@@ -316,7 +316,11 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             s += f" modified: {task.modified}\n"
             s += f" startdate: {task.startdate}\n"
             s += f" alert: {task.remind}\n"
-            s += f" note: {task.note[:50] if task.note else ''}"
+            # Possibility of many line feeds can extend string beyond win size
+            # Do this outside f-string b/o can't have backslash in f-string
+            note = task.note[:50].replace('\n', ' ') if task.note else '' # lots of line feeds extend string beyond window
+            #s += f" note: {task.note[:50] if task.note else ''}"
+            s += f" note: {note}"
             info_win.addstr(1, 1, "Item Info",curses.color_pair(2)|curses.A_BOLD)
             info_win.addstr(3, 1, s)  #(y,x)
             info_win.addstr(20, 1, "ESCAPE to close", curses.color_pair(3))  #(y,x)
@@ -690,7 +694,7 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
             last_page_max_rows = len(tasks)%max_rows
             page = 0
             row_num = 1
-            show_tasks()
+            show_tasks() #proposed change 11-17-2018 - didn't work notes out of sync
             show_note()
             task_win.addstr(1, 1, ">")  #j
             log = f"task {task.id} added\n" + log
@@ -832,7 +836,8 @@ def open_display_preview(query, hide_completed=True, hide_deleted=True, sort='mo
                 f.truncate()
 
             # not sure how to eliminate error message
-            call(['chromium', '--single-process', html_fn]) # default is -new-tab
+            #call(['chromium', '--single-process', html_fn]) # default is -new-tab
+            call(['qutebrowser', html_fn]) # default is -new-tab
             screen.clear() #erase doesn't work but clear does here
             screen.noutrefresh() # needed? - yes
             task_win.redrawwin() # this is needed 
