@@ -22,7 +22,7 @@ import paho.mqtt.publish as mqtt_publish
 from random import shuffle
 
 # using Sendgrid to send alarm messages
-sg = sendgrid.SendGridAPIClient(apikey=c.SENDGRID_API_KEY)
+sg = sendgrid.SendGridAPIClient(c.SENDGRID_API_KEY)
 mail_data = {
             "personalizations": [{"to":[{"email": "slzatz@gmail.com"}, {"email":"szatz@webmd.net"}], "subject":""}],
             "from": {"email": c.CLOUDMAILIN},
